@@ -17,7 +17,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="fr" className={`${fraunces.variable} ${instrument.variable}`}>
       <body>
-        {children}
+        {/* Cible du rétrécissement d'arrière-plan des feuilles mobiles (vaul). */}
+        <div data-vaul-drawer-wrapper="" className="min-h-dvh bg-cream">
+          {children}
+        </div>
         <Toaster />
         <Grain />
       </body>

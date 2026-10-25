@@ -122,7 +122,7 @@ function Ambiance({ name, className, dark }: { name: string; className: string; 
 
 export default function DesignPage() {
   return (
-    <div className="relative isolate overflow-x-clip">
+    <div className="relative isolate overflow-clip">
       {/* Héros feuillage */}
       <header className="tex-feuillage on-dark relative h-[340px] overflow-hidden text-linen sm:h-[420px]">
         <span aria-hidden="true" className="grain-overlay absolute inset-0" />

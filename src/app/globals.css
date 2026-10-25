@@ -218,6 +218,11 @@
       transparent 100%
     );
   }
+  @media (max-width: 639px) {
+    &::before {
+      background-image: url(/textures/sky-golden-mobile.jpg);
+    }
+  }
 }
 
 /* ---------- verre ---------- */

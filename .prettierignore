@@ -1,0 +1,12 @@
+pnpm-lock.yaml
+.next/
+node_modules/
+coverage/
+playwright-report/
+test-results/
+design/
+docs/
+supabase/
+public/
+src/types/database.ts
+*.md

@@ -4,22 +4,19 @@ import { cn } from "@/lib/cn";
 
 type CapsProps = {
   as?: ElementType;
-  /** `muted` sur fond clair, `honey` sur fond sombre. */
-  tone?: "muted" | "honey";
+  /** `muted` sur fond clair, `soft` sur ciel doré, `honey` sur fond sombre. */
+  tone?: "muted" | "soft" | "honey";
   size?: 11 | 12 | 13;
   className?: string;
   children: ReactNode;
 };
 
+const CAPS_TONE = { muted: "text-muted", soft: "text-ink-soft", honey: "text-honey" } as const;
 const capsSize = { 11: "text-[11px]", 12: "text-xs", 13: "text-[13px]" } as const;
 
 /** Étiquette en capitales (Instrument Sans 600, interlettrage .18 em). */
 export function Caps({ as: Tag = "span", tone = "muted", size = 12, className, children }: CapsProps) {
-  return (
-    <Tag className={cn("caps", capsSize[size], tone === "honey" ? "text-honey" : "text-muted", className)}>
-      {children}
-    </Tag>
-  );
+  return <Tag className={cn("caps", capsSize[size], CAPS_TONE[tone], className)}>{children}</Tag>;
 }
 
 type ChipProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "aria-pressed"> & {

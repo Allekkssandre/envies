@@ -30,3 +30,9 @@ export function formatPrice(cents: number, currency = "EUR"): string {
   const f = formatters(currency);
   return cents % 100 === 0 ? f.whole.format(cents / 100) : f.cents.format(cents / 100);
 }
+
+/** Total arrondi à l'unité, précédé de « ≈ » s'il manque des prix : « ≈ 1 240 € ». */
+export function formatTotal(cents: number, currency = "EUR", approximate = false): string {
+  const value = formatters(currency).whole.format(Math.round(cents / 100));
+  return approximate ? `≈ ${value}` : value;
+}

@@ -1,0 +1,261 @@
+@import "tailwindcss";
+
+/* Tokens : docs/04-design-system.md. Exposés à Tailwind (bg-ink, text-muted, font-serif…). */
+@theme {
+  /* base */
+  --color-olive: #57612c;
+  --color-olive-deep: #4a5226;
+  --color-ochre: #a76a19;
+  --color-ochre-deep: #7a4512;
+
+  /* encres et fonds */
+  --color-ink: #2b2416;
+  --color-ink-soft: #5e523a;
+  --color-muted: #6b5a3e;
+  --color-honey: #e3d7b8;
+  --color-honey-light: #e8be78;
+  --color-linen: #f3ecdd;
+  --color-cream: #f3ede2;
+  --color-paper: #f6f1e8;
+
+  /* accents = couleurs de tags */
+  --color-rust: #8e3b22;
+  --color-honey-deep: #c99536;
+  --color-plum: #6b3f4a;
+  --color-slate: #4f5b5e;
+  --color-sage: #7e8c5a;
+  --color-sand: #9a8a6a;
+
+  /* lignes et champs */
+  --color-line: rgb(43 36 22 / 0.12);
+  --color-line-strong: rgb(43 36 22 / 0.18);
+  --color-field: rgb(255 255 255 / 0.62);
+  --color-placeholder: #7a6a4e;
+
+  --font-serif: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-instrument), "Helvetica Neue", system-ui, sans-serif;
+
+  /* points de rupture : mobile < 640, tablette 640–1023, desktop ≥ 1024, large ≥ 1280 */
+  --breakpoint-sm: 640px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+
+  /* rayons */
+  --radius-btn: 14px;
+  --radius-field: 16px;
+  --radius-photo: 18px;
+  --radius-panel: 24px;
+  --radius-sheet: 26px;
+  --radius-side: 32px;
+
+  /* ombres */
+  --shadow-photo:
+    inset 0 1px 0 rgb(255 255 255 / 0.7), 0 1px 2px rgb(43 36 22 / 0.12),
+    0 24px 44px -18px rgb(60 40 10 / 0.45);
+  --shadow-ink: 0 16px 30px -16px rgb(43 36 22 / 0.8);
+  --shadow-rust: 0 16px 30px -16px rgb(110 40 20 / 0.8);
+  --shadow-linen: 0 10px 30px -10px rgb(0 0 0 / 0.5);
+  --shadow-swatch: inset 0 0 0 1px rgb(43 36 22 / 0.08), 0 18px 30px -18px rgb(43 36 22 / 0.5);
+  --shadow-tile: 0 30px 50px -30px rgb(43 36 22 / 0.6);
+  --shadow-panel-right: -40px 0 80px -30px rgb(10 8 2 / 0.7);
+  --shadow-modal: 0 50px 100px -40px rgb(10 8 2 / 0.8);
+
+  /* mouvement */
+  --ease-panel: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-shimmer: shimmer 1.4s linear infinite;
+
+  @keyframes shimmer {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+}
+
+/* ---------- base ---------- */
+
+@layer base {
+  html {
+    background: var(--color-cream);
+    color: var(--color-ink);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    background: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::placeholder {
+    color: var(--color-placeholder);
+    opacity: 1;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 3px;
+  }
+
+  /* Sur fond sombre (héros, feuillage, ambre) : contour lin. */
+  .on-dark :focus-visible {
+    outline-color: var(--color-linen);
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
+/* ---------- typographie ---------- */
+
+@utility font-display {
+  font-family: var(--font-serif);
+  font-variation-settings:
+    "SOFT" 100,
+    "WONK" 1,
+    "opsz" 144;
+}
+
+@utility font-display-72 {
+  font-family: var(--font-serif);
+  font-variation-settings:
+    "SOFT" 100,
+    "WONK" 1,
+    "opsz" 72;
+}
+
+@utility font-note {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 300;
+  font-variation-settings:
+    "SOFT" 100,
+    "opsz" 30;
+}
+
+@utility caps {
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- matières ---------- */
+
+@utility tex-feuillage {
+  background: #2a3014 url(/textures/bokeh-hero.jpg) center / cover no-repeat;
+  @media (max-width: 639px) {
+    background-image: url(/textures/bokeh-mobile.jpg);
+  }
+}
+
+@utility tex-ambre {
+  background: #3a2414 url(/textures/ambre-hero.jpg) center / cover no-repeat;
+  @media (max-width: 639px) {
+    background-image: url(/textures/ambre-mobile.jpg);
+  }
+}
+
+@utility tex-ciel {
+  background: #e2c08a url(/textures/sky-golden.jpg) center / cover no-repeat;
+  @media (max-width: 639px) {
+    background-image: url(/textures/sky-golden-mobile.jpg);
+  }
+}
+
+@utility tex-studio {
+  background: #eee6d6 url(/textures/photo-backdrop.jpg) center / cover;
+}
+
+/* Sans photo : dégradé lin + initiale. */
+@utility tex-initial {
+  background: radial-gradient(120% 90% at 30% 20%, #f4ebdb, #e2d1b3);
+  box-shadow:
+    inset 0 0 0 1px rgb(167 106 25 / 0.18),
+    0 18px 30px -18px rgb(60 40 10 / 0.4);
+}
+
+@utility grain-fine {
+  background: url(/textures/grain-fine.png) 0 0 / 200px repeat;
+}
+
+@utility grain-overlay {
+  background: url(/textures/grain.png) 0 0 / 256px repeat;
+  mix-blend-mode: overlay;
+  opacity: 0.55;
+}
+
+/* Une section sur deux : lumière du ciel doré en fondu. */
+@utility section-light {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: #e2c08a url(/textures/sky-golden.jpg) center / cover no-repeat;
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      #000 160px,
+      #000 calc(100% - 120px),
+      transparent 100%
+    );
+  }
+}
+
+/* ---------- verre ---------- */
+
+@utility glass-light {
+  background: rgb(243 236 221 / 0.8);
+  border: 1px solid rgb(255 255 255 / 0.55);
+  backdrop-filter: blur(22px) saturate(1.3);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 2px 6px rgb(43 36 22 / 0.08),
+    0 30px 60px -24px rgb(43 36 22 / 0.45);
+  @supports not (backdrop-filter: blur(1px)) {
+    background: rgb(243 236 221 / 0.95);
+  }
+}
+
+@utility glass-dark {
+  background: rgb(243 236 221 / 0.14);
+  border: 1px solid rgb(243 236 221 / 0.32);
+  backdrop-filter: blur(20px) saturate(1.2);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.25),
+    0 30px 60px -30px rgb(0 0 0 / 0.6);
+  @supports not (backdrop-filter: blur(1px)) {
+    background: rgb(58 50 30 / 0.95);
+  }
+}
+
+/* ---------- mouvement ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-property: opacity, color, background-color, border-color !important;
+  }
+}

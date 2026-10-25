@@ -80,7 +80,7 @@ Images : pas d'optimisation `next/image` pour les photos d'articles (elles sont 
 
 | Variable | Où | Rôle |
 |---|---|---|
-| `NEXT_PUBLIC_SITE_URL` | client + serveur | URL publique (`https://envies-merin.vercel.app`), pour les liens copiés et OpenGraph |
+| `NEXT_PUBLIC_SITE_URL` | client + serveur | URL publique (`https://envies-azure.vercel.app`), pour les liens copiés et OpenGraph. Absente en preview : retomber sur `https://${VERCEL_URL}` |
 | `NEXT_PUBLIC_SUPABASE_URL` | client | URL du projet Supabase |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | client | clé publique (lecture + temps réel). Sur les nouveaux projets Supabase : clé « publishable » `sb_publishable_…`, même usage |
 | `SUPABASE_URL` | serveur | même URL |
@@ -95,7 +95,7 @@ Générer les secrets : `openssl rand -base64 32`.
 
 ### 1. GitHub
 
-1. Dépôt public `envies` contenant ce dossier. Au jalon 0, `create-next-app` refuse un dossier non vide : générer l'app dans un dossier temporaire et déplacer ses fichiers à la racine (sans écraser `README.md`, `public/textures`, `supabase/`, `.gitignore` : fusionner).
+1. Dépôt public `Allekkssandre/envies`, relié au projet Vercel `envies`. Au jalon 0, `create-next-app` refuse un dossier non vide : générer l'app dans un dossier temporaire et déplacer ses fichiers à la racine (sans écraser `README.md`, `public/textures`, `supabase/`, `.gitignore` : fusionner).
 2. Branche `main` protégée : merge via PR, CI verte exigée.
 
 ### 2. Supabase (déjà fait)
@@ -132,11 +132,21 @@ supabase gen types typescript --project-id nanhxhrbgftqhqivwfvt > src/types/data
 
 Vérifié : bucket `item-images` public (5 Mo), table `items` dans la publication Realtime, RLS activée partout, aucun droit d'écriture pour `anon`, `list_secrets` et `rate_limits` illisibles.
 
-### 3. Vercel
+### 3. Vercel (déjà fait)
 
-1. Importer le dépôt GitHub (framework Next.js détecté, gestionnaire pnpm).
-2. Variables : les mêmes pour Production et Preview (un seul projet Supabase, voir plus haut). Development : base locale.
-3. `vercel.json` (fourni) :
+| | |
+|---|---|
+| Projet | `envies` (`prj_3cl9VNEuMhbQxjETdUjQZQlSwquF`), compte Hobby `alex-e3f4` |
+| Dépôt relié | `Allekkssandre/envies`, branche de production `main` : chaque push déploie, chaque PR a sa preview |
+| Domaine de production | `https://envies-azure.vercel.app` |
+| Framework / Node | Next.js / 22.x |
+| Protection | Vercel Authentication sur les **previews seulement** ; la production est publique (c'est un site ouvert à tous) |
+
+Variables déjà renseignées (Production + Preview sauf mention) : `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (clé publishable), `NEXT_PUBLIC_SITE_URL` (production seulement), `EDIT_TOKEN_SECRET`, `RATE_LIMIT_SALT` (secrets générés aléatoirement, type « sensitive »), `CRON_SECRET` (production seulement).
+
+**Reste à ajouter à la main** : `SUPABASE_SERVICE_ROLE_KEY` (Production + Preview, type « sensitive »), copiée depuis Supabase → Project Settings → API Keys (clé `service_role` ou une clé `sb_secret_…`). Pour le développement local, `vercel env pull` ne sert pas : utiliser `.env.local` avec les valeurs de `supabase status`.
+
+`vercel.json` (fourni) :
 
 ```json
 {
@@ -146,7 +156,7 @@ Vérifié : bucket `item-images` public (5 Mo), table `items` dans la publicatio
 
 Le plan Hobby n'autorise qu'une tâche planifiée par jour : c'est suffisant (purge, nettoyage). La relance des extractions en attente est faite par le client pendant l'édition.
 
-4. Domaine : `envies-merin.vercel.app` par défaut, domaine personnalisé possible plus tard (mettre à jour `NEXT_PUBLIC_SITE_URL`).
+« Ignored Build Step » réglé sur `if [ -f package.json ]; then exit 1; else exit 0; fi` : tant que le jalon 0 n'a pas créé `package.json`, Vercel saute le déploiement au lieu d'échouer. Une fois l'app créée, ce réglage ne gêne plus (on peut le vider dans Project Settings → Git).
 
 ### 4. CI (GitHub Actions)
 

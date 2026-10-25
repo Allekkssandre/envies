@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, EyeOff } from "lucide-react";
-import { useId, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { useId, useState, type InputHTMLAttributes, type ReactNode, type Ref } from "react";
 import { FieldShell, fieldBoxClasses } from "./Field";
 
 type PasswordFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "id"> & {
@@ -13,6 +13,7 @@ type PasswordFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "
   /** Visible par défaut à la création (docs/02-parcours.md, C1). */
   defaultVisible?: boolean;
   id?: string;
+  ref?: Ref<HTMLInputElement>;
 };
 
 export function PasswordField({

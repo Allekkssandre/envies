@@ -1,4 +1,4 @@
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Check, Pencil } from "lucide-react";
 import Link from "next/link";
 import { preload } from "react-dom";
 import { buttonClasses } from "@/components/ui/Button";
@@ -11,12 +11,13 @@ import { formatTotal } from "@/lib/format";
 import type { ListStats } from "@/lib/listFilters";
 import { formatNumber, plural } from "@/lib/text";
 import type { ListInfo } from "@/types/models";
+import { EditBadge, LockButton } from "@/components/access/EditControls";
 import { ShareButton } from "./ShareButton";
 
-type ListHeroProps = { list: ListInfo; stats: ListStats };
+type ListHeroProps = { list: ListInfo; stats: ListStats; editing?: boolean };
 
 /** Héros d'ambiance de la page liste : barre du haut, prénom, titre, petit mot et chiffres. */
-export function ListHero({ list, stats }: ListHeroProps) {
+export function ListHero({ list, stats, editing = false }: ListHeroProps) {
   const theme = ambianceTheme(list.ambiance);
   const tone = theme.dark ? "dark" : "light";
   const total = stats.totalCents > 0 ? formatTotal(stats.totalCents, list.currency, stats.approximate) : null;
@@ -28,7 +29,8 @@ export function ListHero({ list, stats }: ListHeroProps) {
   return (
     <header
       className={cn(
-        "relative h-[470px] overflow-hidden sm:h-[640px] lg:h-[780px]",
+        "relative overflow-hidden",
+        editing ? "h-[300px] sm:h-[440px]" : "h-[470px] sm:h-[640px] lg:h-[780px]",
         theme.texture,
         theme.text,
         theme.dark && "on-dark",
@@ -44,48 +46,82 @@ export function ListHero({ list, stats }: ListHeroProps) {
 
       <div className="relative mx-auto flex h-full max-w-[1320px] flex-col px-3 sm:px-12">
         {/* Barre du haut */}
-        <div className="flex items-center justify-between py-2 sm:h-24 sm:py-0">
-          <Link
-            href="/"
-            aria-label="Toutes les listes"
-            className={cn(
-              "flex size-11 items-center justify-center rounded-full border backdrop-blur-[12px] sm:hidden",
-              theme.dark
-                ? "border-linen/40 bg-linen/12 text-linen"
-                : "border-line-strong bg-white/45 text-ink",
-            )}
-          >
-            <ArrowLeft aria-hidden="true" size={20} strokeWidth={1.6} />
-          </Link>
-          <Link
-            href="/"
-            className={cn("font-display-72 text-[26px] italic no-underline sm:text-[34px]", theme.text)}
-          >
-            Envies
-          </Link>
-          <div className="flex gap-2 sm:gap-2.5">
-            <span className="hidden sm:contents">
-              <ShareButton title={list.title} path={`/l/${list.slug}`} variant="full" tone={tone} />
-              <Link href={`/l/${list.slug}/edition`} className={buttonClasses("linen", 46)}>
-                <Pencil aria-hidden="true" />
-                Modifier
-              </Link>
-            </span>
-            <span className="contents sm:hidden">
-              <ShareButton title={list.title} path={`/l/${list.slug}`} variant="round" tone={tone} />
+        {editing ? (
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-2 sm:h-24 sm:py-0">
+            <div className="flex items-center">
               <Link
-                href={`/l/${list.slug}/edition`}
-                aria-label="Modifier la liste"
-                className="flex size-11 items-center justify-center rounded-full bg-linen text-ink shadow-[0_8px_20px_-8px_rgb(0_0_0/0.5)]"
+                href="/"
+                className={cn("hidden font-display-72 text-[34px] italic no-underline lg:inline", theme.text)}
               >
-                <Pencil aria-hidden="true" size={18} strokeWidth={1.6} />
+                Envies
               </Link>
-            </span>
+              <span className="lg:hidden">
+                <LockButton listId={list.id} dark={theme.dark} compact />
+              </span>
+            </div>
+            <EditBadge dark={theme.dark} />
+            <div className="flex justify-end gap-2.5">
+              <span className="hidden lg:contents">
+                <LockButton listId={list.id} dark={theme.dark} />
+              </span>
+              <Link
+                href={`/l/${list.slug}`}
+                className={buttonClasses("linen", 46, "max-sm:h-11 max-sm:px-4")}
+              >
+                <Check aria-hidden="true" />
+                Terminer
+              </Link>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center justify-between py-2 sm:h-24 sm:py-0">
+            <Link
+              href="/"
+              aria-label="Toutes les listes"
+              className={cn(
+                "flex size-11 items-center justify-center rounded-full border backdrop-blur-[12px] sm:hidden",
+                theme.dark
+                  ? "border-linen/40 bg-linen/12 text-linen"
+                  : "border-line-strong bg-white/45 text-ink",
+              )}
+            >
+              <ArrowLeft aria-hidden="true" size={20} strokeWidth={1.6} />
+            </Link>
+            <Link
+              href="/"
+              className={cn("font-display-72 text-[26px] italic no-underline sm:text-[34px]", theme.text)}
+            >
+              Envies
+            </Link>
+            <div className="flex gap-2 sm:gap-2.5">
+              <span className="hidden sm:contents">
+                <ShareButton title={list.title} path={`/l/${list.slug}`} variant="full" tone={tone} />
+                <Link href={`/l/${list.slug}/edition`} className={buttonClasses("linen", 46)}>
+                  <Pencil aria-hidden="true" />
+                  Modifier
+                </Link>
+              </span>
+              <span className="contents sm:hidden">
+                <ShareButton title={list.title} path={`/l/${list.slug}`} variant="round" tone={tone} />
+                <Link
+                  href={`/l/${list.slug}/edition`}
+                  aria-label="Modifier la liste"
+                  className="flex size-11 items-center justify-center rounded-full bg-linen text-ink shadow-[0_8px_20px_-8px_rgb(0_0_0/0.5)]"
+                >
+                  <Pencil aria-hidden="true" size={18} strokeWidth={1.6} />
+                </Link>
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Bas du héros */}
-        <div className="mt-auto flex flex-wrap items-end justify-between gap-12 px-2 pb-16 sm:px-0 sm:pb-[104px]">
+        <div
+          className={cn(
+            "mt-auto flex flex-wrap items-end justify-between gap-12 px-2 sm:px-0",
+            editing ? "pb-12 sm:pb-[72px]" : "pb-16 sm:pb-[104px]",
+          )}
+        >
           <div className="flex flex-col gap-2.5 sm:gap-[18px]">
             <Caps tone={theme.dark ? "honey" : "soft"} size={11} className="tracking-[0.2em] sm:text-[13px]">
               La liste de {list.ownerName}
@@ -97,11 +133,13 @@ export function ListHero({ list, stats }: ListHeroProps) {
               restColor={theme.italic}
               leading="leading-[0.86] sm:leading-[0.9]"
               className={cn(
-                "text-[84px] sm:text-[128px] lg:text-[172px] max-sm:[&>i]:block",
+                editing
+                  ? "text-[58px] sm:text-[128px]"
+                  : "text-[84px] sm:text-[128px] lg:text-[172px] max-sm:[&>i]:block",
                 theme.dark && "[text-shadow:0_14px_50px_rgb(10_12_4/0.45)]",
               )}
             />
-            <p className={cn("m-0 mt-1.5 text-sm lg:hidden", theme.soft)}>
+            <p className={cn("m-0 mt-1.5 text-sm sm:text-base", !editing && "lg:hidden", theme.soft)}>
               {plural(stats.count, "article", "articles")} ·{" "}
               {plural(stats.favorites, "coup de cœur", "coups de cœur")}
               {total ? ` · ${total}` : null}
@@ -111,7 +149,8 @@ export function ListHero({ list, stats }: ListHeroProps) {
           <aside
             aria-label="En bref"
             className={cn(
-              "hidden w-[340px] flex-col gap-4 rounded-panel px-[26px] py-6 lg:flex",
+              "hidden w-[340px] flex-col gap-4 rounded-panel px-[26px] py-6",
+              !editing && "lg:flex",
               theme.dark ? "glass-dark" : "glass-light",
             )}
           >

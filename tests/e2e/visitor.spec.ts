@@ -36,7 +36,8 @@ test.describe("visiteur", () => {
   test("accueil → liste → filtres → fiche → trouver ailleurs", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1, name: "Envies" })).toBeVisible();
-    await expect(page.getByText("3 listes")).toBeVisible();
+    // Le nombre dépend des listes créées en parallèle par access.spec.ts.
+    await expect(page.getByText(/^\d+ listes$/)).toBeVisible();
 
     // Recherche instantanée, insensible aux accents
     await page.getByLabel("Chercher une liste").fill("noel");

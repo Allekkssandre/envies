@@ -57,7 +57,7 @@ envies/
 ├─ tests/e2e/                                     Playwright
 ├─ .env.example
 ├─ vercel.json
-└─ .github/workflows/ci.yml
+└─ .github/ci.yml                                 (fourni, à déplacer dans .github/workflows/ au jalon 0)
 ```
 
 ## Dépendances
@@ -150,7 +150,7 @@ Le plan Hobby n'autorise qu'une tâche planifiée par jour : c'est suffisant (pu
 
 ### 4. CI (GitHub Actions)
 
-`.github/workflows/ci.yml` : sur chaque PR, `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`. Les e2e Playwright tournent contre la preview Vercel (`deployment_status`) ou une Supabase locale (`supabase start` dans le job) : au choix, la seconde est plus fiable.
+`.github/ci.yml` (fourni hors de `workflows/` pour ne pas tourner avant que l'app existe ; le déplacer dans `.github/workflows/` au jalon 0) : sur chaque PR, `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`. Les e2e Playwright tournent contre la preview Vercel (`deployment_status`) ou une Supabase locale (`supabase start` dans le job) : au choix, la seconde est plus fiable.
 
 ### 5. Migrations suivantes
 

@@ -12,7 +12,7 @@ Neuf jalons, dans l'ordre. Chacun se termine par une PR déployée en preview, a
 - Supabase local (`supabase init`, `supabase start`), migration et seed appliqués.
 - Clients Supabase (service role `server-only`, anon serveur, anon navigateur).
 - Vitest et Playwright configurés, un test de fumée chacun.
-- CI GitHub Actions (fournie dans `.github/workflows/ci.yml`, à ajuster). Projet Vercel relié au dépôt, variables Production + Preview (même projet Supabase), `vercel.json`.
+- CI GitHub Actions (fournie dans `.github/ci.yml` : la déplacer dans `.github/workflows/` une fois `package.json` créé, et l'ajuster). Projet Vercel relié au dépôt, variables Production + Preview (même projet Supabase), `vercel.json`.
 - Page `/design` (non liée, `noindex`) qui montre tous les composants de base : boutons, puces, champs, interrupteur, carte article, carte sans photo, verre clair et sombre sur feuillage. C'est la planche FondationsV4 en vrai.
 
 **Critères** : `pnpm build` passe ; la preview Vercel s'ouvre ; `/design` ressemble à `FondationsV4.jpg` (couleurs, typo, matières) ; Lighthouse accessibilité ≥ 95 sur `/design`.

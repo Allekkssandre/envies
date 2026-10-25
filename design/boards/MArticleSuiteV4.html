@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Envies V4, fiche article mobile, trouver ailleurs</title>
+
+</head>
+<body>
+
+
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&amp;family=Instrument+Sans:wght@400..700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2B2416}
+button,input,select{font-family:inherit}
+.t-bokeh-m{background:#2A3014 url(../../public/textures/bokeh-mobile.jpg) center/cover no-repeat}
+.t-grain{background:url(../../public/textures/grain-fine.png) 0 0/200px repeat}
+.t-photo{background:#EEE6D6 url(../../public/textures/photo-backdrop.jpg) center/cover}
+</style>
+
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #1E1A0F; color: #2B2416; font-family: 'Instrument Sans', 'Helvetica Neue', system-ui, sans-serif; overflow: hidden; position: relative">
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+<symbol id="l-x" viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></symbol>
+<symbol id="l-out" viewBox="0 0 24 24"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></symbol>
+<symbol id="l-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></symbol>
+<symbol id="l-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></symbol>
+</svg>
+
+<div class="t-bokeh-m" aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 0; height: 120px; opacity: 0.55; transform: scale(0.94); transform-origin: top center; border-radius: 0 0 20px 20px"></div>
+
+<article role="dialog" aria-modal="true" aria-labelledby="ms-titre" style="position: absolute; left: 0; right: 0; top: 40px; bottom: 0; background: #F6F1E8; border-radius: 26px 26px 0 0; overflow: hidden">
+<div class="t-grain" aria-hidden="true" style="position: absolute; inset: 0; opacity: 0.5; pointer-events: none"></div>
+
+<header style="position: relative; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 14px 12px 12px 14px; background: rgba(246, 241, 232, 0.9); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid rgba(43, 36, 22, 0.08)">
+<span class="t-photo" aria-hidden="true" style="width: 44px; height: 44px; flex: none; border-radius: 12px"></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span id="ms-titre" style="font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Lampe champignon en verre soufflé</span><span style="font-family: 'Fraunces', Georgia, serif; font-size: 16px">89 €</span></span>
+<a href="MListeV4.html" aria-label="Fermer" style="width: 44px; height: 44px; flex: none; border-radius: 50%; background: #2B2416; color: #F3ECDD; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round"><use href="#l-x"></use></svg></a>
+</header>
+
+<section style="position: relative; padding: 22px 16px 0; display: flex; flex-direction: column; gap: 14px">
+<div><h3 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 400; font-variation-settings: 'SOFT' 100, 'WONK' 1, 'opsz' 72; font-size: 34px; line-height: 1">Trouver <i style="font-weight: 300; color: #A76A19">ailleurs</i></h3><p style="margin: 6px 0 0; font-size: 14px; color: #6B5A3E">Même recherche, autres boutiques. Modifiez les mots si besoin.</p></div>
+<div style="display: flex; gap: 8px">
+<label style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; height: 50px; padding: 0 16px; border-radius: 999px; background: rgba(255, 255, 255, 0.65); border: 1px solid rgba(43, 36, 22, 0.15)">
+<svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #2B2416; stroke-width: 1.75; stroke-linecap: round; flex: none"><use href="#l-search"></use></svg>
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Mots de la recherche</span>
+<input type="text" value="lampe champignon verre soufflé" style="flex: 1; min-width: 0; border: 0; background: transparent; font-size: 16px; color: #2B2416; outline: none">
+</label>
+<button type="button" aria-label="Copier le nom" style="width: 50px; height: 50px; flex: none; border-radius: 50%; border: 1px solid rgba(43, 36, 22, 0.15); background: rgba(255, 255, 255, 0.65); color: #2B2416; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.6"><use href="#l-copy"></use></svg></button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #6B5A3E; padding: 6px 0 4px">Comparer les prix</span>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<a href="https://www.google.com/search?tbm=shop&amp;q=lampe+champignon+verre+souffl%C3%A9" style="height: 52px; border-radius: 16px; background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(43, 36, 22, 0.1); display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 14px; font-weight: 600; text-decoration: none">Google<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2"><use href="#l-out"></use></svg></a>
+<a href="https://www.idealo.fr/prechcat.html?q=lampe+champignon+verre+souffl%C3%A9" style="height: 52px; border-radius: 16px; background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(43, 36, 22, 0.1); display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 14px; font-weight: 600; text-decoration: none">idealo<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2"><use href="#l-out"></use></svg></a>
+<a href="https://ledenicheur.fr/search?search=lampe+champignon+verre+souffl%C3%A9" style="height: 52px; border-radius: 16px; background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(43, 36, 22, 0.1); display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 14px; font-weight: 600; text-decoration: none">Ledenicheur<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2"><use href="#l-out"></use></svg></a>
+</div>
+<span style="font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #6B5A3E; padding: 14px 0 4px">Neuf</span>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<a href="https://www.amazon.fr/s?k=lampe+champignon+verre+souffl%C3%A9" style="height: 52px; border-radius: 16px; background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(43, 36, 22, 0.1); display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 14px; font-weight: 600; text-decoration: none">Amazon<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2"><use href="#l-out"></use></svg></a>
+<a href="https://www.fnac.com/SearchResult/ResultList.aspx?Search=lampe+champignon+verre+souffl%C3%A9" style="height: 52px; border-radius: 16px; background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(43, 36, 22, 0.1); display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 14px; font-weight: 600; text-decoration: none">Fnac<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2"><use href="#l-out"></use></svg></a>
+<a href="https://www.etsy.com/fr/search?q=lampe+champignon+verre+souffl%C3%A9" style="height: 52px; border-radius: 16px; background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(43, 36, 22, 0.1); display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 14px; font-weight: 600; text-decoration: none">Etsy<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2"><use href="#l-out"></use></svg></a>
+</div>
+<span style="font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #6B5A3E; padding: 14px 0 4px">Seconde main</span>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<a href="https://www.leboncoin.fr/recherche?text=lampe+champignon+verre+souffl%C3%A9" style="height: 52px; border-radius: 16px; background: rgba(87, 97, 44, 0.1); border: 1px solid rgba(87, 97, 44, 0.18); display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 14px; font-weight: 600; text-decoration: none">leboncoin<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2"><use href="#l-out"></use></svg></a>
+<a href="https://www.vinted.fr/catalog?search_text=lampe+champignon+verre+souffl%C3%A9" style="height: 52px; border-radius: 16px; background: rgba(87, 97, 44, 0.1); border: 1px solid rgba(87, 97, 44, 0.18); display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 14px; font-weight: 600; text-decoration: none">Vinted<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2"><use href="#l-out"></use></svg></a>
+<a href="https://www.ebay.fr/sch/i.html?_nkw=lampe+champignon+verre+souffl%C3%A9" style="height: 52px; border-radius: 16px; background: rgba(87, 97, 44, 0.1); border: 1px solid rgba(87, 97, 44, 0.18); display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 14px; font-weight: 600; text-decoration: none">eBay<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2"><use href="#l-out"></use></svg></a>
+</div>
+</div>
+<p style="margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: #6B5A3E">Ces liens ouvrent une simple recherche dans un nouvel onglet. Rien n'est suivi ni rémunéré.</p>
+</section>
+
+<div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 26px; background: linear-gradient(rgba(246, 241, 232, 0), #F6F1E8 30%)">
+<a href="https://www.etsy.com/" style="height: 56px; border-radius: 999px; background: #2B2416; color: #F3ECDD; font-size: 16px; font-weight: 600; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 18px 30px -18px rgba(43, 36, 22, 0.8)">Voir sur etsy.com<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round"><use href="#l-out"></use></svg></a>
+</div>
+</article>
+</div>
+
+
+</body>
+</html>

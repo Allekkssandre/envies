@@ -3,6 +3,9 @@ import { EditPage } from "@/components/edit/EditPage";
 import { ItemEditor } from "@/components/edit/ItemEditor";
 import { loadListPage } from "@/server/db/listPage";
 
+// Les actions d'ajout lancent la lecture des liens après la réponse (`after()`).
+export const maxDuration = 60;
+
 /** Lien direct vers « Modifier l'article » : l'édition en fond, le panneau ouvert. */
 export default async function EditItemPage({ params }: PageProps<"/l/[slug]/edition/a/[ref]">) {
   const { slug, ref } = await params;

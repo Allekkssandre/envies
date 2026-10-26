@@ -2,7 +2,18 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Camera, CircleAlert, FileImage, Heart, ImageIcon, Plus, Trash2, X } from "lucide-react";
+import {
+  Camera,
+  CircleAlert,
+  FileImage,
+  Heart,
+  ImageIcon,
+  LoaderCircle,
+  Plus,
+  RefreshCw,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { toast } from "sonner";
@@ -19,7 +30,14 @@ import { sortCategories } from "@/lib/listFilters";
 import { parseManualPrice, priceToInput } from "@/lib/price";
 import { resizeForUpload } from "@/lib/resizeImage";
 import { tagColorVar } from "@/lib/tagColors";
-import { deleteItems, restoreItems, setItemImage, updateItem, type ItemPatch } from "@/server/actions/items";
+import {
+  deleteItems,
+  refetchItem,
+  restoreItems,
+  setItemImage,
+  updateItem,
+  type ItemPatch,
+} from "@/server/actions/items";
 import type { Result } from "@/server/actions/result";
 import { createCategory, createTag } from "@/server/actions/taxonomy";
 import { itemName, type CategoryInfo, type ItemInfo, type ListInfo, type TagInfo } from "@/types/models";
@@ -61,7 +79,10 @@ const toDraft = (item: ItemInfo): Draft => ({
 });
 
 const currencySymbol = (currency: string) =>
-  new Intl.NumberFormat("fr-FR", { style: "currency", currency })
+  new Intl.NumberFormat("fr-FR", {
+    style: "currency",
+    currency: /^[A-Z]{3}$/.test(currency) ? currency : "EUR",
+  })
     .formatToParts(0)
     .find((p) => p.type === "currency")?.value ?? currency;
 
@@ -95,6 +116,24 @@ export function ItemEditor({
   const [open, setOpen] = useState(true);
   const [item, setItem] = useState(initial);
   const [draft, setDraft] = useState(() => toDraft(initial));
+  // Nouvelle version venue du serveur (extraction terminée, rafraîchissement) : on la reprend,
+  // sans toucher aux champs en cours de modification.
+  const [source, setSource] = useState(initial);
+  if (initial !== source) {
+    setSource(initial);
+    const before = toDraft(item);
+    const after = toDraft(initial);
+    setItem(initial);
+    setDraft((d) => {
+      const next: Record<string, unknown> = { ...d };
+      for (const key of Object.keys(after) as (keyof Draft)[]) {
+        if (JSON.stringify(d[key]) === JSON.stringify(before[key])) next[key] = after[key];
+      }
+      return next as Draft;
+    });
+  }
+  const [pickingUrl, setPickingUrl] = useState<string | null>(null);
+  const [refetching, setRefetching] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [categories, setCategories] = useState(initialCategories);
@@ -207,11 +246,7 @@ export function ItemEditor({
     close();
   };
 
-  const changePhoto = async (file: File | null) => {
-    const form = new FormData();
-    form.set("itemId", item.id);
-    if (file) form.set("file", await resizeForUpload(file));
-    else form.set("remove", "1");
+  const sendPhoto = async (form: FormData) => {
     setStatus("saving");
     try {
       const result = await setItemImage(form);
@@ -226,6 +261,45 @@ export function ItemEditor({
     } catch {
       setStatus("idle");
       toast(NETWORK_ERROR, { duration: 8000 });
+    }
+  };
+
+  const changePhoto = async (file: File | null) => {
+    const form = new FormData();
+    form.set("itemId", item.id);
+    if (file) form.set("file", await resizeForUpload(file));
+    else form.set("remove", "1");
+    await sendPhoto(form);
+  };
+
+  /** « Trouvées sur la page » : la photo choisie est téléchargée et traitée par le serveur. */
+  const pickCandidate = async (url: string) => {
+    const form = new FormData();
+    form.set("itemId", item.id);
+    form.set("candidateUrl", url);
+    setPickingUrl(url);
+    await sendPhoto(form);
+    setPickingUrl(null);
+  };
+
+  /** « Relire la page du lien » : prix, photos trouvées et catégorie proposée. */
+  const refetch = async () => {
+    setRefetching(true);
+    try {
+      const result = await refetchItem({ itemId: item.id });
+      if (!result.ok) {
+        toast(result.error.message, { duration: 4000 });
+        if (result.error.code === "EDIT_LOCKED") router.refresh();
+        return;
+      }
+      setItem(result.data.item);
+      setDraft((d) => ({ ...d, price: priceToInput(result.data.item.priceCents) }));
+      toast(result.data.message, { duration: 4000 });
+      router.refresh();
+    } catch {
+      toast(NETWORK_ERROR, { duration: 8000 });
+    } finally {
+      setRefetching(false);
     }
   };
 
@@ -289,6 +363,10 @@ export function ItemEditor({
       onInstant={setInstant}
       onCommit={commit}
       onPhoto={(file) => void changePhoto(file)}
+      onCandidate={(url) => void pickCandidate(url)}
+      pickingUrl={pickingUrl}
+      onRefetch={() => void refetch()}
+      refetching={refetching}
       onAddCategory={(n) => void addCategory(n)}
       onAddTag={(n) => void addTag(n)}
       onDelete={() => void remove()}
@@ -428,6 +506,10 @@ type FieldsProps = {
   onInstant: (patch: Partial<Draft>) => void;
   onCommit: (field: FieldName) => void;
   onPhoto: (file: File | null) => void;
+  onCandidate: (url: string) => void;
+  pickingUrl: string | null;
+  onRefetch: () => void;
+  refetching: boolean;
   onAddCategory: (name: string) => void;
   onAddTag: (name: string) => void;
   onDelete: () => void;
@@ -511,6 +593,60 @@ function EditorFields(props: FieldsProps) {
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
       </ItemPhoto>
+      {item.fetchStatus === "failed" ? (
+        <p className="-mt-2 mb-0 flex items-center gap-2 text-sm text-ink-soft">
+          <CircleAlert aria-hidden="true" size={16} strokeWidth={1.8} className="flex-none text-rust" />
+          Les infos n&apos;ont pas pu être lues sur la page.
+        </p>
+      ) : null}
+      {item.imageCandidates.length ? (
+        <div className="-mt-2 flex items-center gap-2.5">
+          <span id="edit-candidates" className="flex-none text-[13px] text-muted">
+            Trouvées sur la page
+          </span>
+          <div
+            role="group"
+            aria-labelledby="edit-candidates"
+            className="flex min-w-0 gap-2 overflow-x-auto p-1"
+          >
+            {item.imageCandidates.map((url, i) => {
+              const current = Boolean(item.imagePath) && url === item.imageSourceUrl;
+              return (
+                <button
+                  key={url}
+                  type="button"
+                  aria-label={"Photo " + (i + 1)}
+                  aria-pressed={current}
+                  disabled={Boolean(props.pickingUrl)}
+                  onClick={() => (current ? undefined : props.onCandidate(url))}
+                  className={cn(
+                    "relative size-14 flex-none overflow-hidden rounded-[12px] shadow-photo transition-opacity tex-studio",
+                    current ? "outline-2 outline-offset-2 outline-ink" : "opacity-75 hover:opacity-100",
+                  )}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- image d'une autre boutique, affichée telle quelle */}
+                  <img
+                    src={url}
+                    alt=""
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    className="size-full object-cover"
+                  />
+                  {props.pickingUrl === url ? (
+                    <span className="absolute inset-0 flex items-center justify-center bg-paper/60">
+                      <LoaderCircle
+                        aria-hidden="true"
+                        size={20}
+                        className="animate-spin motion-reduce:animate-none"
+                      />
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
       <input ref={file} type="file" accept="image/*" hidden onChange={onFile} />
       <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={onFile} />
 
@@ -570,6 +706,24 @@ function EditorFields(props: FieldsProps) {
               aria-describedby={errors.url ? "edit-url-msg" : undefined}
               className={input}
             />
+            {item.url ? (
+              <button
+                type="button"
+                aria-label="Relire la page du lien"
+                title="Relire la page du lien"
+                aria-busy={props.refetching}
+                disabled={props.refetching}
+                onClick={props.onRefetch}
+                className="-mr-2.5 inline-flex size-11 flex-none items-center justify-center rounded-full text-ink hover:bg-ink/6 disabled:opacity-60"
+              >
+                <RefreshCw
+                  aria-hidden="true"
+                  size={17}
+                  strokeWidth={1.7}
+                  className={props.refetching ? "animate-spin motion-reduce:animate-none" : undefined}
+                />
+              </button>
+            ) : null}
           </span>
           <FieldError id="edit-url-msg" message={errors.url} />
         </div>

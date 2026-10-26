@@ -1,12 +1,22 @@
 "use server";
 
+import { after } from "next/server";
 import { z } from "zod";
+import { formatPrice } from "@/lib/format";
 import { looksLikeUrl, normalizeUrl } from "@/lib/normalizeUrl";
 import { byPosition, keyBetween, keysAtEndOf, keysAtStart } from "@/lib/positions";
 import { PRICE_MAX_CENTS } from "@/lib/price";
 import { hitRateLimit } from "@/server/auth/rateLimit";
-import { ITEM_COLUMNS, toItemInfo } from "@/server/db/mappers";
-import { ImageError, processImage, removeItemImage, uploadItemImage } from "@/server/images";
+import { ITEM_COLUMNS, stringArray, toItemInfo } from "@/server/db/mappers";
+import { downloadImage } from "@/server/enrich/image";
+import { enrichItem, runEnrichment } from "@/server/enrich/run";
+import {
+  ImageError,
+  processImage,
+  removeItemImage,
+  uploadItemImage,
+  type ProcessedImage,
+} from "@/server/images";
 import type { TablesUpdate } from "@/types/database";
 import type { ItemInfo } from "@/types/models";
 import { guardItems, guardList, revalidateList, type EditContext } from "./guard";
@@ -17,12 +27,29 @@ const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
 const DUPLICATE_MESSAGE = "Déjà dans la liste";
 const RESTORE_CONFLICT = "Un article avec ce lien existe déjà.";
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const FETCH_FAILED = "Les infos n'ont pas pu être lues sur la page.";
 
 const uuid = z.uuid();
 const ids = z.array(uuid).min(1).max(500);
 
 function logError(where: string, error: unknown) {
   console.error(where, error instanceof Error ? error.message : error);
+}
+
+/**
+ * Lecture des liens après la réponse (`after()`), 4 à la fois. Le navigateur reçoit le résultat
+ * par le temps réel ; les pages visiteur sont invalidées à la fin.
+ */
+function enrichLater(itemIds: string[], slug: string) {
+  if (!itemIds.length) return;
+  after(async () => {
+    await runEnrichment(itemIds);
+    try {
+      revalidateList(slug);
+    } catch (error) {
+      logError("enrichLater", error);
+    }
+  });
 }
 
 async function readItems(ctx: EditContext, itemIds: string[]): Promise<ItemInfo[]> {
@@ -161,8 +188,12 @@ export async function addItems(input: z.input<typeof addInput>): Promise<Result<
       throw new Error(error.message);
     }
     revalidateList(ctx.list.slug);
-    // L'extraction depuis les liens arrive au jalon 4 : les liens restent « Récupération… ».
-    return ok({ created: (data ?? []).map(toItemInfo).sort(byPosition), duplicates });
+    const created = (data ?? []).map(toItemInfo).sort(byPosition);
+    enrichLater(
+      created.filter((i) => i.url).map((i) => i.id),
+      ctx.list.slug,
+    );
+    return ok({ created, duplicates });
   } catch (error) {
     logError("addItems", error);
     return fail("INTERNAL", GENERIC_ERROR);
@@ -328,6 +359,9 @@ export async function updateItem(input: z.input<typeof updateInput>): Promise<Re
             domain: n.domain,
             fetch_status: "pending",
             fetch_error: null,
+            fetch_attempts: 0,
+            fetch_started_at: null,
+            image_candidates: [],
           });
         }
       }
@@ -362,6 +396,7 @@ export async function updateItem(input: z.input<typeof updateInput>): Promise<Re
     }
 
     revalidateList(ctx.list.slug);
+    if (update.fetch_status === "pending") enrichLater([itemId], ctx.list.slug);
     const [item] = await readItems(ctx, [itemId]);
     return item ? ok(item) : fail("NOT_FOUND", "Cet article n'existe plus.");
   } catch (error) {
@@ -370,7 +405,10 @@ export async function updateItem(input: z.input<typeof updateInput>): Promise<Re
   }
 }
 
-/** Change la photo (FormData : itemId + file) ou la retire (itemId + remove=1). */
+/**
+ * Change la photo ou la retire. FormData : itemId + file (envoi), itemId + candidateUrl
+ * (une des photos trouvées sur la page), ou itemId + remove=1.
+ */
 export async function setItemImage(form: FormData): Promise<Result<ItemInfo>> {
   const itemId = uuid.safeParse(form.get("itemId"));
   if (!itemId.success) return fail("VALIDATION", GENERIC_ERROR);
@@ -380,7 +418,7 @@ export async function setItemImage(form: FormData): Promise<Result<ItemInfo>> {
   try {
     const { data: row } = await ctx.db
       .from("items")
-      .select("image_path, meta")
+      .select("image_path, meta, image_candidates")
       .eq("id", itemId.data)
       .single();
     const oldPath = row?.image_path ?? null;
@@ -393,17 +431,33 @@ export async function setItemImage(form: FormData): Promise<Result<ItemInfo>> {
           image_path: null,
           image_width: null,
           image_height: null,
+          image_source_url: null,
           meta: { ...meta, lightBackground: false },
         })
         .eq("id", itemId.data);
     } else {
+      const candidate = form.get("candidateUrl");
       const file = readFile(form);
-      if (!file) return fail("VALIDATION", GENERIC_ERROR);
+      if (!file && typeof candidate !== "string") return fail("VALIDATION", GENERIC_ERROR);
       const limit = await hitRateLimit(`upload:${ctx.list.id}`, 60, 60 * 60);
       if (!limit.allowed)
         return fail("RATE_LIMITED", "Beaucoup d'ajouts d'un coup. Réessayez dans quelques minutes.");
-      const image = await processUpload(file);
-      if (isResult(image)) return image;
+
+      let image: ProcessedImage;
+      let sourceUrl: string | null = null;
+      if (typeof candidate === "string") {
+        // Seulement une photo trouvée sur la page de l'article.
+        if (!stringArray(row?.image_candidates ?? null).includes(candidate))
+          return fail("VALIDATION", GENERIC_ERROR);
+        const downloaded = await downloadImage(candidate);
+        if (!downloaded) return fail("VALIDATION", GENERIC_ERROR);
+        image = downloaded;
+        sourceUrl = candidate;
+      } else {
+        const uploaded = await processUpload(file!);
+        if (isResult(uploaded)) return uploaded;
+        image = uploaded;
+      }
       const prefix = await uploadItemImage(ctx.db, ctx.list.id, itemId.data, image);
       await ctx.db
         .from("items")
@@ -411,6 +465,7 @@ export async function setItemImage(form: FormData): Promise<Result<ItemInfo>> {
           image_path: prefix,
           image_width: image.width,
           image_height: image.height,
+          image_source_url: sourceUrl,
           meta: { ...meta, lightBackground: image.lightBackground },
         })
         .eq("id", itemId.data);
@@ -422,6 +477,44 @@ export async function setItemImage(form: FormData): Promise<Result<ItemInfo>> {
     return item ? ok(item) : fail("NOT_FOUND", "Cet article n'existe plus.");
   } catch (error) {
     logError("setItemImage", error);
+    return fail("INTERNAL", GENERIC_ERROR);
+  }
+}
+
+export type RefetchResult = { item: ItemInfo; message: string };
+
+/**
+ * « Relire la page du lien » : met à jour le prix s'il est trouvé, les photos candidates et la
+ * catégorie proposée. Ne touche ni au nom, ni à la note, ni à la photo choisie, ni au rangement.
+ */
+export async function refetchItem(input: { itemId: string }): Promise<Result<RefetchResult>> {
+  const itemId = uuid.safeParse(input?.itemId);
+  if (!itemId.success) return fail("VALIDATION", GENERIC_ERROR);
+  const guard = await guardItems([itemId.data]);
+  if (!guard.ok) return guard.result;
+  const { ctx } = guard;
+  try {
+    const limit = await hitRateLimit(`enrich:${ctx.list.id}`, 30, 60);
+    if (!limit.allowed)
+      return fail("RATE_LIMITED", "Beaucoup d'ajouts d'un coup. Réessayez dans quelques minutes.");
+    const [current] = await readItems(ctx, [itemId.data]);
+    if (!current?.url) return fail("VALIDATION", GENERIC_ERROR);
+
+    const outcome = await enrichItem(itemId.data, "refetch", { db: ctx.db });
+    let message = "Rien de nouveau sur la page.";
+    if (outcome.error && outcome.error !== "empty") {
+      message = FETCH_FAILED;
+    } else if (outcome.priceAfter != null && outcome.priceAfter !== outcome.priceBefore) {
+      const currency = outcome.currency ?? ctx.list.currency;
+      const before =
+        outcome.priceBefore != null ? formatPrice(outcome.priceBefore, currency) : "prix inconnu";
+      message = `Prix mis à jour : ${formatPrice(outcome.priceAfter, currency)} (avant ${before})`;
+    }
+    revalidateList(ctx.list.slug);
+    const [item] = await readItems(ctx, [itemId.data]);
+    return item ? ok({ item, message }) : fail("NOT_FOUND", "Cet article n'existe plus.");
+  } catch (error) {
+    logError("refetchItem", error);
     return fail("INTERNAL", GENERIC_ERROR);
   }
 }

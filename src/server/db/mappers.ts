@@ -3,7 +3,7 @@ import type { ItemInfo } from "@/types/models";
 
 /** Colonnes lues pour un article (visiteur et édition). */
 export const ITEM_COLUMNS =
-  "id, ref, title, url, domain, description, note, price_cents, currency, price_source, price_checked_at, image_path, image_width, image_height, image_candidates, meta, is_favorite, position, created_at, category_id, fetch_status, sorted_at, item_tags(tag_id)";
+  "id, ref, title, url, domain, description, note, price_cents, currency, price_source, price_checked_at, image_path, image_width, image_height, image_source_url, image_candidates, meta, is_favorite, position, created_at, category_id, fetch_status, sorted_at, suggested_category_id, item_tags(tag_id)";
 
 type ItemRow = Pick<
   Tables<"items">,
@@ -21,6 +21,7 @@ type ItemRow = Pick<
   | "image_path"
   | "image_width"
   | "image_height"
+  | "image_source_url"
   | "image_candidates"
   | "meta"
   | "is_favorite"
@@ -29,10 +30,11 @@ type ItemRow = Pick<
   | "category_id"
   | "fetch_status"
   | "sorted_at"
+  | "suggested_category_id"
 > & { item_tags: { tag_id: string }[] };
 
-function lightBackground(meta: Json): boolean {
-  return typeof meta === "object" && meta !== null && !Array.isArray(meta) && meta.lightBackground === true;
+function metaObject(meta: Json): Record<string, Json | undefined> {
+  return typeof meta === "object" && meta !== null && !Array.isArray(meta) ? meta : {};
 }
 
 export function stringArray(value: Json | null): string[] {
@@ -55,7 +57,7 @@ export function toItemInfo(r: ItemRow): ItemInfo {
     imagePath: r.image_path,
     imageWidth: r.image_width,
     imageHeight: r.image_height,
-    lightBackground: lightBackground(r.meta),
+    lightBackground: metaObject(r.meta).lightBackground === true,
     isFavorite: r.is_favorite,
     position: r.position,
     createdAt: r.created_at,
@@ -64,5 +66,8 @@ export function toItemInfo(r: ItemRow): ItemInfo {
     fetchStatus: r.fetch_status,
     sortedAt: r.sorted_at,
     imageCandidates: stringArray(r.image_candidates).slice(0, 6),
+    imageSourceUrl: r.image_source_url,
+    suggestedCategoryId: r.suggested_category_id,
+    breadcrumb: stringArray(metaObject(r.meta).breadcrumb ?? null).slice(0, 8),
   };
 }

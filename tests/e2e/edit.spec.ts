@@ -1,89 +1,22 @@
 import AxeBuilder from "@axe-core/playwright";
-import { createClient } from "@supabase/supabase-js";
-import { expect, test, type Page } from "@playwright/test";
-import { existsSync } from "node:fs";
+import { expect, test } from "@playwright/test";
 import sharp from "sharp";
-import { hashPassword } from "../../src/server/auth/password";
-import type { Database } from "../../src/types/database";
+
+import {
+  addLines,
+  cardTitles,
+  createTestList,
+  db,
+  inbox,
+  isDesktop,
+  reloadWhenSaved,
+  section,
+  skipWithoutDb,
+  unlock,
+} from "./helpers";
 
 // Mode édition sur une liste créée pour chaque test (les données de démo ne sont pas touchées).
-
-if (existsSync(".env.local")) process.loadEnvFile(".env.local");
-const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-const db = createClient<Database>(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
-
-test.skip(!SUPABASE_URL || !SERVICE_KEY, "base locale requise");
-
-const isDesktop = (page: Page) => (page.viewportSize()?.width ?? 1440) >= 1024;
-
-async function createTestList(name: string) {
-  const slug = `test-e2e-edition-${name}-${Date.now()}`;
-  const { data: list } = await db
-    .from("lists")
-    .insert({ slug, title: `Test e2e édition ${name}`, owner_name: "Tess" })
-    .select("id")
-    .single();
-  await db.from("list_secrets").insert({
-    list_id: list!.id,
-    password_hash: await hashPassword("bouleau"),
-    edit_key: `E2E${Date.now()}${Math.floor(Math.random() * 1000)}`,
-  });
-  const { data: cats } = await db
-    .from("categories")
-    .insert([
-      { list_id: list!.id, name: "Maison & déco", position: "a0" },
-      { list_id: list!.id, name: "Lecture & carnets", position: "a1" },
-    ])
-    .select("id, name");
-  const maison = cats!.find((c) => c.name.startsWith("Maison"))!.id;
-  const lecture = cats!.find((c) => c.name.startsWith("Lecture"))!.id;
-  const now = new Date().toISOString();
-  await db.from("items").insert([
-    { list_id: list!.id, title: "Lampe champignon", category_id: maison, position: "a0", sorted_at: now },
-    { list_id: list!.id, title: "Fauteuil en rotin", category_id: maison, position: "a1", sorted_at: now },
-    { list_id: list!.id, title: "Coffret BD", category_id: lecture, position: "a2", sorted_at: now },
-    { list_id: list!.id, title: "Liseuse", category_id: lecture, position: "a3", sorted_at: now },
-  ]);
-  return slug;
-}
-
-async function unlock(page: Page, slug: string) {
-  await page.goto(`/l/${slug}/edition`);
-  const dialog = page.getByRole("dialog", { name: /^Modifier Test e2e/ });
-  await dialog.getByLabel("Mot de passe pour modifier").fill("bouleau");
-  await dialog.getByRole("button", { name: "Déverrouiller" }).click();
-  // Déverrouillage + rendu de l'édition : ~2 s sur la base locale, davantage quand 4 workers tournent.
-  await expect(page.getByText("Mode édition")).toBeVisible({ timeout: 15_000 });
-}
-
-const section = (page: Page, name: string) => page.getByRole("region", { name });
-const cardTitles = (page: Page, name: string) => section(page, name).getByRole("heading", { level: 3 });
-const inbox = (page: Page) => page.getByRole("region", { name: "À trier" });
-
-/** Attend la fin des enregistrements (zone d'édition `aria-busy`) avant de recharger. */
-async function reloadWhenSaved(page: Page) {
-  await expect(page.locator('main[aria-busy="true"]')).toHaveCount(0, { timeout: 20_000 });
-  await page.reload();
-}
-
-/** Ajoute des lignes : barre d'ajout (desktop) ou feuille « Ajouter » (mobile). */
-async function addLines(page: Page, lines: string[]) {
-  if (isDesktop(page)) {
-    const field = page.getByLabel("Collez un lien, ou écrivez un nom");
-    await field.fill(lines.join("\n"));
-    await field.press("Enter");
-    await expect(field).toHaveValue("");
-  } else {
-    await page.getByRole("button", { name: "Ajouter", exact: true }).click();
-    const sheet = page.getByRole("dialog", { name: "Ajouter" });
-    await sheet.getByLabel("Un lien ou un nom par ligne").fill(lines.join("\n"));
-    await sheet.getByRole("button", { name: "Ajouter", exact: true }).click();
-    await expect(sheet.getByLabel("Un lien ou un nom par ligne")).toHaveValue("");
-    await sheet.getByRole("button", { name: "Fermer" }).click();
-    await expect(sheet).toBeHidden();
-  }
-}
+skipWithoutDb();
 
 test.describe("édition", () => {
   test("déverrouiller → ajouter un nom → photo → modifier → coup de cœur → supprimer → annuler", async ({
@@ -173,7 +106,8 @@ test.describe("édition", () => {
   }, info) => {
     const slug = await createTestList(`${info.project.name}-liens`);
     await unlock(page, slug);
-    const links = [1, 2, 3, 4, 5].map((n) => `https://www.etsy.com/fr/listing/${n}0000/objet-${n}`);
+    // Pages lentes du serveur local : les cartes restent « Récupération… » le temps du test.
+    const links = [1, 2, 3, 4, 5].map((n) => `http://127.0.0.1:4599/lent/objet-${n}`);
 
     if (isDesktop(page)) {
       // Collage réel dans le champ : on mesure le temps jusqu'aux 5 cartes affichées.
@@ -209,7 +143,7 @@ test.describe("édition", () => {
     expect(data!.map((r) => r.url)).toEqual(links);
 
     // Doublon : « Déjà dans la liste »
-    await addLines(page, [links[2]!.replace("https://www.", "")]);
+    await addLines(page, [`${links[2]}?utm_source=test`]);
     await expect(page.getByText("Déjà dans la liste")).toBeVisible();
   });
 
@@ -279,9 +213,10 @@ test.describe("édition", () => {
   });
 
   test("aucune violation axe : édition, panneau, ajout", async ({ page }, info) => {
+    test.setTimeout(60_000);
     const slug = await createTestList(`${info.project.name}-axe`);
     await unlock(page, slug);
-    await addLines(page, ["Un carnet", "https://www.fnac.com/a1/objet"]);
+    await addLines(page, ["Un carnet", "http://127.0.0.1:4599/lent/carnet"]);
     await expect(inbox(page)).toContainText("Un carnet");
     const check = async (where: string) => {
       const { violations } = await new AxeBuilder({ page }).analyze();
@@ -289,7 +224,7 @@ test.describe("édition", () => {
     };
     await check("édition");
     await page.getByRole("link", { name: "Modifier : Lampe champignon" }).click();
-    await expect(page.getByRole("dialog", { name: /Modifier l'article/ })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: /Modifier l'article/ })).toBeVisible({ timeout: 15_000 });
     await page.waitForTimeout(400);
     await check("panneau");
     if (!isDesktop(page)) {

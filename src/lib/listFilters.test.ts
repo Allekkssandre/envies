@@ -36,6 +36,9 @@ function item(partial: Partial<ItemInfo> & { title: string | null; position: str
     fetchStatus: "none",
     sortedAt: "2026-10-20T10:00:00Z",
     imageCandidates: [],
+    imageSourceUrl: null,
+    suggestedCategoryId: null,
+    breadcrumb: [],
     ...partial,
   };
 }

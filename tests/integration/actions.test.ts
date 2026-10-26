@@ -22,6 +22,8 @@ vi.mock("next/headers", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: () => undefined }));
 
 describe.skipIf(!hasDb)("actions d'édition", async () => {
+  // Le corps est exécuté même quand le bloc est ignoré : rien à préparer sans base.
+  if (!hasDb) return;
   const { getServiceDb } = await import("@/server/db/client");
   const { signEditToken } = await import("@/server/auth/token");
   const items = await import("@/server/actions/items");

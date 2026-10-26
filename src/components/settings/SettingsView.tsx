@@ -247,7 +247,6 @@ function ListSection({
   track: Track;
   onChange: (list: ListInfo) => void;
 }) {
-  const router = useRouter();
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
   const [draft, setDraft] = useState({
     title: list.title,
@@ -296,7 +295,8 @@ function ListSection({
     setSlugChanged(true);
     onChange({ ...list, slug: result.data.slug });
     setDraft((d) => ({ ...d, slug: result.data.slug }));
-    router.replace(`/l/${result.data.slug}/edition/reglages`, { scroll: false });
+    // Nouvelle adresse dans la barre, sans recharger (le message ci-dessus reste affiché).
+    window.history.replaceState(null, "", `/l/${result.data.slug}/edition/reglages${window.location.hash}`);
   };
 
   const setAmbiance = async (ambiance: ListInfo["ambiance"]) => {

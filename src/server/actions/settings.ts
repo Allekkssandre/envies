@@ -119,7 +119,8 @@ export async function updateSlug(input: { listId: string; slug: string }): Promi
       throw new Error(error.message);
     }
     await ctx.db.from("list_redirects").upsert({ old_slug: old, list_id: ctx.list.id });
-    revalidateAll(old, slug);
+    // Pas d'invalidation ici : elle rechargerait la page courante à l'ancienne adresse, qui
+    // redirige. Les pages sont dynamiques, et l'ancienne adresse renvoie vers la nouvelle (308).
     return ok({ slug });
   } catch (error) {
     logError("updateSlug", error);

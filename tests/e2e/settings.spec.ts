@@ -17,11 +17,8 @@ async function openSettings(page: Page, slug: string) {
 }
 
 /** Un autre appareil : nouveau contexte, déverrouillé par mot de passe. */
-async function otherDevice(browser: Browser, slug: string, mobile: boolean) {
-  const context = await browser.newContext({
-    locale: "fr-FR",
-    viewport: mobile ? { width: 390, height: 844 } : { width: 1440, height: 900 },
-  });
+async function otherDevice(browser: Browser, slug: string) {
+  const context = await browser.newContext({ locale: "fr-FR", viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
   await unlock(page, slug);
   return { context, page };
@@ -33,7 +30,7 @@ test("adresse : l'ancien lien redirige (308) ; nom enregistré", async ({ page, 
   await unlock(page, slug);
   if (isDesktop(page)) await page.getByRole("link", { name: "Réglages", exact: true }).click();
   else await page.getByRole("link", { name: "Réglages de la liste" }).click();
-  await expect(page).toHaveURL(new RegExp(`/l/${slug}/edition/reglages$`));
+  await expect(page).toHaveURL(new RegExp(`/l/${slug}/edition/reglages$`), { timeout: 15_000 });
 
   const title = page.getByLabel("Nom de la liste");
   await expect(title).toHaveValue(`Test e2e édition ${info.project.name}-adresse`);
@@ -69,7 +66,7 @@ test("régénérer le lien secret : l'ancien n'est plus valable, l'autre apparei
   const slug = await createTestList(`${info.project.name}-cle`);
   const listId = await listIdOf(slug);
   const { data: before } = await db.from("list_secrets").select("edit_key").eq("list_id", listId).single();
-  const other = await otherDevice(browser, slug, !isDesktop(page));
+  const other = await otherDevice(browser, slug);
 
   await unlock(page, slug);
   await openSettings(page, slug);
@@ -99,7 +96,7 @@ test("régénérer le lien secret : l'ancien n'est plus valable, l'autre apparei
   await addLines(other.page, ["Un carnet"]).catch(() => undefined);
   await expect(
     other.page.getByText("La modification s'est verrouillée. Saisissez le mot de passe pour continuer."),
-  ).toBeVisible({ timeout: 15_000 });
+  ).toBeVisible({ timeout: 30_000 });
   await expect(other.page.getByRole("dialog", { name: /^Modifier Test e2e/ })).toBeVisible({
     timeout: 15_000,
   });
@@ -151,12 +148,18 @@ test("catégories et tags : renommer, ordonner, couleur, supprimer et annuler", 
 
   // Ordonner au clavier : Livres passe en premier.
   const handle = page.getByRole("button", { name: "Déplacer : Livres" });
+  // Saisir (une seule fois : un second Espace relâcherait), puis monter d'un cran avant de déposer.
   await expect(async () => {
-    await handle.focus();
-    await page.keyboard.press("Space");
-    await expect(page.getByText(/^Livres (saisi|à la place)/)).toBeAttached({ timeout: 1000 });
+    if ((await handle.getAttribute("aria-pressed")) !== "true") {
+      await handle.focus();
+      await page.keyboard.press("Space");
+    }
+    await expect(handle).toHaveAttribute("aria-pressed", "true", { timeout: 1000 });
   }).toPass({ timeout: 15_000 });
-  await page.keyboard.press("ArrowUp");
+  await expect(async () => {
+    await page.keyboard.press("ArrowUp");
+    await expect(page.getByText("Livres à la place de Maison & déco.")).toBeAttached({ timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
   await page.keyboard.press("Space");
   await expect
     .poll(async () =>

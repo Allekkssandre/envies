@@ -162,13 +162,13 @@ test.describe("création et accès", () => {
     // Case décochée : cookie de session, perdu à la fermeture du navigateur.
     expect((await editCookie(context))?.expires).toBe(-1);
 
-    await page
-      .getByRole("button", { name: "Verrouiller cet appareil" })
-      .locator("visible=true")
-      .first()
-      .click();
-    await expect(unlockDialog(page, "Mes 30 ans")).toBeVisible();
+    // Réglages → « Verrouiller cet appareil » : cookie supprimé, retour à la page visiteur.
+    await page.goto("/l/mes-30-ans/edition/reglages");
+    await page.getByRole("button", { name: "Verrouiller cet appareil" }).click();
+    await expect(page).toHaveURL(/\/l\/mes-30-ans$/, { timeout: 15_000 });
     expect(await editCookie(context)).toBeUndefined();
+    await page.goto("/l/mes-30-ans/edition");
+    await expect(unlockDialog(page, "Mes 30 ans")).toBeVisible();
 
     // ✕ (desktop) ou Échap / glisser (mobile, pas de ✕ dans la maquette) ramène à la page visiteur
     const locked = unlockDialog(page, "Mes 30 ans");

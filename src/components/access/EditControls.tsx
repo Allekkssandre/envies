@@ -1,13 +1,8 @@
 "use client";
 
-import { Lock, LockOpen } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useTransition } from "react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/Button";
-import { IconButton } from "@/components/ui/IconButton";
+import { LockOpen } from "lucide-react";
+import { useEffect } from "react";
 import { cn } from "@/lib/cn";
-import { lockDevice } from "@/server/actions/access";
 import { clearKeyFromHash } from "./UnlockGate";
 
 /** Pastille « Mode édition » (cadenas ouvert, fond ocre translucide). */
@@ -22,47 +17,6 @@ export function EditBadge({ dark }: { dark: boolean }) {
       <LockOpen aria-hidden="true" size={15} strokeWidth={1.8} />
       Mode édition
     </span>
-  );
-}
-
-/**
- * « Verrouiller cet appareil » (provisoire, en attendant les réglages du jalon 7) :
- * supprime le cookie puis réaffiche la demande de mot de passe.
- */
-export function LockButton({ listId, dark, compact }: { listId: string; dark: boolean; compact?: boolean }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const lock = () =>
-    startTransition(async () => {
-      const result = await lockDevice({ listId });
-      if (!result.ok) {
-        toast(result.error.message, { duration: 4000 });
-        return;
-      }
-      router.refresh();
-    });
-
-  if (compact) {
-    return (
-      <IconButton
-        variant={dark ? "glass" : "outline"}
-        aria-label="Verrouiller cet appareil"
-        onClick={lock}
-        disabled={pending}
-      >
-        <Lock aria-hidden="true" />
-      </IconButton>
-    );
-  }
-  return (
-    <Button
-      variant={dark ? "glass" : "outline"}
-      icon={<Lock aria-hidden="true" />}
-      onClick={lock}
-      disabled={pending}
-    >
-      Verrouiller cet appareil
-    </Button>
   );
 }
 

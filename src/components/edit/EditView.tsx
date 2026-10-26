@@ -1,6 +1,9 @@
 "use client";
 
+import { FileSpreadsheet } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
+import { buttonClasses } from "@/components/ui/Button";
 import { Foliage } from "@/components/ui/Foliage";
 import type { ListContent, ListInfo } from "@/types/models";
 import { AddBar, DropImages } from "./AddBar";
@@ -46,6 +49,13 @@ function EmptyOrSections() {
         <p className="m-0 text-[15px] text-ink-soft">
           La photo, la description et le prix arrivent tout seuls.
         </p>
+        <Link
+          href={`/l/${board.list.slug}/edition/importer`}
+          className={buttonClasses("outline", 46, "mt-3")}
+        >
+          <FileSpreadsheet aria-hidden="true" />
+          Importer un fichier Excel
+        </Link>
       </div>
     );
   }

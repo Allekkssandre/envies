@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Pencil } from "lucide-react";
+import { ArrowLeft, Check, FileSpreadsheet, Pencil } from "lucide-react";
 import Link from "next/link";
 import { preload } from "react-dom";
 import { buttonClasses } from "@/components/ui/Button";
@@ -62,6 +62,13 @@ export function ListHero({ list, stats, editing = false, inboxCount = 0 }: ListH
             <EditBadge dark={theme.dark} />
             <div className="flex justify-end gap-2.5">
               <span className="hidden lg:contents">
+                <Link
+                  href={`/l/${list.slug}/edition/importer`}
+                  className={buttonClasses(theme.dark ? "glass" : "outline", 46)}
+                >
+                  <FileSpreadsheet aria-hidden="true" />
+                  Importer
+                </Link>
                 <LockButton listId={list.id} dark={theme.dark} />
               </span>
               <Link

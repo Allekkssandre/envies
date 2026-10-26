@@ -2,9 +2,11 @@
 
 import { ImageIcon, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/Kbd";
 import { cn } from "@/lib/cn";
+import { setPendingImport, SPREADSHEET } from "@/lib/import/pendingFile";
 import { useBoard } from "./board";
 
 /** Lignes non vides d'un texte collé ou saisi. */
@@ -132,6 +134,7 @@ export function AddBar() {
 /** Zone de dépôt : une image glissée n'importe où sur la page devient un article (desktop). */
 export function DropImages() {
   const board = useBoard();
+  const router = useRouter();
   const [over, setOver] = useState(false);
   useEffect(() => {
     let depth = 0;
@@ -154,8 +157,15 @@ export function DropImages() {
       e.preventDefault();
       depth = 0;
       setOver(false);
-      // Les fichiers Excel seront pris en charge par l'import (jalon 6).
-      for (const file of Array.from(e.dataTransfer?.files ?? []).filter((f) => f.type.startsWith("image/"))) {
+      const files = Array.from(e.dataTransfer?.files ?? []);
+      // Un tableur ouvre l'import, avec ce fichier.
+      const sheet = files.find((f) => SPREADSHEET.test(f.name));
+      if (sheet) {
+        setPendingImport(sheet);
+        router.push(`/l/${board.list.slug}/edition/importer`);
+        return;
+      }
+      for (const file of files.filter((f) => f.type.startsWith("image/"))) {
         void board.addPhoto(file, board.addTarget?.id ?? null);
       }
     };
@@ -169,7 +179,7 @@ export function DropImages() {
       window.removeEventListener("dragover", dragOver);
       window.removeEventListener("drop", drop);
     };
-  }, [board]);
+  }, [board, router]);
 
   return (
     <div

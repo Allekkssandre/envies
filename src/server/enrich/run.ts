@@ -4,7 +4,7 @@ import { getServiceDb, type Db } from "@/server/db/client";
 import { removeItemImage } from "@/server/images";
 import type { Json, TablesUpdate } from "@/types/database";
 import { applyAdapters } from "./adapters";
-import { extractFrom, loadHtml } from "./extract";
+import { extractFrom, loadHtml, mergeImages } from "./extract";
 import { storeFirstImage } from "./image";
 import { safeFetch, safeFetchJson, type FetchError, type SafeFetchOptions } from "./safeFetch";
 import { suggestCategory } from "./suggestCategory";
@@ -47,12 +47,54 @@ function logError(where: string, error: unknown) {
   console.error(where, error instanceof Error ? error.message : error);
 }
 
+function importImageOf(meta: Json | null): string | null {
+  const value = asObject(meta).importImageUrl;
+  return typeof value === "string" ? value : null;
+}
+
+/** Photo d'un fichier importé, pour un article qu'on ne lit pas sur sa page. */
+async function storeImportImage(
+  db: Db,
+  item: { id: string; list_id: string; meta: Json },
+  imageUrl: string,
+  deps: Deps,
+): Promise<void> {
+  const stored = await storeFirstImage(db, item.list_id, item.id, [imageUrl], deps.fetchOptions).catch(
+    (error: unknown) => {
+      logError("storeImportImage", error);
+      return null;
+    },
+  );
+  if (!stored) return;
+  const { data: set } = await db
+    .from("items")
+    .update({
+      image_path: stored.path,
+      image_width: stored.width,
+      image_height: stored.height,
+      image_source_url: stored.sourceUrl,
+      image_candidates: [imageUrl],
+      meta: { ...asObject(item.meta), lightBackground: stored.lightBackground } as Json,
+    })
+    .eq("id", item.id)
+    .is("image_path", null)
+    .select("id");
+  if (!set?.length) await removeItemImage(db, stored.path);
+}
+
 /** Lit la page d'un article et enregistre ce qui manque. Ne lève jamais. */
 export async function enrichItem(itemId: string, mode: EnrichMode, deps: Deps = {}): Promise<EnrichOutcome> {
   const db = deps.db ?? getServiceDb();
   try {
     const item = await readItem(db, itemId);
-    if (!item || !item.url || item.deleted_at) return { itemId, status: "skipped" };
+    if (!item || item.deleted_at) return { itemId, status: "skipped" };
+    const importImage = importImageOf(item.meta);
+    // Sans lecture de page (pas de lien, ou import sans « Compléter depuis les liens ») :
+    // seulement la photo donnée dans le fichier.
+    if (!item.url || (item.fetch_status === "none" && mode === "initial")) {
+      if (importImage && !item.image_path) await storeImportImage(db, item, importImage, deps);
+      return { itemId, status: "skipped" };
+    }
     const url = item.url;
 
     await db
@@ -86,7 +128,7 @@ export async function enrichItem(itemId: string, mode: EnrichMode, deps: Deps = 
     const update: TablesUpdate<"items"> = {
       fetched_at: now,
       fetch_error: null,
-      image_candidates: extracted.images,
+      image_candidates: mergeImages(importImage ? [importImage] : [], extracted.images),
       domain: normalizeUrl(page.finalUrl)?.domain ?? fresh.domain,
     };
     const title = fresh.title?.trim() ? fresh.title : extracted.title;
@@ -119,18 +161,16 @@ export async function enrichItem(itemId: string, mode: EnrichMode, deps: Deps = 
 
     // Photo : seulement s'il n'y en a pas (la photo choisie n'est jamais remplacée).
     let hasImage = Boolean(fresh.image_path);
-    if (!hasImage && extracted.images.length) {
+    // La photo donnée dans un fichier importé passe avant celles de la page.
+    const candidates = mergeImages(importImage ? [importImage] : [], extracted.images);
+    if (!hasImage && candidates.length) {
       // Une photo qui ne s'enregistre pas ne fait pas perdre le reste (statut « partial »).
-      const stored = await storeFirstImage(
-        db,
-        fresh.list_id,
-        itemId,
-        extracted.images,
-        deps.fetchOptions,
-      ).catch((error: unknown) => {
-        logError("enrichItem image", error);
-        return null;
-      });
+      const stored = await storeFirstImage(db, fresh.list_id, itemId, candidates, deps.fetchOptions).catch(
+        (error: unknown) => {
+          logError("enrichItem image", error);
+          return null;
+        },
+      );
       if (stored) {
         const { data: set } = await db
           .from("items")

@@ -63,6 +63,34 @@
   /* mouvement */
   --ease-panel: cubic-bezier(0.2, 0.8, 0.2, 1);
   --animate-shimmer: shimmer 1.4s linear infinite;
+  /* tri rapide : la carte validée part en haut à droite, passée à gauche ; la suivante avance */
+  --animate-sort-validate: sort-validate 240ms var(--ease-panel) forwards;
+  --animate-sort-skip: sort-skip 240ms var(--ease-panel) forwards;
+  --animate-sort-enter: sort-enter 240ms var(--ease-panel);
+
+  @keyframes sort-validate {
+    to {
+      transform: translate(160px, -140px) rotate(7deg);
+      opacity: 0;
+    }
+  }
+  @keyframes sort-skip {
+    to {
+      transform: translate(-200px, 30px) rotate(-6deg);
+      opacity: 0;
+    }
+  }
+  @keyframes sort-enter {
+    from {
+      transform: translate(18px, 13px) scale(0.98);
+      opacity: 0.6;
+    }
+  }
+  @keyframes sort-fade {
+    to {
+      opacity: 0;
+    }
+  }
 
   @keyframes shimmer {
     from {
@@ -262,5 +290,9 @@
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-property: opacity, color, background-color, border-color !important;
+  }
+  /* Tri rapide : la carte qui s'en va disparaît en fondu simple, sans déplacement. */
+  .sort-leaving {
+    animation: sort-fade 240ms ease-out forwards !important;
   }
 }

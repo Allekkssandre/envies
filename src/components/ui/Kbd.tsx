@@ -25,6 +25,8 @@ type KeyChipProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   keyLabel: string;
   pressed?: boolean;
   dot?: string;
+  /** Couleur du tag (valeur CSS) : activée, contour et fond teintés au lieu de l'encre. */
+  tone?: string;
 };
 
 /** Puce du tri rapide avec sa touche. */
@@ -32,11 +34,14 @@ export function KeyChip({
   keyLabel,
   pressed = false,
   dot,
+  tone,
   className,
   children,
   type = "button",
+  style,
   ...rest
 }: KeyChipProps) {
+  const tinted = pressed && tone !== undefined;
   return (
     <button
       type={type}
@@ -45,20 +50,27 @@ export function KeyChip({
       className={cn(
         "inline-flex h-[46px] items-center gap-[9px] rounded-full border pr-4 pl-2.5 text-[15px] font-semibold whitespace-nowrap",
         "transition-colors duration-180 ease-out",
-        pressed ? "border-ink bg-ink text-linen" : "border-ink/16 bg-white/60 text-ink hover:bg-white/80",
+        pressed && !tinted
+          ? "border-ink bg-ink text-linen"
+          : "border-ink/16 bg-white/60 text-ink hover:bg-white/80",
         className,
       )}
+      style={
+        tinted
+          ? { borderColor: tone, backgroundColor: `color-mix(in srgb, ${tone} 14%, transparent)`, ...style }
+          : style
+      }
       {...rest}
     >
       <kbd
         className={cn(
           "inline-flex h-6 min-w-6 items-center justify-center rounded-[7px] px-1.5 font-sans text-xs font-bold",
-          pressed ? "bg-linen/20 text-linen" : "bg-ink/8 text-ink",
+          pressed && !tinted ? "bg-linen/20 text-linen" : "bg-ink/8 text-ink",
         )}
       >
         {keyLabel}
       </kbd>
-      {dot ? (
+      {dot && !tinted ? (
         <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ background: dot }} />
       ) : null}
       {children}

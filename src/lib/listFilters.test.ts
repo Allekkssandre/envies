@@ -34,12 +34,15 @@ function item(partial: Partial<ItemInfo> & { title: string | null; position: str
     categoryId: null,
     tagIds: [],
     fetchStatus: "none",
+    sortedAt: "2026-10-20T10:00:00Z",
+    imageCandidates: [],
     ...partial,
   };
 }
 
 // Calqué sur supabase/seed.sql (liste « Mes 30 ans »).
 const content: ListContent = {
+  loadedAt: 0,
   categories: [
     { id: "c-lecture", ref: "lec", name: "Lecture & carnets", position: "a1" },
     { id: "c-maison", ref: "mai", name: "Maison & déco", position: "a0" },

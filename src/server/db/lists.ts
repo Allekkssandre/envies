@@ -1,8 +1,9 @@
 import "server-only";
 import { cache } from "react";
 import { slugify } from "@/lib/text";
-import type { Json, Tables } from "@/types/database";
-import type { ItemInfo, ListContent, ListInfo, ListSummary } from "@/types/models";
+import type { Tables } from "@/types/database";
+import type { ListContent, ListInfo, ListSummary } from "@/types/models";
+import { ITEM_COLUMNS, stringArray, toItemInfo } from "./mappers";
 import { getAnonDb } from "./client";
 
 // Lectures visiteur : client anon, la RLS masque les lignes supprimées.
@@ -17,14 +18,6 @@ function toListInfo(row: Tables<"lists">): ListInfo {
     ambiance: row.ambiance,
     currency: row.currency,
   };
-}
-
-function lightBackground(meta: Json): boolean {
-  return typeof meta === "object" && meta !== null && !Array.isArray(meta) && meta.lightBackground === true;
-}
-
-function stringArray(value: Json | null): string[] {
-  return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
 }
 
 /** Accueil : toutes les listes avec leurs compteurs. */
@@ -75,45 +68,19 @@ export const getListBySlug = cache(async (slug: string): Promise<ListLookup> => 
 /** Catégories, tags et articles d'une liste. */
 export const getListContent = cache(async (listId: string): Promise<ListContent> => {
   const db = getAnonDb();
+  const loadedAt = Date.now();
   const [categories, tags, items] = await Promise.all([
     db.from("categories").select("id, ref, name, position").eq("list_id", listId).order("position"),
     db.from("tags").select("id, name, color, position").eq("list_id", listId).order("position"),
-    db
-      .from("items")
-      .select(
-        "id, ref, title, url, domain, description, note, price_cents, currency, price_source, price_checked_at, image_path, image_width, image_height, meta, is_favorite, position, created_at, category_id, fetch_status, item_tags(tag_id)",
-      )
-      .eq("list_id", listId)
-      .order("position"),
+    db.from("items").select(ITEM_COLUMNS).eq("list_id", listId).order("position"),
   ]);
   const failed = categories.error ?? tags.error ?? items.error;
   if (failed) throw new Error(`Lecture du contenu impossible : ${failed.message}`);
 
   return {
+    loadedAt,
     categories: categories.data ?? [],
     tags: (tags.data ?? []).map((t) => ({ ...t, slug: slugify(t.name) })),
-    items: (items.data ?? []).map((r): ItemInfo => ({
-      id: r.id,
-      ref: r.ref,
-      title: r.title,
-      url: r.url,
-      domain: r.domain,
-      description: r.description,
-      note: r.note,
-      priceCents: r.price_cents,
-      currency: r.currency,
-      priceSource: r.price_source,
-      priceCheckedAt: r.price_checked_at,
-      imagePath: r.image_path,
-      imageWidth: r.image_width,
-      imageHeight: r.image_height,
-      lightBackground: lightBackground(r.meta),
-      isFavorite: r.is_favorite,
-      position: r.position,
-      createdAt: r.created_at,
-      categoryId: r.category_id,
-      tagIds: r.item_tags.map((t) => t.tag_id),
-      fetchStatus: r.fetch_status,
-    })),
+    items: (items.data ?? []).map(toItemInfo),
   };
 });

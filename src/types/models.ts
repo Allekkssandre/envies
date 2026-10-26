@@ -47,12 +47,18 @@ export type ItemInfo = {
   categoryId: string | null;
   tagIds: string[];
   fetchStatus: Enums<"fetch_status">;
+  /** null = « À trier ». */
+  sortedAt: string | null;
+  /** Photos trouvées sur la page (6 max), pour « Changer la photo ». */
+  imageCandidates: string[];
 };
 
 export type ListContent = {
   categories: CategoryInfo[];
   tags: TagInfo[];
   items: ItemInfo[];
+  /** Heure du serveur (ms) juste avant la lecture : tout ce qui a été écrit avant est inclus. */
+  loadedAt: number;
 };
 
 /** Nom affiché : le titre, sinon le domaine tant que l'extraction n'a rien donné. */

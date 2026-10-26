@@ -49,10 +49,8 @@ export function UnlockGate({ listId, slug, title }: UnlockGateProps) {
     }
     clearKeyFromHash();
     void unlockWithKey({ listId, key }).then((result) => {
-      if (result.ok) {
-        router.refresh();
-        return;
-      }
+      // Succès : l'action pose le cookie, et Next rafraîchit alors la page tout seul.
+      if (result.ok) return;
       setInitialProblem({
         kind: result.error.code === "RATE_LIMITED" ? "rate" : "key",
         message: result.error.message,
@@ -68,7 +66,7 @@ export function UnlockGate({ listId, slug, title }: UnlockGateProps) {
       title={title}
       initialProblem={initialProblem}
       onClose={() => router.push(`/l/${slug}`)}
-      onUnlocked={() => router.refresh()}
+      onUnlocked={() => undefined}
     />
   );
 }

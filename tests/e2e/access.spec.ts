@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { existsSync } from "node:fs";
+import { hashPassword } from "../../src/server/auth/password";
 import type { Database } from "../../src/types/database";
 
 // Création de liste et accès en écriture, sur la base locale (seed : « Mes 30 ans » → bouleau).
@@ -40,10 +41,6 @@ const unlockDialog = (page: Page, title: string) => page.getByRole("dialog", { n
 
 test.beforeAll(async () => {
   await db.from("rate_limits").delete().like("bucket", "create:%");
-});
-
-test.afterAll(async () => {
-  await db.from("lists").delete().like("title", "Test e2e%");
 });
 
 test.describe("création et accès", () => {
@@ -126,8 +123,11 @@ test.describe("création et accès", () => {
   test("lien secret invalide : message et demande de mot de passe", async ({ page }) => {
     await page.goto("/l/mes-30-ans/edition#cle=AAAA-BBBB-CCCC");
     const dialog = unlockDialog(page, "Mes 30 ans");
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByText("Ce lien de modification n'est plus valable.")).toBeVisible();
+    // La modale n'apparaît qu'après la réponse du serveur sur la clé.
+    await expect(dialog).toBeVisible({ timeout: 15_000 });
+    await expect(
+      dialog.getByText(/Ce lien de modification n'est plus valable\.|Trop d'essais/),
+    ).toBeVisible();
     expect(page.url()).not.toContain("cle=");
   });
 
@@ -180,12 +180,22 @@ test.describe("création et accès", () => {
   });
 
   test("11 mauvais mots de passe : bloqué", async ({ page }, info) => {
-    // Une liste par projet : les compteurs ne se mélangent pas.
-    const [slug, title] =
-      info.project.name === "mobile"
-        ? ["appart-a-lyon", "Appart à Lyon"]
-        : ["noel-en-famille", "Noël en famille"];
-    await resetUnlockLimit(slug);
+    // Liste propre au test : aucun autre test ne touche à son compteur d'essais.
+    const title = `Test e2e essais ${info.project.name} ${info.repeatEachIndex} ${Date.now()}`;
+    const slug = title
+      .toLowerCase()
+      .replace(/ /g, "-")
+      .replace(/[^a-z0-9-]/g, "");
+    const { data: list } = await db
+      .from("lists")
+      .insert({ slug, title, owner_name: "Tess" })
+      .select("id")
+      .single();
+    await db.from("list_secrets").insert({
+      list_id: list!.id,
+      password_hash: await hashPassword("sapin"),
+      edit_key: `T${Date.now()}${info.repeatEachIndex}${info.project.name}`,
+    });
     await page.goto(`/l/${slug}/edition`);
     const dialog = unlockDialog(page, title);
     const field = dialog.getByLabel("Mot de passe pour modifier");
@@ -194,11 +204,11 @@ test.describe("création et accès", () => {
       await field.fill(`faux-${i}`);
       await button.click();
       await expect(dialog.getByText("Ce n'est pas le bon mot de passe.")).toBeVisible();
+      await expect(button).toBeEnabled();
     }
-    await field.fill(slug === "noel-en-famille" ? "sapin" : "bouleau"); // même le bon est refusé
+    await field.fill("sapin"); // même le bon mot de passe est refusé pendant le blocage
     await button.click();
     await expect(dialog.getByText(/Trop d'essais\. Réessayez dans \d+ minutes?\./)).toBeVisible();
     await expect(button).toBeDisabled();
-    await resetUnlockLimit(slug);
   });
 });

@@ -51,6 +51,12 @@ export type ItemInfo = {
   sortedAt: string | null;
   /** Photos trouvées sur la page (6 max), pour « Changer la photo ». */
   imageCandidates: string[];
+  /** Image d'origine de la photo actuelle, quand elle vient de la page. */
+  imageSourceUrl: string | null;
+  /** Catégorie proposée d'après le fil d'Ariane de la page (jamais appliquée seule). */
+  suggestedCategoryId: string | null;
+  /** Fil d'Ariane lu sur la page. */
+  breadcrumb: string[];
 };
 
 export type ListContent = {

@@ -10,3 +10,6 @@ supabase/
 public/
 src/types/database.ts
 *.md
+
+# Pages réelles enregistrées : gardées telles quelles
+src/server/enrich/__fixtures__/

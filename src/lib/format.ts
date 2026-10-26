@@ -1,6 +1,8 @@
 const cache = new Map<string, { whole: Intl.NumberFormat; cents: Intl.NumberFormat }>();
 
-function formatters(currency: string) {
+function formatters(input: string) {
+  // Une devise illisible ne doit jamais casser l'affichage : on retombe sur l'euro.
+  const currency = /^[A-Z]{3}$/.test(input) ? input : "EUR";
   let f = cache.get(currency);
   if (!f) {
     f = {

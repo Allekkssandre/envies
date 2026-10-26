@@ -90,12 +90,18 @@ export async function uploadItemImage(
   const prefix = `items/${listId}/${itemId}/${image.hash}`;
   const options = { contentType: "image/webp", cacheControl: "31536000", upsert: true };
   const storage = db.storage.from(BUCKET);
-  const [a, b] = await Promise.all([
-    storage.upload(`${prefix}-1200.webp`, image.w1200, options),
-    storage.upload(`${prefix}-480.webp`, image.w480, options),
-  ]);
-  const failed = a.error ?? b.error;
-  if (failed) throw new Error(`Envoi de l'image impossible : ${failed.message}`);
+  // Jusqu'à 3 essais : une erreur passagère du stockage ne doit pas faire perdre la photo.
+  const send = async (path: string, body: Buffer) => {
+    let message = "";
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const { error } = await storage.upload(path, body, options);
+      if (!error) return;
+      message = error.message;
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 400 * attempt));
+    }
+    throw new Error(`Envoi de l'image impossible : ${message}`);
+  };
+  await Promise.all([send(`${prefix}-1200.webp`, image.w1200), send(`${prefix}-480.webp`, image.w480)]);
   return prefix;
 }
 

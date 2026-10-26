@@ -20,6 +20,9 @@ vi.mock("next/headers", () => ({
   headers: async () => new Headers({ "x-forwarded-for": "198.51.100.7" }),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: () => undefined }));
+// `after()` : la lecture des liens est notée ici, pas lancée (le réseau n'est pas utilisé).
+const later: (() => unknown)[] = [];
+vi.mock("next/server", () => ({ after: (fn: () => unknown) => later.push(fn) }));
 
 describe.skipIf(!hasDb)("actions d'édition", async () => {
   // Le corps est exécuté même quand le bloc est ignoré : rien à préparer sans base.
@@ -94,6 +97,7 @@ describe.skipIf(!hasDb)("actions d'édition", async () => {
       items.moveItem({ itemId, categoryId: maison }),
       items.bulkUpdate({ itemIds: [itemId], isFavorite: true }),
       items.sortAllInbox({ listId, categoryId: maison }),
+      items.refetchItem({ itemId }),
       taxonomy.createCategory({ listId, name: "Sport" }),
       taxonomy.renameCategory({ listId, categoryId: maison, name: "Maison" }),
       taxonomy.moveCategory({ listId, categoryId: maison, afterId: lecture }),
@@ -122,6 +126,8 @@ describe.skipIf(!hasDb)("actions d'édition", async () => {
     expect(first.data.created).toHaveLength(5);
     expect(first.data.created.map((i) => i.url)).toEqual(lines.map((l) => l.replace("?utm_source=x", "")));
     expect(first.data.created.every((i) => i.fetchStatus === "pending" && i.sortedAt === null)).toBe(true);
+    // L'extraction est lancée après la réponse, pour les liens seulement.
+    expect(later).toHaveLength(1);
 
     const again = await items.addItems({ listId, lines: [lines[0]!.replace("www.", ""), "Un carnet"] });
     expect(again.ok && again.data.duplicates).toEqual([

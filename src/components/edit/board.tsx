@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { byPosition, keyBetween, keysAtEndOf, keysAtStart } from "@/lib/positions";
 import { resizeForUpload } from "@/lib/resizeImage";
+import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { plural } from "@/lib/text";
 import type { Result } from "@/server/actions/result";
 import {
@@ -30,6 +31,7 @@ import {
   type ItemPatch,
 } from "@/server/actions/items";
 import { createCategory, createTag, moveCategory, renameCategory } from "@/server/actions/taxonomy";
+import type { Tables } from "@/types/database";
 import type { CategoryInfo, ItemInfo, ListContent, ListInfo, TagInfo } from "@/types/models";
 
 // État du mode édition : copie locale des articles, mise à jour tout de suite (optimiste),
@@ -114,6 +116,9 @@ function tempItem(fields: Partial<ItemInfo> & { position: string }, n: number): 
     fetchStatus: "none",
     sortedAt: null,
     imageCandidates: [],
+    imageSourceUrl: null,
+    suggestedCategoryId: null,
+    breadcrumb: [],
     ...fields,
   };
 }
@@ -127,6 +132,45 @@ function draftFromLine(line: string) {
     .split(/[/?#]/)[0]!
     .toLowerCase();
   return { title: null, url: line, domain: host.replace(/^(www|m)\./, ""), fetchStatus: "pending" as const };
+}
+
+/**
+ * Délai entre deux rafraîchissements tant qu'un lien est en « Récupération… » (au plus 2 minutes) :
+ * 3 s sans temps réel, 10 s quand il est connecté (il prévient déjà de chaque fin d'extraction).
+ */
+const PENDING_POLL_MS = 3000;
+const PENDING_POLL_LIVE_MS = 10_000;
+const PENDING_POLL_MAX_MS = 2 * 60 * 1000;
+/** Relance des extractions bloquées, tant qu'il en reste. */
+const ENRICH_KICK_MS = 30_000;
+
+const strings = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+
+/** Champs remplis par l'extraction, lus dans un événement temps réel (ligne brute de `items`). */
+function enrichedFields(row: Partial<Tables<"items">>): Partial<ItemInfo> {
+  const meta = typeof row.meta === "object" && row.meta !== null && !Array.isArray(row.meta) ? row.meta : {};
+  return {
+    title: row.title ?? null,
+    description: row.description ?? null,
+    domain: row.domain ?? null,
+    priceCents: row.price_cents ?? null,
+    // Le temps réel tronque les colonnes char(3) (« E ») : la devise n'est reprise que si elle est lisible.
+    ...(row.currency === null || /^[A-Z]{3}$/.test(row.currency ?? "")
+      ? { currency: row.currency ?? null }
+      : {}),
+    priceSource: row.price_source ?? null,
+    priceCheckedAt: row.price_checked_at ?? null,
+    imagePath: row.image_path ?? null,
+    imageWidth: row.image_width ?? null,
+    imageHeight: row.image_height ?? null,
+    imageSourceUrl: row.image_source_url ?? null,
+    imageCandidates: strings(row.image_candidates).slice(0, 6),
+    lightBackground: meta.lightBackground === true,
+    breadcrumb: strings(meta.breadcrumb).slice(0, 8),
+    suggestedCategoryId: row.suggested_category_id ?? null,
+    fetchStatus: row.fetch_status ?? "none",
+  };
 }
 
 type Props = { list: ListInfo; content: ListContent; children: ReactNode };
@@ -177,6 +221,56 @@ export function BoardProvider({ list, content, children }: Props) {
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
     refreshTimer.current = setTimeout(() => router.refresh(), 250);
   }, [router]);
+
+  const live = useRef(false);
+  // Temps réel : quand l'extraction d'un lien se termine, la carte se met à jour sans recharger.
+  // Seuls les champs remplis par l'extraction sont repris (le reste suit les actions de cette page).
+  useEffect(() => {
+    const supabase = getSupabaseBrowser();
+    const channel = supabase
+      .channel(`items:${list.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "items", filter: `list_id=eq.${list.id}` },
+        (payload) => {
+          const row = payload.new as Partial<Tables<"items">>;
+          if (!row.id || row.deleted_at) return;
+          setItems((cur) => cur.map((i) => (i.id === row.id ? { ...i, ...enrichedFields(row) } : i)));
+          // Puis la version complète du serveur (devise exacte, pages visiteur à jour).
+          refresh();
+        },
+      )
+      .subscribe((status) => {
+        live.current = status === "SUBSCRIBED";
+      });
+    return () => {
+      live.current = false;
+      void supabase.removeChannel(channel);
+    };
+  }, [list.id, refresh]);
+
+  // Filet de sécurité : tant qu'un lien est en « Récupération… », rafraîchir (au plus 2 minutes),
+  // et relancer toutes les 30 s les extractions restées en attente.
+  const hasPending = items.some((i) => i.fetchStatus === "pending" && !isTemp(i.id));
+  useEffect(() => {
+    if (!hasPending) return;
+    const startedAt = Date.now();
+    let last = startedAt;
+    const poll = setInterval(() => {
+      const now = Date.now();
+      if (now - startedAt > PENDING_POLL_MAX_MS) return;
+      if (live.current && now - last < PENDING_POLL_LIVE_MS) return;
+      last = now;
+      router.refresh();
+    }, PENDING_POLL_MS);
+    const kick = setInterval(() => {
+      void fetch(`/api/lists/${list.id}/enrich`, { method: "POST" }).catch(() => undefined);
+    }, ENRICH_KICK_MS);
+    return () => {
+      clearInterval(poll);
+      clearInterval(kick);
+    };
+  }, [hasPending, list.id, router]);
 
   /** Exécute une action ; en cas d'échec : retour en arrière + message (et « Réessayer » si réseau). */
   const call = useCallback(

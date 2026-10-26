@@ -180,6 +180,8 @@ test.describe("création et accès", () => {
   });
 
   test("11 mauvais mots de passe : bloqué", async ({ page }, info) => {
+    // 11 vérifications scrypt à la suite : plus long quand d'autres tests tournent en même temps.
+    test.setTimeout(60_000);
     // Liste propre au test : aucun autre test ne touche à son compteur d'essais.
     const title = `Test e2e essais ${info.project.name} ${info.repeatEachIndex} ${Date.now()}`;
     const slug = title

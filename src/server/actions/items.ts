@@ -1,6 +1,5 @@
 "use server";
 
-import { after } from "next/server";
 import { z } from "zod";
 import { formatPrice } from "@/lib/format";
 import { looksLikeUrl, normalizeUrl } from "@/lib/normalizeUrl";
@@ -9,7 +8,8 @@ import { PRICE_MAX_CENTS } from "@/lib/price";
 import { hitRateLimit } from "@/server/auth/rateLimit";
 import { ITEM_COLUMNS, stringArray, toItemInfo } from "@/server/db/mappers";
 import { downloadImage } from "@/server/enrich/image";
-import { enrichItem, runEnrichment } from "@/server/enrich/run";
+import { enrichLater } from "@/server/enrich/later";
+import { enrichItem } from "@/server/enrich/run";
 import {
   ImageError,
   processImage,
@@ -34,22 +34,6 @@ const ids = z.array(uuid).min(1).max(500);
 
 function logError(where: string, error: unknown) {
   console.error(where, error instanceof Error ? error.message : error);
-}
-
-/**
- * Lecture des liens après la réponse (`after()`), 4 à la fois. Le navigateur reçoit le résultat
- * par le temps réel ; les pages visiteur sont invalidées à la fin.
- */
-function enrichLater(itemIds: string[], slug: string) {
-  if (!itemIds.length) return;
-  after(async () => {
-    await runEnrichment(itemIds);
-    try {
-      revalidateList(slug);
-    } catch (error) {
-      logError("enrichLater", error);
-    }
-  });
 }
 
 async function readItems(ctx: EditContext, itemIds: string[]): Promise<ItemInfo[]> {

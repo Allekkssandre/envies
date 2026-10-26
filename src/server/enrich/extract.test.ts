@@ -213,6 +213,15 @@ describe("nettoyage", () => {
     expect(cleanTitle(title, site, domain)).toBe(expected);
   });
 
+  it("un nom qui n'est que celui du site ne compte pas (page sans produit)", () => {
+    expect(extract("<title>Amazon.fr</title>", "https://www.amazon.fr/dp/B000000000").title).toBeNull();
+    expect(extract("<title>etsy.com</title>", "https://www.etsy.com/fr/listing/1/x").title).toBeNull();
+    expect(
+      extract('<meta property="og:site_name" content="Fnac"><title>Fnac</title>', "https://www.fnac.com/a1")
+        .title,
+    ).toBeNull();
+  });
+
   it("titre : entités décodées, 200 caractères au plus", () => {
     expect(cleanTitle("Caf&eacute; &amp; th&#233;", null, "x.fr")).toBe("Café & thé");
     expect(cleanTitle("a".repeat(300), null, "x.fr")).toHaveLength(200);

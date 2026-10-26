@@ -369,7 +369,10 @@ export function extractFrom($: CheerioAPI, baseUrl: string): Extracted {
     canonical = null;
   }
 
-  const title = rawTitle ? cleanTitle(rawTitle, siteName, domain) || null : null;
+  let title = rawTitle ? cleanTitle(rawTitle, siteName, domain) || null : null;
+  // Un nom qui n'est que celui du site (« Amazon.fr », « etsy.com ») : page sans produit.
+  if (title && [siteName, domain, domain.split(".")[0] ?? ""].some((s) => fold(s) === fold(title!)))
+    title = null;
   return {
     title,
     description: description ? plainText(description).slice(0, 1000) || null : null,

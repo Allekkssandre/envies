@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, CircleCheck, ClipboardPaste, ImageIcon, LoaderCircle, Plus, X } from "lucide-react";
+import { Camera, CircleCheck, ClipboardPaste, ImageIcon, Layers, LoaderCircle, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { Drawer } from "vaul";
@@ -76,6 +76,8 @@ function AddSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: 
     .map((id) => board.items.find((i) => i.id === id))
     .filter((i): i is ItemInfo => Boolean(i));
   const pendingTemps = board.items.filter((i) => isTemp(i.id));
+  // « Trier les {n} maintenant » : les ajouts de la session, pas encore rangés.
+  const toSort = recent.filter((i) => !i.sortedAt && i.ref);
 
   const add = async () => {
     const lines = splitLines(text);
@@ -206,6 +208,19 @@ function AddSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: 
               </section>
             ) : null}
           </div>
+          {toSort.length ? (
+            <div className="relative shrink-0 border-t border-ink/10 px-4 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]">
+              <Link
+                prefetch={false}
+                href={`/l/${board.list.slug}/edition/trier?ids=${toSort.map((i) => i.ref).join(",")}`}
+                onClick={() => onOpenChange(false)}
+                className={buttonClasses("outline", 52, "w-full")}
+              >
+                <Layers aria-hidden="true" />
+                Trier {toSort.length === 1 ? "l'article" : `les ${toSort.length}`} maintenant
+              </Link>
+            </div>
+          ) : null}
         </Drawer.Content>
       </Drawer.Portal>
     </Drawer.Root>

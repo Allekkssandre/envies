@@ -1,9 +1,10 @@
 "use client";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Keyboard, Layers } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { buttonClasses } from "@/components/ui/Button";
 import { InboxCard, type InboxState } from "@/components/ui/InboxCard";
 import { SplitTitle } from "@/components/ui/SplitTitle";
 import { imageUrl } from "@/lib/imageUrl";
@@ -66,23 +67,35 @@ export function Inbox() {
             </span>
             <span className="text-sm text-ink-soft sm:hidden">{inbox.length}</span>
           </div>
-          {categories.length ? (
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger className="inline-flex h-11 items-center gap-2 rounded-full border border-line-strong bg-white/55 px-4 text-sm font-semibold text-ink">
-                Tout ranger dans…
-                <ChevronDown aria-hidden="true" size={15} strokeWidth={2} />
-              </DropdownMenu.Trigger>
-              <DropdownMenu.Portal>
-                <DropdownMenu.Content align="end" sideOffset={8} className={menuPanel}>
-                  {categories.map((c) => (
-                    <DropdownMenu.Item key={c.id} className={menuItem} onSelect={() => board.sortAll(c.id)}>
-                      {c.name}
-                    </DropdownMenu.Item>
-                  ))}
-                </DropdownMenu.Content>
-              </DropdownMenu.Portal>
-            </DropdownMenu.Root>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {categories.length ? (
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger className="inline-flex h-11 items-center gap-2 rounded-full border border-line-strong bg-white/55 px-4 text-sm font-semibold text-ink">
+                  Tout ranger dans…
+                  <ChevronDown aria-hidden="true" size={15} strokeWidth={2} />
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content align="end" sideOffset={8} className={menuPanel}>
+                    {categories.map((c) => (
+                      <DropdownMenu.Item key={c.id} className={menuItem} onSelect={() => board.sortAll(c.id)}>
+                        {c.name}
+                      </DropdownMenu.Item>
+                    ))}
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+            ) : null}
+            <Link
+              prefetch={false}
+              href={`/l/${board.list.slug}/edition/trier`}
+              className={buttonClasses("ink", 44, "px-4 text-sm lg:h-[46px] lg:px-5 lg:text-[15px]")}
+            >
+              <Keyboard aria-hidden="true" className="max-lg:hidden" />
+              <Layers aria-hidden="true" className="lg:hidden" />
+              <span className="max-lg:hidden">Trier maintenant</span>
+              <span className="lg:hidden">Trier</span>
+            </Link>
+          </div>
         </div>
 
         <ul

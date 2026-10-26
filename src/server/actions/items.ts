@@ -650,6 +650,72 @@ export async function bulkUpdate(input: z.input<typeof bulkInput>): Promise<Resu
   }
 }
 
+const sortInput = z.object({
+  itemId: uuid,
+  categoryId: uuid.nullable(),
+  tagIds: z.array(uuid).max(50),
+  isFavorite: z.boolean(),
+  title: z.string().max(200).optional(),
+  priceCents: z.number().int().min(0).max(PRICE_MAX_CENTS).nullable().optional(),
+});
+
+/**
+ * Tri rapide : « Valider » enregistre catégorie, tags et coup de cœur (et le nom ou le prix
+ * corrigés en ligne), puis sort l'article de « À trier » (`sorted_at = now()`).
+ */
+export async function sortItem(input: z.input<typeof sortInput>): Promise<Result<ItemInfo>> {
+  const parsed = sortInput.safeParse(input);
+  if (!parsed.success) return fail("VALIDATION", GENERIC_ERROR);
+  const { itemId, categoryId, tagIds, isFavorite, title, priceCents } = parsed.data;
+  const guard = await guardItems([itemId]);
+  if (!guard.ok) return guard.result;
+  const { ctx } = guard;
+  try {
+    if (categoryId && !(await categoryBelongs(ctx, categoryId))) return fail("NOT_FOUND", GENERIC_ERROR);
+    const [current] = await readItems(ctx, [itemId]);
+    if (!current) return fail("NOT_FOUND", "Cet article n'existe plus.");
+    if (tagIds.length) {
+      const { count } = await ctx.db
+        .from("tags")
+        .select("id", { count: "exact", head: true })
+        .eq("list_id", ctx.list.id)
+        .in("id", tagIds);
+      if (count !== new Set(tagIds).size) return fail("NOT_FOUND", GENERIC_ERROR);
+    }
+
+    const update: TablesUpdate<"items"> = {
+      category_id: categoryId,
+      is_favorite: isFavorite,
+      sorted_at: new Date().toISOString(),
+    };
+    if (title !== undefined) {
+      const clean = title.trim().replace(/\s+/g, " ");
+      if (CONTROL.test(clean)) return fail("VALIDATION", GENERIC_ERROR, "title");
+      if (clean !== (current.title ?? "")) update.title = clean;
+    }
+    if (priceCents !== undefined && priceCents !== current.priceCents) {
+      update.price_cents = priceCents;
+      update.price_source = priceCents === null ? null : "manual";
+      update.currency = priceCents === null ? null : (current.currency ?? ctx.list.currency);
+    }
+    const { error } = await ctx.db.from("items").update(update).eq("id", itemId);
+    if (error) throw new Error(error.message);
+
+    const wanted = new Set(tagIds);
+    const remove = current.tagIds.filter((t) => !wanted.has(t));
+    const add = [...wanted].filter((t) => !current.tagIds.includes(t));
+    if (remove.length) await ctx.db.from("item_tags").delete().eq("item_id", itemId).in("tag_id", remove);
+    if (add.length) await ctx.db.from("item_tags").insert(add.map((tag_id) => ({ item_id: itemId, tag_id })));
+
+    revalidateList(ctx.list.slug);
+    const [item] = await readItems(ctx, [itemId]);
+    return item ? ok(item) : fail("NOT_FOUND", "Cet article n'existe plus.");
+  } catch (error) {
+    logError("sortItem", error);
+    return fail("INTERNAL", GENERIC_ERROR);
+  }
+}
+
 const sortAllInput = z.object({ listId: uuid, categoryId: uuid });
 
 /** « Tout ranger dans… » : tous les articles à trier reçoivent cette catégorie. */

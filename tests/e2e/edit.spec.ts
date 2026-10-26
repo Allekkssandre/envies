@@ -99,11 +99,15 @@ test.describe("édition", () => {
     await expect(cardTitles(page, "Non classé")).toHaveText(["Un bon pour un massage"]);
 
     // Ajouter une photo
-    const png = await sharp({ create: { width: 640, height: 480, channels: 3, background: "#d9c9a8" } })
-      .png()
+    // Photo de ~2 Mo (bruit, peu compressible) : dépasse la limite par défaut des actions (1 Mo).
+    const noise = Buffer.alloc(1600 * 1200 * 3);
+    for (let i = 0; i < noise.length; i++) noise[i] = (i * 2654435761) % 251;
+    const png = await sharp(noise, { raw: { width: 1600, height: 1200, channels: 3 } })
+      .jpeg({ quality: 95 })
       .toBuffer();
+    expect(png.length).toBeGreaterThan(1_200_000);
     const fileInput = page.locator('input[type="file"][accept="image/*"]:not([capture])').first();
-    await fileInput.setInputFiles({ name: "cadeau.png", mimeType: "image/png", buffer: png });
+    await fileInput.setInputFiles({ name: "cadeau.jpg", mimeType: "image/jpeg", buffer: png });
     await expect(page.locator('img[src*="/item-images/"]').first()).toBeVisible({ timeout: 15_000 });
 
     // Modifier : prix et catégorie

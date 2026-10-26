@@ -4,9 +4,10 @@ export type ErrorCode =
 export type ActionError = { code: ErrorCode; message: string; field?: string };
 
 /** Résultat d'une action serveur : jamais d'exception jusqu'au client. */
-export type Result<T> = { ok: true; data: T } | { ok: false; error: ActionError };
+export type Result<T> = { ok: true; data: T; at?: number } | { ok: false; error: ActionError };
 
-export const ok = <T>(data: T): Result<T> => ({ ok: true, data });
+/** Succès, daté par l'horloge du serveur (`at`, ms) : l'édition s'en sert pour écarter un contenu plus ancien. */
+export const ok = <T>(data: T): Result<T> => ({ ok: true, data, at: Date.now() });
 
 export const fail = (code: ErrorCode, message: string, field?: string): Result<never> => ({
   ok: false,

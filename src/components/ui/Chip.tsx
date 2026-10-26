@@ -53,7 +53,7 @@ export function Chip({
   return (
     <button
       type={type}
-      aria-pressed={pressed}
+      aria-pressed={rest.role === "radio" ? undefined : pressed}
       className={cn(
         "relative inline-flex h-10 items-center gap-[7px] rounded-full border text-sm font-semibold whitespace-nowrap",
         "transition-colors duration-180 ease-out",

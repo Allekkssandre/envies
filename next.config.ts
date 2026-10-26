@@ -9,6 +9,11 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  experimental: {
+    // Photos envoyées aux actions : réduites dans le navigateur (≤ 2000 px), mais au-dessus
+    // du 1 Mo par défaut. 4 Mo reste sous la limite des fonctions Vercel (4,5 Mo).
+    serverActions: { bodySizeLimit: "4mb" },
+  },
   turbopack: {
     rules: {
       "*.css": {

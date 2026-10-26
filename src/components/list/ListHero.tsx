@@ -14,10 +14,10 @@ import type { ListInfo } from "@/types/models";
 import { EditBadge, LockButton } from "@/components/access/EditControls";
 import { ShareButton } from "./ShareButton";
 
-type ListHeroProps = { list: ListInfo; stats: ListStats; editing?: boolean };
+type ListHeroProps = { list: ListInfo; stats: ListStats; editing?: boolean; inboxCount?: number };
 
 /** Héros d'ambiance de la page liste : barre du haut, prénom, titre, petit mot et chiffres. */
-export function ListHero({ list, stats, editing = false }: ListHeroProps) {
+export function ListHero({ list, stats, editing = false, inboxCount = 0 }: ListHeroProps) {
   const theme = ambianceTheme(list.ambiance);
   const tone = theme.dark ? "dark" : "light";
   const total = stats.totalCents > 0 ? formatTotal(stats.totalCents, list.currency, stats.approximate) : null;
@@ -140,9 +140,17 @@ export function ListHero({ list, stats, editing = false }: ListHeroProps) {
               )}
             />
             <p className={cn("m-0 mt-1.5 text-sm sm:text-base", !editing && "lg:hidden", theme.soft)}>
-              {plural(stats.count, "article", "articles")} ·{" "}
-              {plural(stats.favorites, "coup de cœur", "coups de cœur")}
-              {total ? ` · ${total}` : null}
+              {editing ? (
+                <>
+                  {plural(stats.count, "article", "articles")} · {formatNumber(inboxCount)} à trier
+                </>
+              ) : (
+                <>
+                  {plural(stats.count, "article", "articles")} ·{" "}
+                  {plural(stats.favorites, "coup de cœur", "coups de cœur")}
+                  {total ? ` · ${total}` : null}
+                </>
+              )}
             </p>
           </div>
 

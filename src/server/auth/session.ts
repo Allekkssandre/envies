@@ -35,6 +35,16 @@ export async function setEditCookie(listId: string, authVersion: number, remembe
   });
 }
 
+/**
+ * Après un changement de mot de passe ou de lien secret : nouveau cookie pour cet appareil,
+ * à la nouvelle version d'accès, en gardant son choix « rester déverrouillé ».
+ */
+export async function reissueEditCookie(listId: string, authVersion: number): Promise<void> {
+  const raw = (await cookies()).get(cookieName(listId))?.value;
+  const payload = raw ? verifyEditToken(raw, secret(), nowSeconds()) : null;
+  await setEditCookie(listId, authVersion, payload ? payload.r === 1 : true);
+}
+
 export async function clearEditCookie(listId: string): Promise<void> {
   (await cookies()).delete({ name: cookieName(listId), path: "/" });
 }

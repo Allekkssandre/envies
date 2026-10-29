@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, FileSpreadsheet, Pencil } from "lucide-react";
+import { ArrowLeft, Check, FileSpreadsheet, Pencil, Settings } from "lucide-react";
 import Link from "next/link";
 import { preload } from "react-dom";
 import { buttonClasses } from "@/components/ui/Button";
@@ -11,7 +11,7 @@ import { formatTotal } from "@/lib/format";
 import type { ListStats } from "@/lib/listFilters";
 import { formatNumber, plural } from "@/lib/text";
 import type { ListInfo } from "@/types/models";
-import { EditBadge, LockButton } from "@/components/access/EditControls";
+import { EditBadge } from "@/components/access/EditControls";
 import { ShareButton } from "./ShareButton";
 
 type ListHeroProps = { list: ListInfo; stats: ListStats; editing?: boolean; inboxCount?: number };
@@ -55,9 +55,18 @@ export function ListHero({ list, stats, editing = false, inboxCount = 0 }: ListH
               >
                 Envies
               </Link>
-              <span className="lg:hidden">
-                <LockButton listId={list.id} dark={theme.dark} compact />
-              </span>
+              <Link
+                href={`/l/${list.slug}/edition/reglages`}
+                aria-label="Réglages de la liste"
+                className={cn(
+                  "flex size-11 items-center justify-center rounded-full border backdrop-blur-[14px] lg:hidden",
+                  theme.dark
+                    ? "border-linen/40 bg-linen/12 text-linen"
+                    : "border-ink/18 bg-white/45 text-ink",
+                )}
+              >
+                <Settings aria-hidden="true" size={19} strokeWidth={1.7} />
+              </Link>
             </div>
             <EditBadge dark={theme.dark} />
             <div className="flex justify-end gap-2.5">
@@ -69,7 +78,13 @@ export function ListHero({ list, stats, editing = false, inboxCount = 0 }: ListH
                   <FileSpreadsheet aria-hidden="true" />
                   Importer
                 </Link>
-                <LockButton listId={list.id} dark={theme.dark} />
+                <Link
+                  href={`/l/${list.slug}/edition/reglages`}
+                  className={buttonClasses(theme.dark ? "glass" : "outline", 46)}
+                >
+                  <Settings aria-hidden="true" />
+                  Réglages
+                </Link>
               </span>
               <Link
                 href={`/l/${list.slug}`}

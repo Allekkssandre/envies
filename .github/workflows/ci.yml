@@ -39,7 +39,8 @@ jobs:
           cache: pnpm
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Même version que la dépendance du projet (pas d’appel « latest » à l’API GitHub).
+          version: 2.122.0
       - run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,mailpit,supavisor
       - run: supabase db reset
       - run: pnpm install --frozen-lockfile

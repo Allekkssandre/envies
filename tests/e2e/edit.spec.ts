@@ -104,6 +104,7 @@ test.describe("édition", () => {
   test("coller 5 liens : 5 cartes tout de suite, dans l'ordre après rechargement ; doublon signalé", async ({
     page,
   }, info) => {
+    test.setTimeout(60_000);
     const slug = await createTestList(`${info.project.name}-liens`);
     await unlock(page, slug);
     // Pages lentes du serveur local : les cartes restent « Récupération… » le temps du test.

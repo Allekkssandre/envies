@@ -1,9 +1,9 @@
 import { ArrowLeft, Check, FileSpreadsheet, Pencil, Settings } from "lucide-react";
 import Link from "next/link";
-import { preload } from "react-dom";
 import { buttonClasses } from "@/components/ui/Button";
 import { Caps } from "@/components/ui/Chip";
 import { Foliage } from "@/components/ui/Foliage";
+import { HeroTexture } from "@/components/ui/HeroTexture";
 import { SplitTitle } from "@/components/ui/SplitTitle";
 import { ambianceTheme } from "@/lib/ambiance";
 import { cn } from "@/lib/cn";
@@ -22,20 +22,17 @@ export function ListHero({ list, stats, editing = false, inboxCount = 0 }: ListH
   const tone = theme.dark ? "dark" : "light";
   const total = stats.totalCents > 0 ? formatTotal(stats.totalCents, list.currency, stats.approximate) : null;
 
-  // Texture du héros préchargée, une par taille d'écran.
-  preload(theme.images.desktop, { as: "image", media: "(min-width: 640px)", fetchPriority: "high" });
-  preload(theme.images.mobile, { as: "image", media: "(max-width: 639px)", fetchPriority: "high" });
-
   return (
     <header
       className={cn(
-        "relative overflow-hidden",
+        "relative overflow-hidden bg-none!",
         editing ? "h-[300px] sm:h-[440px]" : "h-[470px] sm:h-[640px] lg:h-[780px]",
         theme.texture,
         theme.text,
         theme.dark && "on-dark",
       )}
     >
+      <HeroTexture images={theme.images} />
       <span aria-hidden="true" className="absolute inset-0 grain-overlay" />
       {theme.dark ? (
         <>

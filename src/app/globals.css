@@ -219,11 +219,11 @@
 }
 
 @utility grain-fine {
-  background: url(/textures/grain-fine.png) 0 0 / 200px repeat;
+  background: url(/textures/grain-fine.webp) 0 0 / 200px repeat;
 }
 
 @utility grain-overlay {
-  background: url(/textures/grain.png) 0 0 / 256px repeat;
+  background: url(/textures/grain.webp) 0 0 / 256px repeat;
   mix-blend-mode: overlay;
   opacity: 0.55;
 }

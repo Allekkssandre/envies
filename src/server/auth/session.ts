@@ -94,9 +94,11 @@ export type UnlockedList = { id: string; slug: string; title: string; ownerName:
  * valide (signature, expiration, version d'accès) dont la liste existe encore.
  */
 export async function unlockedLists(): Promise<UnlockedList[]> {
+  // Les cookies d'abord : ils rendent la page dynamique avant toute lecture de l'heure.
+  const jar = await cookies();
   const now = nowSeconds();
   const tokens = new Map<string, number>();
-  for (const cookie of (await cookies()).getAll()) {
+  for (const cookie of jar.getAll()) {
     if (!cookie.name.startsWith("envies_edit_")) continue;
     const payload = verifyEditToken(cookie.value, secret(), now);
     if (payload && cookie.name === cookieName(payload.l)) tokens.set(payload.l, payload.v);

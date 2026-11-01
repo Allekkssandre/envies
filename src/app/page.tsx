@@ -7,13 +7,16 @@ import { SiteFooter } from "@/components/list/SiteFooter";
 import { buttonClasses } from "@/components/ui/Button";
 import { Caps } from "@/components/ui/Chip";
 import { Foliage, Halo } from "@/components/ui/Foliage";
+import { HeroTexture } from "@/components/ui/HeroTexture";
+import { ambianceTheme } from "@/lib/ambiance";
 import { plural } from "@/lib/text";
 import { getListSummaries } from "@/server/db/lists";
 
 export default function HomePage() {
   return (
     <div className="relative isolate min-h-dvh overflow-clip pb-28 sm:pb-0">
-      <header className="on-dark relative h-[330px] overflow-hidden tex-feuillage text-linen sm:h-[640px]">
+      <header className="on-dark relative h-[330px] overflow-hidden tex-feuillage bg-none! text-linen sm:h-[640px]">
+        <HeroTexture images={ambianceTheme("feuillage").images} />
         <span aria-hidden="true" className="absolute inset-0 grain-overlay opacity-60" />
         <Foliage className="top-[30px] left-[4%] hidden h-[640px] w-[380px] -scale-x-100 opacity-50 lg:block" />
         <div className="relative mx-auto flex h-full max-w-[1320px] flex-col px-4 sm:px-12">

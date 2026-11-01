@@ -12,6 +12,8 @@ export type ListInfo = {
   description: string | null;
   ambiance: Ambiance;
   currency: string;
+  /** Privée : le contenu ne se lit qu'avec le mot de passe ou le lien secret. */
+  isPrivate: boolean;
 };
 
 export type ListSummary = ListInfo & {

@@ -36,7 +36,8 @@ function revalidateAll(...slugs: string[]) {
 
 const listFields = createListSchema
   .pick({ title: true, ownerName: true, description: true, ambiance: true })
-  .partial();
+  .partial()
+  .extend({ isPrivate: z.boolean().optional() });
 const updateListInput = z.object({ listId: uuid, patch: z.record(z.string(), z.unknown()) });
 
 type ListPatch = {
@@ -44,9 +45,10 @@ type ListPatch = {
   ownerName?: string;
   description?: string;
   ambiance?: (typeof AMBIANCES)[number];
+  isPrivate?: boolean;
 };
 
-/** Nom, prénom, petit mot, ambiance : enregistrés champ par champ. */
+/** Nom, prénom, petit mot, ambiance, liste privée : enregistrés champ par champ. */
 export async function updateList(input: { listId: string; patch: ListPatch }): Promise<Result<ListInfo>> {
   const outer = updateListInput.safeParse(input);
   if (!outer.success) return fail("VALIDATION", GENERIC_ERROR);
@@ -64,16 +66,18 @@ export async function updateList(input: { listId: string; patch: ListPatch }): P
     owner_name?: string;
     description?: string | null;
     ambiance?: ListPatch["ambiance"];
+    is_private?: boolean;
   } = {};
   if (p.title !== undefined) update.title = p.title;
   if (p.ownerName !== undefined) update.owner_name = p.ownerName;
   if (p.description !== undefined) update.description = p.description || null;
   if (p.ambiance !== undefined) update.ambiance = p.ambiance;
+  if (p.isPrivate !== undefined) update.is_private = p.isPrivate;
   const { data, error } = await ctx.db
     .from("lists")
     .update(update)
     .eq("id", ctx.list.id)
-    .select("id, slug, title, owner_name, description, ambiance, currency")
+    .select("id, slug, title, owner_name, description, ambiance, currency, is_private")
     .single();
   if (error || !data) {
     logError("updateList", error);
@@ -88,6 +92,7 @@ export async function updateList(input: { listId: string; patch: ListPatch }): P
     description: data.description,
     ambiance: data.ambiance,
     currency: data.currency,
+    isPrivate: data.is_private,
   });
 }
 

@@ -16,6 +16,12 @@ describe("createListSchema", () => {
     expect(parsed.ownerName).toBe("Merin");
   });
 
+  it("liste publique par défaut, privée sur demande", () => {
+    expect(createListSchema.parse(valid).isPrivate).toBe(false);
+    expect(createListSchema.parse({ ...valid, isPrivate: true }).isPrivate).toBe(true);
+    expect(createListSchema.safeParse({ ...valid, isPrivate: "oui" }).success).toBe(false);
+  });
+
   it("messages de 12-textes.md", () => {
     const result = createListSchema.safeParse({ ...valid, title: "  ", ownerName: "", password: "abc" });
     expect(result.success).toBe(false);

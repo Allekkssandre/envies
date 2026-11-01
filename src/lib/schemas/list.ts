@@ -48,6 +48,8 @@ export const createListSchema = z.object({
         .refine((s) => !CONTROL.test(s), `${DESCRIPTION_MAX} caractères au plus.`),
     ),
   ambiance: z.enum(AMBIANCES),
+  /** Privée : le contenu ne se lit qu'avec le mot de passe ou le lien secret. */
+  isPrivate: z.boolean().default(false),
   /** Champ piège, invisible : rempli par les robots seulement. */
   website: z.string().optional(),
 });

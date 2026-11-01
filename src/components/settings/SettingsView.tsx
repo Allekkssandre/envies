@@ -20,6 +20,7 @@ import { Field, TextArea } from "@/components/ui/Field";
 import { LinkBox } from "@/components/ui/LinkBox";
 import { PasswordField } from "@/components/ui/PasswordField";
 import { SplitTitle } from "@/components/ui/SplitTitle";
+import { Toggle } from "@/components/ui/Toggle";
 import { DESKTOP_QUERY, useMediaQuery } from "@/hooks/useMediaQuery";
 import { ambianceTheme } from "@/lib/ambiance";
 import { cn } from "@/lib/cn";
@@ -155,7 +156,7 @@ export function SettingsView(props: Props) {
             track={track}
           />
           <TagsSection listId={list.id} initial={props.tags} counts={props.tagCounts} track={track} />
-          <AccessSection list={list} editKey={props.editKey} track={track} />
+          <AccessSection list={list} editKey={props.editKey} track={track} onChange={setList} />
           <Card id="exporter" title="Exporter">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <a
@@ -393,10 +394,12 @@ function AccessSection({
   list,
   editKey: initialKey,
   track,
+  onChange,
 }: {
   list: ListInfo;
   editKey: string;
   track: Track;
+  onChange: (list: ListInfo) => void;
 }) {
   const router = useRouter();
   const [password, setPassword] = useState("");
@@ -421,6 +424,22 @@ function AccessSection({
     toast("Mot de passe changé. Les autres appareils devront le saisir.", { duration: 6000 });
   };
 
+  const setPrivate = async (isPrivate: boolean) => {
+    onChange({ ...list, isPrivate });
+    const result = await track(() => updateList({ listId: list.id, patch: { isPrivate } }));
+    if (!result) {
+      onChange(list);
+      return;
+    }
+    if (!result.ok) {
+      onChange(list);
+      toast(result.error.message, { duration: 4000 });
+      return;
+    }
+    onChange(result.data);
+    toast(isPrivate ? "La liste est privée." : "La liste est publique.", { duration: 4000 });
+  };
+
   const regenerate = async () => {
     setConfirming(false);
     const result = await track(() => regenerateEditKey({ listId: list.id }));
@@ -443,6 +462,14 @@ function AccessSection({
       title="Accès"
       text="Pas de compte : le mot de passe et le lien secret sont les deux clés de la modification."
     >
+      <div className="flex flex-col gap-1">
+        <Toggle label="Liste privée" checked={list.isPrivate} onCheckedChange={(on) => void setPrivate(on)} />
+        <p className="m-0 text-[13px] leading-normal text-muted">
+          Le contenu ne se lit qu&apos;avec le mot de passe ou le lien secret. La liste reste sur
+          l&apos;accueil, sans son contenu.
+        </p>
+      </div>
+
       <form
         className="flex flex-col gap-3 sm:flex-row sm:items-start"
         onSubmit={(e) => {

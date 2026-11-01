@@ -14,10 +14,17 @@ import type { ListInfo } from "@/types/models";
 import { EditBadge } from "@/components/access/EditControls";
 import { ShareButton } from "./ShareButton";
 
-type ListHeroProps = { list: ListInfo; stats: ListStats; editing?: boolean; inboxCount?: number };
+type ListHeroProps = {
+  list: ListInfo;
+  stats: ListStats;
+  editing?: boolean;
+  inboxCount?: number;
+  /** Liste privée verrouillée : ni chiffres, ni petit mot. */
+  locked?: boolean;
+};
 
 /** Héros d'ambiance de la page liste : barre du haut, prénom, titre, petit mot et chiffres. */
-export function ListHero({ list, stats, editing = false, inboxCount = 0 }: ListHeroProps) {
+export function ListHero({ list, stats, editing = false, inboxCount = 0, locked = false }: ListHeroProps) {
   const theme = ambianceTheme(list.ambiance);
   const tone = theme.dark ? "dark" : "light";
   const total = stats.totalCents > 0 ? formatTotal(stats.totalCents, list.currency, stats.approximate) : null;
@@ -158,8 +165,16 @@ export function ListHero({ list, stats, editing = false, inboxCount = 0 }: ListH
                 theme.dark && "[text-shadow:0_14px_50px_rgb(10_12_4/0.45)]",
               )}
             />
-            <p className={cn("m-0 mt-1.5 text-sm sm:text-base", !editing && "lg:hidden", theme.soft)}>
-              {editing ? (
+            <p
+              className={cn(
+                "m-0 mt-1.5 text-sm sm:text-base",
+                !editing && !locked && "lg:hidden",
+                theme.soft,
+              )}
+            >
+              {locked ? (
+                "Liste privée"
+              ) : editing ? (
                 <>
                   {plural(stats.count, "article", "articles")} · {formatNumber(inboxCount)} à trier
                 </>
@@ -177,7 +192,7 @@ export function ListHero({ list, stats, editing = false, inboxCount = 0 }: ListH
             aria-label="En bref"
             className={cn(
               "hidden w-[340px] flex-col gap-4 rounded-panel px-[26px] py-6",
-              !editing && "lg:flex",
+              !editing && !locked && "lg:flex",
               theme.dark ? "glass-dark" : "glass-light",
             )}
           >

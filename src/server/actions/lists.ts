@@ -10,7 +10,7 @@ import { setEditCookie } from "@/server/auth/session";
 import { getServiceDb, type Db } from "@/server/db/client";
 import { fail, GENERIC_ERROR, ok, type Result } from "./result";
 
-export type CreatedList = { slug: string; title: string; editKey: string };
+export type CreatedList = { slug: string; title: string; editKey: string; isPrivate: boolean };
 
 const SLUG_MAX = 80;
 const UNIQUE_VIOLATION = "23505";
@@ -45,11 +45,11 @@ export async function createList(input: CreateListInput): Promise<Result<Created
     const [field, message] = Object.entries(errors)[0] ?? ["title", GENERIC_ERROR];
     return fail("VALIDATION", message, field);
   }
-  const { title, ownerName, password, description, ambiance, website } = parsed.data;
+  const { title, ownerName, password, description, ambiance, isPrivate, website } = parsed.data;
 
   // Champ piège rempli : faire comme si tout allait bien, sans rien créer.
   if (website && website.trim() !== "") {
-    return ok({ slug: slugify(title) || "liste", title, editKey: generateEditKey() });
+    return ok({ slug: slugify(title) || "liste", title, editKey: generateEditKey(), isPrivate });
   }
 
   try {
@@ -67,7 +67,14 @@ export async function createList(input: CreateListInput): Promise<Result<Created
       const slug = await freeSlug(db, slugify(title));
       const { data, error } = await db
         .from("lists")
-        .insert({ slug, title, owner_name: ownerName, description: description || null, ambiance })
+        .insert({
+          slug,
+          title,
+          owner_name: ownerName,
+          description: description || null,
+          ambiance,
+          is_private: isPrivate,
+        })
         .select("id, slug")
         .single();
       if (data) created = data;
@@ -92,7 +99,7 @@ export async function createList(input: CreateListInput): Promise<Result<Created
 
     await setEditCookie(created.id, 1, true);
     revalidatePath("/");
-    return ok({ slug: created.slug, title, editKey });
+    return ok({ slug: created.slug, title, editKey, isPrivate });
   } catch (error) {
     console.error("createList", error instanceof Error ? error.message : error);
     return fail("INTERNAL", GENERIC_ERROR);

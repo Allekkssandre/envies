@@ -17,7 +17,8 @@ export async function generateMetadata({ params }: LayoutProps<"/l/[slug]">): Pr
   const lookup = await getListBySlug(slug);
   if (lookup.kind !== "found") return {};
   const { list } = lookup;
-  const description = list.description ?? `La liste de ${list.ownerName}`;
+  // Liste privée : l'aperçu ne montre pas le petit mot.
+  const description = (!list.isPrivate && list.description) || `La liste de ${list.ownerName}`;
   return {
     // `absolute` + `template` : la fiche hérite du suffixe « · Envies ».
     title: {

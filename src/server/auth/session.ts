@@ -86,3 +86,36 @@ export async function requireEdit(listId: string): Promise<boolean> {
   }
   return true;
 }
+
+export type UnlockedList = { id: string; slug: string; title: string; ownerName: string };
+
+/**
+ * Listes déverrouillées sur cet appareil (cible de partage) : chaque cookie d'édition
+ * valide (signature, expiration, version d'accès) dont la liste existe encore.
+ */
+export async function unlockedLists(): Promise<UnlockedList[]> {
+  // Les cookies d'abord : ils rendent la page dynamique avant toute lecture de l'heure.
+  const jar = await cookies();
+  const now = nowSeconds();
+  const tokens = new Map<string, number>();
+  for (const cookie of jar.getAll()) {
+    if (!cookie.name.startsWith("envies_edit_")) continue;
+    const payload = verifyEditToken(cookie.value, secret(), now);
+    if (payload && cookie.name === cookieName(payload.l)) tokens.set(payload.l, payload.v);
+  }
+  if (!tokens.size) return [];
+  const { data } = await getServiceDb()
+    .from("list_secrets")
+    .select("list_id, auth_version, lists!inner(slug, title, owner_name, deleted_at, updated_at)")
+    .in("list_id", [...tokens.keys()])
+    .is("lists.deleted_at", null);
+  return (data ?? [])
+    .filter((row) => tokens.get(row.list_id) === row.auth_version)
+    .sort((a, b) => b.lists.updated_at.localeCompare(a.lists.updated_at))
+    .map((row) => ({
+      id: row.list_id,
+      slug: row.lists.slug,
+      title: row.lists.title,
+      ownerName: row.lists.owner_name,
+    }));
+}

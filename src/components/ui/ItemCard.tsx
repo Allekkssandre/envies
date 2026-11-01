@@ -93,6 +93,8 @@ export function ItemCard({
       <Link
         href={href}
         scroll={false}
+        // Pas de préchargement à l'affichage : une liste compte des dizaines de cartes.
+        prefetch={false}
         className={cn("group flex flex-col gap-3.5 rounded-photo text-ink no-underline sm:gap-4", className)}
       >
         {body}

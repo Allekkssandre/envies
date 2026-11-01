@@ -1,12 +1,18 @@
 import type { Metadata, Viewport } from "next";
 import { Grain } from "@/components/ui/Grain";
 import { Toaster } from "@/components/ui/Toaster";
+import { siteUrl } from "@/lib/siteUrl";
 import { fraunces, instrument } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "Envies", template: "%s · Envies" },
   description: "Listes d'envies, à partager avec les proches. Sans compte.",
+  metadataBase: new URL(siteUrl()),
+  applicationName: "Envies",
+  appleWebApp: { title: "Envies", capable: true, statusBarStyle: "default" },
+  openGraph: { siteName: "Envies", locale: "fr_FR", type: "website" },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {

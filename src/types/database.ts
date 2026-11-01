@@ -304,6 +304,7 @@ export type Database = {
           deleted_at: string | null
           description: string | null
           id: string
+          is_private: boolean
           owner_name: string
           search_key: string
           slug: string
@@ -318,6 +319,7 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           id?: string
+          is_private?: boolean
           owner_name: string
           search_key?: string
           slug: string
@@ -332,6 +334,7 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           id?: string
+          is_private?: boolean
           owner_name?: string
           search_key?: string
           slug?: string
@@ -414,6 +417,7 @@ export type Database = {
           description: string | null
           favorite_count: number | null
           id: string | null
+          is_private: boolean | null
           item_count: number | null
           missing_prices: number | null
           owner_name: string | null

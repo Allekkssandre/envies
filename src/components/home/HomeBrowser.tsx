@@ -1,7 +1,7 @@
 "use client";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Check, ChevronDown, ChevronRight, Plus, Search } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Lock, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { buttonClasses } from "@/components/ui/Button";
@@ -212,9 +212,17 @@ function ListCard({ list, now }: { list: ListSummary; now: Date }) {
           className={cn(
             "absolute top-[18px] right-[18px] flex h-8 items-center rounded-full border px-3 text-[13px] font-semibold",
             theme.dark ? "border-linen/35 bg-linen/16 text-linen" : "border-white/55 bg-white/35 text-ink",
+            list.isPrivate && "gap-1.5",
           )}
         >
-          {plural(list.itemCount, "article", "articles")}
+          {list.isPrivate ? (
+            <>
+              <Lock aria-hidden="true" size={13} strokeWidth={2} />
+              Privée
+            </>
+          ) : (
+            plural(list.itemCount, "article", "articles")
+          )}
         </span>
       </span>
       <span className="flex items-start justify-between pr-1.5 pl-1">
@@ -266,7 +274,7 @@ function ListRow({ list }: { list: ListSummary }) {
           className="text-[26px]"
         />
         <span className="text-[13px] text-muted">
-          {list.ownerName} · {plural(list.itemCount, "article", "articles")}
+          {list.ownerName} · {list.isPrivate ? "Privée" : plural(list.itemCount, "article", "articles")}
         </span>
       </span>
       <ChevronRight aria-hidden="true" size={20} strokeWidth={1.75} className="shrink-0 text-muted" />

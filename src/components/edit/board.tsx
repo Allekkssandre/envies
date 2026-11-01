@@ -225,7 +225,9 @@ export function BoardProvider({ list, content, children }: Props) {
   const live = useRef(false);
   // Temps réel : quand l'extraction d'un lien se termine, la carte se met à jour sans recharger.
   // Seuls les champs remplis par l'extraction sont repris (le reste suit les actions de cette page).
+  // Liste privée : la clé publique ne voit pas ses articles, le rafraîchissement ci-dessous suffit.
   useEffect(() => {
+    if (list.isPrivate) return;
     const supabase = getSupabaseBrowser();
     const channel = supabase
       .channel(`items:${list.id}`)
@@ -247,7 +249,7 @@ export function BoardProvider({ list, content, children }: Props) {
       live.current = false;
       void supabase.removeChannel(channel);
     };
-  }, [list.id, refresh]);
+  }, [list.id, list.isPrivate, refresh]);
 
   // Filet de sécurité : tant qu'un lien est en « Récupération… », rafraîchir (au plus 2 minutes),
   // et relancer toutes les 30 s les extractions restées en attente.

@@ -32,14 +32,17 @@ export default async function Image({ params }: { params: Promise<{ slug: string
   }
 
   const { list } = lookup;
-  const { items } = await getListContent(list.id);
+  // Liste privée : l'aperçu (vu par n'importe qui dans une messagerie) ne dit rien du contenu.
+  const items = list.isPrivate ? [] : (await getListContent(list.id, false)).items;
   const favorites = items.filter((i) => i.isFavorite).length;
   const palette = ogPalette(list.ambiance);
   const texture = await ogTexture(list.ambiance);
-  const counts = [
-    plural(items.length, "article", "articles"),
-    ...(favorites ? [plural(favorites, "coup de cœur", "coups de cœur")] : []),
-  ].join(" · ");
+  const counts = list.isPrivate
+    ? "Liste privée"
+    : [
+        plural(items.length, "article", "articles"),
+        ...(favorites ? [plural(favorites, "coup de cœur", "coups de cœur")] : []),
+      ].join(" · ");
 
   return new ImageResponse(
     <div

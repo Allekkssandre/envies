@@ -30,7 +30,7 @@ export async function proxy(request: NextRequest) {
   const rest = match[2] ?? "";
 
   try {
-    const { data: list } = await db().from("lists").select("id").eq("slug", slug).maybeSingle();
+    const { data: list } = await db().from("lists").select("id, is_private").eq("slug", slug).maybeSingle();
 
     if (!list) {
       const { data: redirect } = await db()
@@ -45,7 +45,8 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url, 308);
     }
 
-    const item = ITEM.exec(rest);
+    // Liste privée : ses articles ne se lisent pas avec la clé publique, la page vérifie l'accès.
+    const item = list.is_private ? null : ITEM.exec(rest);
     if (item) {
       const { data } = await db()
         .from("items")

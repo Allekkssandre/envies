@@ -73,6 +73,8 @@ export function UnlockGate({ listId, slug, title }: UnlockGateProps) {
 }
 
 type DialogProps = {
+  /** `edit` : ouvrir la modification. `view` : lire une liste privée. */
+  purpose?: "edit" | "view";
   listId: string;
   title: string;
   initialProblem: Problem | null;
@@ -80,7 +82,7 @@ type DialogProps = {
   onUnlocked: () => void;
 };
 
-function UnlockDialog(props: DialogProps) {
+export function UnlockDialog(props: DialogProps) {
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
   const keyboardInset = useKeyboardInset(!isDesktop);
   const titleId = useId();
@@ -141,7 +143,16 @@ type FormProps = DialogProps & {
   mobile?: boolean;
 };
 
-function UnlockForm({ listId, title, initialProblem, onUnlocked, titleId, TitleTag, mobile }: FormProps) {
+function UnlockForm({
+  purpose = "edit",
+  listId,
+  title,
+  initialProblem,
+  onUnlocked,
+  titleId,
+  TitleTag,
+  mobile,
+}: FormProps) {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
   const [problem, setProblem] = useState<Problem | null>(initialProblem);
@@ -189,7 +200,7 @@ function UnlockForm({ listId, title, initialProblem, onUnlocked, titleId, TitleT
             mobile ? "text-[34px]" : "text-[44px]",
           )}
         >
-          Modifier <i className="font-light text-ochre">{title}</i>
+          {purpose === "view" ? "Ouvrir" : "Modifier"} <i className="font-light text-ochre">{title}</i>
         </TitleTag>
         <p className="m-0 mt-2 text-[15px] text-ink-soft">
           Le mot de passe a été choisi à la création de la liste.
@@ -198,7 +209,7 @@ function UnlockForm({ listId, title, initialProblem, onUnlocked, titleId, TitleT
 
       <PasswordField
         ref={input}
-        label="Mot de passe pour modifier"
+        label={purpose === "view" ? "Mot de passe" : "Mot de passe pour modifier"}
         autoComplete="current-password"
         enterKeyHint="go"
         value={password}

@@ -8,6 +8,7 @@ import { Drawer } from "vaul";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { PasswordField } from "@/components/ui/PasswordField";
+import { useKeyboardInset } from "@/hooks/useKeyboardInset";
 import { DESKTOP_QUERY, useMediaQuery } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/cn";
 import { unlockWithKey, unlockWithPassword } from "@/server/actions/access";
@@ -81,6 +82,7 @@ type DialogProps = {
 
 function UnlockDialog(props: DialogProps) {
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
+  const keyboardInset = useKeyboardInset(!isDesktop);
   const titleId = useId();
   if (isDesktop === null) return null;
 
@@ -112,13 +114,14 @@ function UnlockDialog(props: DialogProps) {
   }
 
   return (
-    <Drawer.Root open onOpenChange={onOpenChange}>
+    <Drawer.Root open onOpenChange={onOpenChange} repositionInputs={false}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-50 bg-[rgb(24_20_10/0.55)]" />
         <Drawer.Content
           aria-describedby={undefined}
           aria-labelledby={titleId}
-          className="fixed inset-x-0 bottom-0 z-50 flex max-h-[96dvh] flex-col rounded-t-sheet bg-paper px-[18px] pt-3 pb-[max(20px,env(safe-area-inset-bottom))] text-ink outline-none"
+          style={keyboardInset}
+          className="fixed inset-x-0 bottom-0 z-50 flex max-h-[96dvh] flex-col overflow-y-auto rounded-t-sheet bg-paper px-[18px] pt-3 pb-[max(20px,env(safe-area-inset-bottom))] text-ink outline-none"
         >
           <span
             aria-hidden="true"

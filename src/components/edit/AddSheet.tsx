@@ -8,6 +8,7 @@ import { Button, buttonClasses } from "@/components/ui/Button";
 import { ItemPhoto } from "@/components/ui/ItemPhoto";
 import { cn } from "@/lib/cn";
 import { formatPrice } from "@/lib/format";
+import { useKeyboardInset } from "@/hooks/useKeyboardInset";
 import { imageUrl } from "@/lib/imageUrl";
 import { itemName, type ItemInfo } from "@/types/models";
 import { splitLines } from "./AddBar";
@@ -71,6 +72,7 @@ function AddSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: 
   const photo = useRef<HTMLInputElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
   const target = board.addTarget;
+  const keyboardInset = useKeyboardInset(open);
 
   const recent = sessionIds
     .map((id) => board.items.find((i) => i.id === id))
@@ -107,11 +109,12 @@ function AddSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: 
   };
 
   return (
-    <Drawer.Root open={open} onOpenChange={change}>
+    <Drawer.Root open={open} onOpenChange={change} repositionInputs={false}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-50 bg-[rgb(24_20_10/0.55)]" />
         <Drawer.Content
           aria-describedby={undefined}
+          style={keyboardInset}
           className="fixed inset-x-0 bottom-0 z-50 flex max-h-[94dvh] flex-col rounded-t-sheet bg-paper text-ink outline-none"
         >
           <span

@@ -262,6 +262,9 @@ export type Database = {
           edit_key: string
           list_id: string
           password_hash: string
+          read_key: string
+          read_password_hash: string | null
+          read_version: number
           updated_at: string
         }
         Insert: {
@@ -269,6 +272,9 @@ export type Database = {
           edit_key: string
           list_id: string
           password_hash: string
+          read_key?: string
+          read_password_hash?: string | null
+          read_version?: number
           updated_at?: string
         }
         Update: {
@@ -276,6 +282,9 @@ export type Database = {
           edit_key?: string
           list_id?: string
           password_hash?: string
+          read_key?: string
+          read_password_hash?: string | null
+          read_version?: number
           updated_at?: string
         }
         Relationships: [
@@ -304,6 +313,7 @@ export type Database = {
           deleted_at: string | null
           description: string | null
           id: string
+          is_private: boolean
           owner_name: string
           search_key: string
           slug: string
@@ -318,6 +328,7 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           id?: string
+          is_private?: boolean
           owner_name: string
           search_key?: string
           slug: string
@@ -332,6 +343,7 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           id?: string
+          is_private?: boolean
           owner_name?: string
           search_key?: string
           slug?: string
@@ -414,6 +426,7 @@ export type Database = {
           description: string | null
           favorite_count: number | null
           id: string | null
+          is_private: boolean | null
           item_count: number | null
           missing_prices: number | null
           owner_name: string | null

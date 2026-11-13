@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { HashCleaner } from "@/components/access/EditControls";
 import { UnlockGate } from "@/components/access/UnlockGate";
 import { ListView } from "@/components/list/ListView";
+import { PrivateListView } from "@/components/list/PrivateListView";
 import { hasEditAccess } from "@/server/auth/session";
 import { loadListPage } from "@/server/db/listPage";
 
@@ -17,11 +18,11 @@ export async function generateMetadata({ params }: LayoutProps<"/l/[slug]/editio
  */
 export default async function EditionLayout({ children, panel, params }: LayoutProps<"/l/[slug]/edition">) {
   const { slug } = await params;
-  const { list, content } = await loadListPage(slug);
+  const { list, content, locked } = await loadListPage(slug);
   if (!(await hasEditAccess(list.id))) {
     return (
       <>
-        <ListView list={list} content={content} />
+        {locked ? <PrivateListView list={list} ask={false} /> : <ListView list={list} content={content} />}
         <UnlockGate listId={list.id} slug={list.slug} title={list.title} />
       </>
     );

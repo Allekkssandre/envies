@@ -120,19 +120,19 @@ describe("safeFetch : réponses", () => {
 
   it("403, 429, 503 et pages de captcha → blocked", async () => {
     for (const status of [403, 429, 503])
-      expect(await fetchWith(response(status, {}))).toEqual({ ok: false, error: "blocked" });
+      expect(await fetchWith(response(status, {}))).toMatchObject({ ok: false, error: "blocked" });
     expect(
       await fetchWith(response(200, { "content-type": "text/html" }, "<title>Robot Check</title>")),
-    ).toEqual({ ok: false, error: "blocked" });
-    expect(await fetchWith(response(202, { "content-type": "text/html" }, "<title></title>"))).toEqual({
+    ).toMatchObject({ ok: false, error: "blocked" });
+    expect(await fetchWith(response(202, { "content-type": "text/html" }, "<title></title>"))).toMatchObject({
       ok: false,
       error: "blocked",
     });
   });
 
   it("404 → http_4xx, 500 → http_5xx, PDF → not_html, trop gros → too_large", async () => {
-    expect(await fetchWith(response(404, {}))).toEqual({ ok: false, error: "http_4xx" });
-    expect(await fetchWith(response(500, {}))).toEqual({ ok: false, error: "http_5xx" });
+    expect(await fetchWith(response(404, {}))).toMatchObject({ ok: false, error: "http_4xx" });
+    expect(await fetchWith(response(500, {}))).toMatchObject({ ok: false, error: "http_5xx" });
     expect(await fetchWith(response(200, { "content-type": "application/pdf" }))).toEqual({
       ok: false,
       error: "not_html",

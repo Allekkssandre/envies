@@ -40,7 +40,9 @@ export default async function Image({ params }: { params: Promise<{ slug: string
   const { slug, ref } = await params;
   const fonts = await ogFonts();
   const lookup = await getListBySlug(slug);
-  const content = lookup.kind === "found" ? await getListContent(lookup.list.id) : null;
+  // Liste privée : pas d'aperçu de l'article (image générique).
+  const content =
+    lookup.kind === "found" && !lookup.list.isPrivate ? await getListContent(lookup.list.id, false) : null;
   const item = content?.items.find((i) => i.ref === ref);
   if (lookup.kind !== "found" || !item) {
     return new ImageResponse(

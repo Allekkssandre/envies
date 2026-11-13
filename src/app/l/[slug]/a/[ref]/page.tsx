@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { formatPrice } from "@/lib/format";
 import { ItemSheet } from "@/components/item/ItemSheet";
 import { ListView } from "@/components/list/ListView";
+import { PrivateListView } from "@/components/list/PrivateListView";
 import { loadListPage } from "@/server/db/listPage";
 import { itemName } from "@/types/models";
 
@@ -35,7 +36,9 @@ export async function generateMetadata({ params }: PageProps<"/l/[slug]/a/[ref]"
 /** Lien direct vers une fiche : la liste en fond, la fiche ouverte par-dessus. */
 export default async function ItemPage({ params }: PageProps<"/l/[slug]/a/[ref]">) {
   const { slug, ref } = await params;
-  const { list, content } = await loadListPage(slug);
+  const { list, content, locked } = await loadListPage(slug);
+  // Liste privée : d'abord le mot de passe, la fiche s'ouvre ensuite.
+  if (locked) return <PrivateListView list={list} />;
   if (!content.items.some((i) => i.ref === ref)) notFound();
   return (
     <>

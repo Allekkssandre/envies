@@ -258,6 +258,15 @@ export function cleanTitle(title: string, siteName: string | null, domain: strin
   return text.slice(0, 200);
 }
 
+/** Titres de pages d'erreur, de connexion ou de vérification : jamais un nom de produit. */
+const JUNK_TITLE =
+  /^(?:amazon(?:\.[a-z.]+)?|access denied|accès refusé|robot check|just a moment\.*|attention required.*|are you a (?:robot|human)\??|page (?:introuvable|non trouvée|not found)|not found|404.*|erreur(?: d+)?|error(?: d+)?|oops.*|oups.*|sign in|se connecter|connexion|log in|login|accueil|home|homepage|untitled|sans titre|loading\.*|chargement\.*|captcha|security check|vérification.*|une erreur est survenue.*)$/i;
+
+export function isJunkTitle(title: string): boolean {
+  const t = title.trim();
+  return t.length < 2 || JUNK_TITLE.test(t);
+}
+
 function absoluteImages(urls: (string | null | undefined)[], base: string): string[] {
   const out: string[] = [];
   for (const raw of urls) {
@@ -373,6 +382,7 @@ export function extractFrom($: CheerioAPI, baseUrl: string): Extracted {
   // Un nom qui n'est que celui du site (« Amazon.fr », « etsy.com ») : page sans produit.
   if (title && [siteName, domain, domain.split(".")[0] ?? ""].some((s) => fold(s) === fold(title!)))
     title = null;
+  if (title && isJunkTitle(title)) title = null;
   return {
     title,
     description: description ? plainText(description).slice(0, 1000) || null : null,

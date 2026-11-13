@@ -9,6 +9,8 @@ const SESSION_SECONDS = 12 * 60 * 60;
 const RENEW_BELOW_SECONDS = 7 * DAY;
 
 export const cookieName = (listId: string) => `envies_edit_${listId}`;
+/** Accès en lecture à une liste privée (lien ou mot de passe de lecture). */
+export const readCookieName = (listId: string) => `envies_lire_${listId}`;
 
 function secret(): string {
   const value = process.env.EDIT_TOKEN_SECRET;
@@ -118,4 +120,42 @@ export async function unlockedLists(): Promise<UnlockedList[]> {
       title: row.lists.title,
       ownerName: row.lists.owner_name,
     }));
+}
+
+// ---------------------------------------------------------------------------
+// Lecture d'une liste privée
+// ---------------------------------------------------------------------------
+
+/** Pose le cookie de lecture (30 jours, ou session si « rester déverrouillé » est décoché). */
+export async function setReadCookie(listId: string, readVersion: number, remember: boolean): Promise<void> {
+  const lifetime = remember ? REMEMBER_SECONDS : SESSION_SECONDS;
+  const payload: EditTokenPayload = { l: listId, v: readVersion, e: nowSeconds() + lifetime };
+  if (remember) payload.r = 1;
+  // Préfixe « lecture » dans la charge signée : un jeton de lecture ne vaut jamais pour modifier.
+  (await cookies()).set(readCookieName(listId), signEditToken({ ...payload, l: `r:${listId}` }, secret()), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    ...(remember ? { maxAge: lifetime } : {}),
+  });
+}
+
+export async function clearReadCookie(listId: string): Promise<void> {
+  (await cookies()).delete({ name: readCookieName(listId), path: "/" });
+}
+
+/** Lecture seule : l'appareil a-t-il un accès en lecture valide (signature, expiration, version) ? */
+export async function hasReadAccess(listId: string): Promise<boolean> {
+  const raw = (await cookies()).get(readCookieName(listId))?.value;
+  if (!raw) return false;
+  const payload = verifyEditToken(raw, secret(), nowSeconds());
+  if (!payload || payload.l !== `r:${listId}`) return false;
+  const { data } = await getServiceDb()
+    .from("list_secrets")
+    .select("read_version, lists!inner(deleted_at)")
+    .eq("list_id", listId)
+    .is("lists.deleted_at", null)
+    .maybeSingle();
+  return data !== null && data.read_version === payload.v;
 }

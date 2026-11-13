@@ -1,5 +1,7 @@
 "use client";
 
+import { looksLikeUrl } from "@/lib/normalizeUrl";
+import { splitLinkAndText, titleFromUrl } from "@/lib/titleFromUrl";
 import { generateKeyBetween } from "fractional-indexing";
 import { useRouter } from "next/navigation";
 import {
@@ -125,13 +127,20 @@ function tempItem(fields: Partial<ItemInfo> & { position: string }, n: number): 
 
 /** Ligne → aperçu local immédiat (lien : domaine en attendant ; nom : tel quel). */
 function draftFromLine(line: string) {
-  const isLink = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}(\/|\?|$)/i.test(line) && !/\s/.test(line);
-  if (!isLink) return { title: line.slice(0, 200), url: null, domain: null, fetchStatus: "none" as const };
-  const host = line
+  const isLink = looksLikeUrl(line);
+  const shared = isLink ? { url: line, text: null } : splitLinkAndText(line);
+  if (!shared) return { title: line.slice(0, 200), url: null, domain: null, fetchStatus: "none" as const };
+  const host = shared.url
     .replace(/^https?:\/\//i, "")
     .split(/[/?#]/)[0]!
     .toLowerCase();
-  return { title: null, url: line, domain: host.replace(/^(www|m)\./, ""), fetchStatus: "pending" as const };
+  return {
+    // Même nom provisoire que le serveur : la carte a un nom dès l'ajout.
+    title: shared.text ?? titleFromUrl(shared.url),
+    url: shared.url,
+    domain: host.replace(/^(www|m)\./, ""),
+    fetchStatus: "pending" as const,
+  };
 }
 
 /**
@@ -225,7 +234,9 @@ export function BoardProvider({ list, content, children }: Props) {
   const live = useRef(false);
   // Temps réel : quand l'extraction d'un lien se termine, la carte se met à jour sans recharger.
   // Seuls les champs remplis par l'extraction sont repris (le reste suit les actions de cette page).
+  // Liste privée : la clé publique ne voit pas ses articles, le rafraîchissement ci-dessous suffit.
   useEffect(() => {
+    if (list.isPrivate) return;
     const supabase = getSupabaseBrowser();
     const channel = supabase
       .channel(`items:${list.id}`)
@@ -247,7 +258,7 @@ export function BoardProvider({ list, content, children }: Props) {
       live.current = false;
       void supabase.removeChannel(channel);
     };
-  }, [list.id, refresh]);
+  }, [list.id, list.isPrivate, refresh]);
 
   // Filet de sécurité : tant qu'un lien est en « Récupération… », rafraîchir (au plus 2 minutes),
   // et relancer toutes les 30 s les extractions restées en attente.

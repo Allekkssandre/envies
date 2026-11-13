@@ -273,3 +273,23 @@ describe("nettoyage", () => {
     expect(extract("<title>Seul titre</title>", "https://a.test/").title).toBe("Seul titre");
   });
 });
+
+describe("titres parasites", () => {
+  it.each([
+    "Amazon.fr",
+    "Access Denied",
+    "Just a moment...",
+    "Page introuvable",
+    "404 Not Found",
+    "Connexion",
+  ])("%s → pas de nom", (title) => {
+    expect(
+      extract(`<html><head><title>${title}</title></head></html>`, "https://boutique.fr/p/x").title,
+    ).toBeNull();
+  });
+  it("un vrai nom passe", () => {
+    expect(
+      extract('<meta property="og:title" content="Error 404 T-shirt noir">', "https://boutique.fr/p/x").title,
+    ).toBe("Error 404 T-shirt noir");
+  });
+});

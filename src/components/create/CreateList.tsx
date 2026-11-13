@@ -11,6 +11,7 @@ import { Foliage, Halo } from "@/components/ui/Foliage";
 import { LinkBox } from "@/components/ui/LinkBox";
 import { PasswordField } from "@/components/ui/PasswordField";
 import { SplitTitle } from "@/components/ui/SplitTitle";
+import { Toggle } from "@/components/ui/Toggle";
 import { ambianceTheme } from "@/lib/ambiance";
 import { cn } from "@/lib/cn";
 import {
@@ -23,10 +24,26 @@ import {
 import { createList, type CreatedList } from "@/server/actions/lists";
 import type { Ambiance } from "@/types/models";
 
-type Values = { title: string; ownerName: string; password: string; description: string; ambiance: Ambiance };
+type Values = {
+  title: string;
+  ownerName: string;
+  password: string;
+  readPassword: string;
+  description: string;
+  ambiance: Ambiance;
+  isPrivate: boolean;
+};
 type Errors = Partial<Record<CreateListField, string>>;
 
-const INITIAL: Values = { title: "", ownerName: "", password: "", description: "", ambiance: "feuillage" };
+const INITIAL: Values = {
+  title: "",
+  ownerName: "",
+  password: "",
+  readPassword: "",
+  description: "",
+  ambiance: "feuillage",
+  isPrivate: false,
+};
 
 /** Valide un seul champ avec le schéma partagé (sortie de champ). */
 function validateField(field: CreateListField, value: string): string | undefined {
@@ -51,7 +68,7 @@ function CreateForm({ onCreated }: { onCreated: (c: CreatedList) => void }) {
   const set = <K extends keyof Values>(key: K, value: Values[K]) => {
     setValues((v) => ({ ...v, [key]: value }));
     // Une erreur affichée disparaît dès que la saisie redevient valide.
-    if (key !== "ambiance" && errors[key as CreateListField]) {
+    if (key !== "ambiance" && key !== "isPrivate" && errors[key as CreateListField]) {
       setErrors((e) => ({ ...e, [key]: validateField(key as CreateListField, String(value)) }));
     }
   };
@@ -62,6 +79,7 @@ function CreateForm({ onCreated }: { onCreated: (c: CreatedList) => void }) {
     event.preventDefault();
     setFormError(null);
     const fields: CreateListField[] = ["title", "ownerName", "password", "description"];
+    if (values.isPrivate) fields.splice(3, 0, "readPassword");
     const next: Errors = {};
     for (const f of fields) next[f] = validateField(f, values[f]);
     setErrors(next);
@@ -71,7 +89,11 @@ function CreateForm({ onCreated }: { onCreated: (c: CreatedList) => void }) {
       return;
     }
     startTransition(async () => {
-      const result = await createList({ ...values, website: honeypot.current?.value ?? "" });
+      const result = await createList({
+        ...values,
+        readPassword: values.isPrivate ? values.readPassword : "",
+        website: honeypot.current?.value ?? "",
+      });
       if (result.ok) onCreated(result.data);
       else if (result.error.field) {
         setErrors((e) => ({ ...e, [result.error.field as CreateListField]: result.error.message }));
@@ -159,6 +181,33 @@ function CreateForm({ onCreated }: { onCreated: (c: CreatedList) => void }) {
               />
             </div>
 
+            <div className="max-lg:order-4 lg:col-span-2">
+              <Toggle
+                label="Liste privée"
+                checked={values.isPrivate}
+                onCheckedChange={(on) => set("isPrivate", on)}
+              />
+              <p className="m-0 text-[13px] leading-normal text-muted">
+                Le contenu ne s&apos;ouvre qu&apos;avec le lien de lecture ou un mot de passe. La liste reste
+                visible depuis l&apos;accueil, sans son contenu.
+              </p>
+              {values.isPrivate ? (
+                <div className="mt-4 lg:max-w-[calc(50%-8px)]">
+                  <PasswordField
+                    id="create-readPassword"
+                    label="Mot de passe pour lire (facultatif)"
+                    autoComplete="new-password"
+                    defaultVisible
+                    value={values.readPassword}
+                    onChange={(e) => set("readPassword", e.target.value)}
+                    onBlur={blur("readPassword")}
+                    error={errors.readPassword}
+                    hint="Pour vos proches. Il ouvre la liste sans permettre de la modifier."
+                  />
+                </div>
+              ) : null}
+            </div>
+
             <div
               className={cn(
                 "max-lg:order-5 lg:col-span-2",
@@ -219,8 +268,9 @@ function CreateForm({ onCreated }: { onCreated: (c: CreatedList) => void }) {
                 </p>
               ) : (
                 <p className="m-0 hidden max-w-[320px] text-[13px] leading-normal text-muted lg:order-2 lg:block">
-                  Toutes les listes sont visibles depuis l&apos;accueil. Le mot de passe protège seulement la
-                  modification.
+                  {values.isPrivate
+                    ? "La liste reste visible depuis l'accueil. Son contenu demande le lien de lecture ou un mot de passe."
+                    : "Toutes les listes sont visibles depuis l'accueil. Le mot de passe protège seulement la modification."}
                 </p>
               )}
               <div className="max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:bg-[linear-gradient(rgb(246_241_232/0),var(--color-paper)_35%)] max-lg:px-4 max-lg:pt-4 max-lg:pb-[max(20px,env(safe-area-inset-bottom))] lg:order-1">
@@ -350,9 +400,13 @@ function Created({ created }: { created: CreatedList }) {
         <div className="relative flex flex-col gap-[26px]">
           <LinkBox
             variant="public"
-            label="Lien à partager"
-            hint="Pour vos proches. Lecture seule."
-            url={publicUrl}
+            label={created.isPrivate ? "Lien de lecture" : "Lien à partager"}
+            hint={
+              created.isPrivate
+                ? "Pour vos proches : il ouvre la liste privée en lecture seule, sans mot de passe."
+                : "Pour vos proches. Lecture seule."
+            }
+            url={created.isPrivate ? `${publicUrl}#acces=${created.readKey}` : publicUrl}
           />
           <LinkBox
             variant="secret"

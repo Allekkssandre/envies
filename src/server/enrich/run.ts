@@ -1,5 +1,6 @@
 import "server-only";
 import { normalizeUrl } from "@/lib/normalizeUrl";
+import { titleFromUrl } from "@/lib/titleFromUrl";
 import { getServiceDb, type Db } from "@/server/db/client";
 import { removeItemImage } from "@/server/images";
 import type { Json, TablesUpdate } from "@/types/database";
@@ -52,20 +53,24 @@ function importImageOf(meta: Json | null): string | null {
   return typeof value === "string" ? value : null;
 }
 
-/** Photo d'un fichier importé, pour un article qu'on ne lit pas sur sa page. */
-async function storeImportImage(
+/**
+ * Photo trouvée sans lire la page (fichier importé, photo publique d'Amazon d'après le code
+ * produit) : enregistrée seulement si l'article n'en a toujours pas.
+ */
+async function storeImageWithoutPage(
   db: Db,
   item: { id: string; list_id: string; meta: Json },
-  imageUrl: string,
+  candidates: string[],
   deps: Deps,
-): Promise<void> {
-  const stored = await storeFirstImage(db, item.list_id, item.id, [imageUrl], deps.fetchOptions).catch(
+): Promise<boolean> {
+  const stored = await storeFirstImage(db, item.list_id, item.id, candidates, deps.fetchOptions).catch(
     (error: unknown) => {
-      logError("storeImportImage", error);
+      logError("storeImageWithoutPage", error);
       return null;
     },
   );
-  if (!stored) return;
+  if (!stored) return false;
+  const { data: current } = await db.from("items").select("meta").eq("id", item.id).maybeSingle();
   const { data: set } = await db
     .from("items")
     .update({
@@ -73,13 +78,38 @@ async function storeImportImage(
       image_width: stored.width,
       image_height: stored.height,
       image_source_url: stored.sourceUrl,
-      image_candidates: [imageUrl],
-      meta: { ...asObject(item.meta), lightBackground: stored.lightBackground } as Json,
+      image_candidates: candidates,
+      meta: { ...asObject(current?.meta ?? item.meta), lightBackground: stored.lightBackground } as Json,
     })
     .eq("id", item.id)
     .is("image_path", null)
     .select("id");
   if (!set?.length) await removeItemImage(db, stored.path);
+  return Boolean(set?.length);
+}
+
+const AMAZON_ASIN = /(?:^|\.)amazon\.[a-z.]+$/;
+const ASIN_IN_PATH = /\/(?:dp|gp\/product|gp\/aw\/d)\/([A-Z0-9]{10})(?:[/?]|$)/i;
+
+/** Photo publique d'un produit Amazon d'après son code (ASIN), quand la page refuse les robots. */
+export function amazonImageCandidates(...urls: string[]): string[] {
+  for (const raw of urls) {
+    try {
+      const url = new URL(raw);
+      if (!AMAZON_ASIN.test(url.hostname)) continue;
+      const asin = ASIN_IN_PATH.exec(url.pathname)?.[1]?.toUpperCase();
+      if (asin) return [`https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`];
+    } catch {
+      continue;
+    }
+  }
+  return [];
+}
+
+/** Nom provisoire (tiré de l'adresse ou du texte partagé), remplaçable par celui de la page. */
+function provisionalTitleOf(meta: Json | null): string | null {
+  const value = asObject(meta).provisionalTitle;
+  return typeof value === "string" ? value : null;
 }
 
 /** Lit la page d'un article et enregistre ce qui manque. Ne lève jamais. */
@@ -92,7 +122,7 @@ export async function enrichItem(itemId: string, mode: EnrichMode, deps: Deps = 
     // Sans lecture de page (pas de lien, ou import sans « Compléter depuis les liens ») :
     // seulement la photo donnée dans le fichier.
     if (!item.url || (item.fetch_status === "none" && mode === "initial")) {
-      if (importImage && !item.image_path) await storeImportImage(db, item, importImage, deps);
+      if (importImage && !item.image_path) await storeImageWithoutPage(db, item, [importImage], deps);
       return { itemId, status: "skipped" };
     }
     const url = item.url;
@@ -107,7 +137,27 @@ export async function enrichItem(itemId: string, mode: EnrichMode, deps: Deps = 
       const update: TablesUpdate<"items"> = { fetched_at: new Date().toISOString(), fetch_error: page.error };
       // Une relecture qui échoue ne fait pas perdre ce qui avait été trouvé.
       if (mode === "initial" || item.fetch_status === "pending") update.fetch_status = "failed";
+      // Page illisible (boutique qui bloque les robots) : le nom vient de l'adresse, après
+      // redirections (lien court amzn.eu → page produit).
+      const reached = page.finalUrl ?? url;
+      const fallbackTitle = titleFromUrl(reached) ?? titleFromUrl(url);
+      if (!item.title?.trim() && fallbackTitle) {
+        update.title = fallbackTitle;
+        update.meta = { ...asObject(item.meta), provisionalTitle: fallbackTitle } as Json;
+      }
       await db.from("items").update(update).eq("id", itemId).eq("url", url);
+      const fallbackImages = mergeImages(
+        importImage ? [importImage] : [],
+        amazonImageCandidates(reached, url),
+      );
+      if (!item.image_path && fallbackImages.length) {
+        await storeImageWithoutPage(
+          db,
+          { ...item, meta: (update.meta as Json) ?? item.meta },
+          fallbackImages,
+          deps,
+        );
+      }
       return { itemId, status: "failed", error: page.error };
     }
 
@@ -131,8 +181,13 @@ export async function enrichItem(itemId: string, mode: EnrichMode, deps: Deps = 
       image_candidates: mergeImages(importImage ? [importImage] : [], extracted.images),
       domain: normalizeUrl(page.finalUrl)?.domain ?? fresh.domain,
     };
-    const title = fresh.title?.trim() ? fresh.title : extracted.title;
-    if (!fresh.title?.trim() && extracted.title) update.title = extracted.title;
+    // Le nom saisi n'est jamais remplacé ; un nom provisoire (adresse, texte partagé) l'est par celui de la page.
+    const provisional = provisionalTitleOf(fresh.meta);
+    const typedTitle = fresh.title?.trim() && fresh.title !== provisional ? fresh.title : null;
+    const fallbackTitle = fresh.title?.trim() ? null : (titleFromUrl(page.finalUrl) ?? titleFromUrl(url));
+    const title = typedTitle ?? extracted.title ?? (fresh.title?.trim() || null) ?? fallbackTitle;
+    if (!typedTitle && extracted.title && extracted.title !== fresh.title) update.title = extracted.title;
+    else if (!fresh.title?.trim() && fallbackTitle) update.title = fallbackTitle;
     if (!fresh.description?.trim() && extracted.description) update.description = extracted.description;
 
     const outcome: EnrichOutcome = { itemId, status: "ok" };
@@ -150,6 +205,9 @@ export async function enrichItem(itemId: string, mode: EnrichMode, deps: Deps = 
 
     const meta: Record<string, Json | undefined> = {
       ...asObject(fresh.meta),
+      // Nom trouvé sur la page : il n'est plus provisoire.
+      provisionalTitle:
+        !typedTitle && extracted.title ? undefined : (provisional ?? fallbackTitle ?? undefined),
       siteName: extracted.siteName,
       brand: extracted.brand,
       availability: extracted.availability,
@@ -162,7 +220,10 @@ export async function enrichItem(itemId: string, mode: EnrichMode, deps: Deps = 
     // Photo : seulement s'il n'y en a pas (la photo choisie n'est jamais remplacée).
     let hasImage = Boolean(fresh.image_path);
     // La photo donnée dans un fichier importé passe avant celles de la page.
-    const candidates = mergeImages(importImage ? [importImage] : [], extracted.images);
+    const candidates = mergeImages(
+      importImage ? [importImage] : [],
+      extracted.images.length ? extracted.images : amazonImageCandidates(page.finalUrl, url),
+    );
     if (!hasImage && candidates.length) {
       // Une photo qui ne s'enregistre pas ne fait pas perdre le reste (statut « partial »).
       const stored = await storeFirstImage(db, fresh.list_id, itemId, candidates, deps.fetchOptions).catch(

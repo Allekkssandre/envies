@@ -11,15 +11,15 @@ import { PasswordField } from "@/components/ui/PasswordField";
 import { useKeyboardInset } from "@/hooks/useKeyboardInset";
 import { DESKTOP_QUERY, useMediaQuery } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/cn";
-import { unlockWithKey, unlockWithPassword } from "@/server/actions/access";
+import { unlockForReading, unlockWithKey, unlockWithPassword } from "@/server/actions/access";
 
 type UnlockGateProps = { listId: string; slug: string; title: string };
 
-type Problem = { kind: "wrong" | "rate" | "key" | "other"; message: string };
+export type Problem = { kind: "wrong" | "rate" | "key" | "other"; message: string };
 
-/** Lit `#cle=…` dans l'adresse (jamais envoyé au serveur avec la page). */
-function readKeyFromHash(): string | null {
-  const match = /(?:^|[#&])cle=([^&]+)/.exec(window.location.hash);
+/** Lit `#cle=…` (ou `#acces=…`) dans l'adresse (jamais envoyé au serveur avec la page). */
+export function readKeyFromHash(name: "cle" | "acces" = "cle"): string | null {
+  const match = new RegExp(`(?:^|[#&])${name}=([^&]+)`).exec(window.location.hash);
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
@@ -73,6 +73,8 @@ export function UnlockGate({ listId, slug, title }: UnlockGateProps) {
 }
 
 type DialogProps = {
+  /** `edit` : ouvrir la modification. `view` : lire une liste privée. */
+  purpose?: "edit" | "view";
   listId: string;
   title: string;
   initialProblem: Problem | null;
@@ -80,7 +82,7 @@ type DialogProps = {
   onUnlocked: () => void;
 };
 
-function UnlockDialog(props: DialogProps) {
+export function UnlockDialog(props: DialogProps) {
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
   const keyboardInset = useKeyboardInset(!isDesktop);
   const titleId = useId();
@@ -141,7 +143,16 @@ type FormProps = DialogProps & {
   mobile?: boolean;
 };
 
-function UnlockForm({ listId, title, initialProblem, onUnlocked, titleId, TitleTag, mobile }: FormProps) {
+function UnlockForm({
+  purpose = "edit",
+  listId,
+  title,
+  initialProblem,
+  onUnlocked,
+  titleId,
+  TitleTag,
+  mobile,
+}: FormProps) {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
   const [problem, setProblem] = useState<Problem | null>(initialProblem);
@@ -158,7 +169,10 @@ function UnlockForm({ listId, title, initialProblem, onUnlocked, titleId, TitleT
     event.preventDefault();
     if (problem?.kind === "rate") return;
     startTransition(async () => {
-      const result = await unlockWithPassword({ listId, password, remember });
+      const result =
+        purpose === "view"
+          ? await unlockForReading({ listId, password, remember })
+          : await unlockWithPassword({ listId, password, remember });
       if (result.ok) {
         setProblem(null);
         onUnlocked();
@@ -189,16 +203,18 @@ function UnlockForm({ listId, title, initialProblem, onUnlocked, titleId, TitleT
             mobile ? "text-[34px]" : "text-[44px]",
           )}
         >
-          Modifier <i className="font-light text-ochre">{title}</i>
+          {purpose === "view" ? "Ouvrir" : "Modifier"} <i className="font-light text-ochre">{title}</i>
         </TitleTag>
         <p className="m-0 mt-2 text-[15px] text-ink-soft">
-          Le mot de passe a été choisi à la création de la liste.
+          {purpose === "view"
+            ? "Saisissez le mot de passe de lecture que l'on vous a donné."
+            : "Le mot de passe a été choisi à la création de la liste."}
         </p>
       </div>
 
       <PasswordField
         ref={input}
-        label="Mot de passe pour modifier"
+        label={purpose === "view" ? "Mot de passe" : "Mot de passe pour modifier"}
         autoComplete="current-password"
         enterKeyHint="go"
         value={password}
@@ -253,8 +269,9 @@ function UnlockForm({ listId, title, initialProblem, onUnlocked, titleId, TitleT
       </Button>
 
       <p className="m-0 text-center text-[13px] leading-normal text-muted">
-        Oublié ? Ouvrez le lien secret de modification reçu à la création, ou demandez-le à la personne qui a
-        créé la liste.
+        {purpose === "view"
+          ? "Pas de mot de passe ? Demandez le lien de lecture à la personne qui a créé la liste."
+          : "Oublié ? Ouvrez le lien secret de modification reçu à la création, ou demandez-le à la personne qui a créé la liste."}
       </p>
     </form>
   );

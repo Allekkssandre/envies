@@ -150,3 +150,12 @@ Beaucoup de grandes boutiques (Fnac, Amazon, Leroy Merlin, Etsy, Decathlon, Lebo
 - **Titres parasites** écartés (« Amazon.fr », « Access Denied », « Page introuvable »…).
 - **Photo à la main, en un geste** : dans la fiche, coller une image copiée sur la boutique (ou son adresse), ou la glisser sur la photo. Dans la barre d'ajout, coller une image crée un article avec cette photo.
 
+## Bouton de favoris
+
+Le prix et la photo ne se lisent pas dans l'adresse. Pour les boutiques qui refusent leurs pages au serveur, le favori « Ajouter à Envies » lit la fiche produit **dans le navigateur de la personne**, qui l'affiche déjà. Rien n'est contourné : c'est la page qu'elle a sous les yeux.
+
+- **Installation** : Réglages → Bouton d'ajout (`#favori`). Ordinateur : glisser le bouton dans la barre de favoris. Téléphone : copier le code et le coller comme adresse d'un favori.
+- **Lecture** (`src/lib/bookmarklet.ts`, JavaScript ES5 copié tel quel, testé tel quel) : Product du JSON-LD (graphe, variantes, offres groupées), sinon OpenGraph (`og:title`, `og:image`, `product:price:amount`), microdonnées (`itemprop`), puis la fiche Amazon (`#productTitle`, `.a-offscreen`, `#landingImage`).
+- **Envoi** : ouvre `/partage?url=…&title=…&price=…&currency=…&image=…&depuis=favori`. Une seule liste ouverte sur l'appareil : ajout immédiat ; sinon, choix de la liste.
+- **Action** `addFromPage` : le serveur vérifie tout (nom nettoyé comme pour une page, prix avec `parsePrice`, image téléchargée par `safeFetch` puis traitée comme les autres). Lien déjà dans la liste : l'article est complété (nom provisoire remplacé, prix lu sur une page mis à jour, photo seulement s'il n'en a pas) ; un nom ou un prix saisis ne bougent pas.
+

@@ -14,7 +14,10 @@ export const metadata: Metadata = {
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
-/** Cible de partage (manifeste) : `/partage?url=…&title=…&text=…`. */
+/**
+ * Cible de partage (manifeste) : `/partage?url=…&title=…&text=…`. Le bouton de favoris y
+ * ajoute ce qu'il a lu sur la page : `price`, `currency`, `image` et `depuis=favori`.
+ */
 export default function SharePage({ searchParams }: PageProps<"/partage">) {
   return (
     <div className="on-dark relative isolate flex min-h-dvh flex-col overflow-clip tex-feuillage sm:items-center sm:justify-center sm:px-6 sm:py-16">
@@ -42,6 +45,18 @@ export default function SharePage({ searchParams }: PageProps<"/partage">) {
 
 async function ShareContent({ searchParams }: Pick<PageProps<"/partage">, "searchParams">) {
   const params = await searchParams;
+  const pageUrl = first(params.url);
+  if (first(params.depuis) === "favori" && pageUrl && /^https?:\/\//i.test(pageUrl)) {
+    const lists = await unlockedLists();
+    const page = {
+      url: pageUrl.slice(0, 2048),
+      title: (first(params.title) ?? "").slice(0, 300),
+      price: (first(params.price) ?? "").slice(0, 40),
+      currency: (first(params.currency) ?? "").slice(0, 3),
+      image: (first(params.image) ?? "").slice(0, 2048),
+    };
+    return <ShareTarget line={pageUrl} page={page} lists={lists} />;
+  }
   const line = sharedLine({ url: first(params.url), text: first(params.text), title: first(params.title) });
   // Rien d'utilisable dans le partage : retour à l'accueil.
   if (!line) redirect("/");

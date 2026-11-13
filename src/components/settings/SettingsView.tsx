@@ -37,6 +37,7 @@ import {
   updateSlug,
 } from "@/server/actions/settings";
 import type { CategoryInfo, ListInfo, TagInfo } from "@/types/models";
+import { BookmarkletCard } from "./BookmarkletCard";
 import { Card, type Track } from "./Card";
 import { CategoriesSection, TagsSection } from "./Taxonomy";
 
@@ -60,6 +61,7 @@ export const SECTIONS = [
   { id: "categories", label: "Catégories" },
   { id: "tags", label: "Tags" },
   { id: "acces", label: "Accès" },
+  { id: "favori", label: "Bouton d'ajout" },
   { id: "exporter", label: "Exporter" },
   { id: "supprimer", label: "Supprimer" },
 ] as const;
@@ -168,6 +170,7 @@ export function SettingsView(props: Props) {
             track={track}
             onChange={setList}
           />
+          <BookmarkletCard />
           <Card id="exporter" title="Exporter">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <a

@@ -96,6 +96,7 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | item.visit | Voir sur {domaine} |
 | item.readMore | Lire la suite |
 | item.fetchFailed | Les infos n'ont pas pu être lues sur la page. |
+| item.fetchFailed.bookmarklet | Utiliser le bouton d'ajout |
 | elsewhere.title | Trouver ailleurs |
 | elsewhere.subtitle | même recherche, autres boutiques |
 | elsewhere.subtitle.mobile | Même recherche, autres boutiques. Modifiez les mots si besoin. |
@@ -364,3 +365,21 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | share.choose | Dans quelle liste ? |
 | share.none | Ouvrez d'abord une de vos listes en mode édition sur ce téléphone. |
 | share.added | Ajouté à {titre} |
+| share.completed | Article complété dans {titre} |
+| share.none.device | Ouvrez d'abord une de vos listes en mode édition sur cet appareil. (depuis le bouton de favoris) |
+
+## Bouton d'ajout (réglages)
+
+| Clé | Texte |
+|---|---|
+| settings.bookmarklet.nav | Bouton d'ajout |
+| settings.bookmarklet.title | Bouton d'ajout |
+| settings.bookmarklet.text | Certaines boutiques refusent leurs pages à Envies. Ce bouton lit le nom, le prix et la photo dans votre navigateur. |
+| settings.bookmarklet.button | Ajouter à Envies |
+| settings.bookmarklet.desktop | Glissez ce bouton dans la barre de favoris. Sur une fiche produit, cliquez dessus. |
+| settings.bookmarklet.click | Glissez-le dans la barre de favoris. |
+| settings.bookmarklet.copy | Copier le code du favori |
+| settings.bookmarklet.copied | Code copié |
+| settings.bookmarklet.copyFailed | La copie n'a pas marché. |
+| settings.bookmarklet.mobile | Ajoutez un favori à n'importe quelle page, puis remplacez son adresse par ce code. Sur une fiche produit, ouvrez ce favori. |
+| settings.bookmarklet.existing | Un article déjà dans la liste est complété : son prix et sa photo s'ajoutent. |

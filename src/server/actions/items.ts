@@ -2,6 +2,8 @@
 
 import { z } from "zod";
 import { formatPrice } from "@/lib/format";
+import { currencyFromText, parsePrice } from "@/lib/parsePrice";
+import { cleanTitle, isJunkTitle } from "@/server/enrich/extract";
 import { splitLinkAndText, titleFromUrl } from "@/lib/titleFromUrl";
 import { looksLikeUrl, normalizeUrl } from "@/lib/normalizeUrl";
 import { byPosition, keyBetween, keysAtEndOf, keysAtStart } from "@/lib/positions";
@@ -185,6 +187,153 @@ export async function addItems(input: z.input<typeof addInput>): Promise<Result<
     return ok({ created, duplicates });
   } catch (error) {
     logError("addItems", error);
+    return fail("INTERNAL", GENERIC_ERROR);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Depuis le bouton de favoris (page lue dans le navigateur)
+// ---------------------------------------------------------------------------
+
+const pageInput = z.object({
+  listId: uuid,
+  url: z.string().max(2048),
+  title: z.string().max(300).default(""),
+  price: z.string().max(40).default(""),
+  currency: z.string().max(3).default(""),
+  image: z.string().max(2048).default(""),
+});
+
+export type PageAddResult = { item: ItemInfo; status: "created" | "updated" };
+
+const asMeta = (v: unknown): Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+
+/**
+ * Article lu par le bouton de favoris, dans le navigateur, sur une boutique qui refuse ses pages
+ * au serveur. Lien déjà dans la liste : complète ce qui manque (nom provisoire, prix lu sur une
+ * page, photo) sans toucher à ce qui a été saisi. Sinon, nouvel article en tête de « À trier ».
+ */
+export async function addFromPage(input: z.input<typeof pageInput>): Promise<Result<PageAddResult>> {
+  const parsed = pageInput.safeParse(input);
+  if (!parsed.success) return fail("VALIDATION", GENERIC_ERROR);
+  const data = parsed.data;
+  const n = normalizeUrl(data.url);
+  if (!n || CONTROL.test(data.title)) return fail("VALIDATION", GENERIC_ERROR);
+  const guard = await guardList(data.listId);
+  if (!guard.ok) return guard.result;
+  const { ctx } = guard;
+
+  // « Amazon.fr : Nom » : préfixe du site retiré, puis les suffixes (« Nom | Boutique »).
+  const named = data.title.replace(/^\s*(?:[a-z0-9-]+\.)+[a-z]{2,}\s*[:|–—-]\s+/i, "");
+  const pageTitle = named.trim() ? cleanTitle(named, null, n.domain) : "";
+  const title = pageTitle && !isJunkTitle(pageTitle) ? pageTitle : titleFromUrl(data.url);
+  const hint = /^[A-Za-z]{3}$/.test(data.currency) ? data.currency.toUpperCase() : null;
+  const price = parsePrice(data.price, hint ?? currencyFromText(data.price));
+  const imageUrl = /^https?:\/\//i.test(data.image) ? data.image : null;
+  const now = new Date().toISOString();
+
+  try {
+    const limit = await hitRateLimit(`add:${ctx.list.id}`, 300, 60 * 60);
+    if (!limit.allowed)
+      return fail("RATE_LIMITED", "Beaucoup d'ajouts d'un coup. Réessayez dans quelques minutes.");
+
+    const { data: existing } = await ctx.db
+      .from("items")
+      .select("id, title, price_cents, price_source, image_path, meta, fetch_status")
+      .eq("list_id", ctx.list.id)
+      .eq("url_key", n.urlKey)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    let itemId: string;
+    let status: PageAddResult["status"];
+    let needsImage: boolean;
+    if (existing) {
+      const meta = asMeta(existing.meta);
+      const update: TablesUpdate<"items"> = { fetch_error: null, fetched_at: now };
+      // Le nom saisi n'est jamais remplacé ; un nom vide ou provisoire l'est par celui de la page.
+      const typed = existing.title?.trim() && existing.title !== meta.provisionalTitle;
+      if (!typed && pageTitle && !isJunkTitle(pageTitle)) {
+        update.title = pageTitle;
+        update.meta = { ...meta, provisionalTitle: undefined } as TablesUpdate<"items">["meta"];
+      }
+      // Un prix saisi à la main reste ; un prix lu sur une page est remis à jour.
+      if (price && (existing.price_cents === null || existing.price_source !== "manual")) {
+        update.price_cents = price.cents;
+        update.currency = price.currency ?? ctx.list.currency;
+        update.price_source = "page";
+        update.price_checked_at = now;
+      }
+      if (existing.fetch_status === "failed" || existing.fetch_status === "pending")
+        update.fetch_status = price && (existing.image_path || imageUrl) ? "ok" : "partial";
+      await ctx.db.from("items").update(update).eq("id", existing.id);
+      itemId = existing.id;
+      status = "updated";
+      needsImage = !existing.image_path;
+    } else {
+      const positions = await listPositions(ctx);
+      const [position] = keysAtStart(positions[0]?.position ?? null, 1);
+      const { data: created, error } = await ctx.db
+        .from("items")
+        .insert({
+          list_id: ctx.list.id,
+          title,
+          url: n.url,
+          url_key: n.urlKey,
+          domain: n.domain,
+          position: position!,
+          price_cents: price?.cents ?? null,
+          currency: price ? (price.currency ?? ctx.list.currency) : null,
+          price_source: price ? "page" : null,
+          price_checked_at: price ? now : null,
+          fetch_status: price && imageUrl ? "ok" : "partial",
+          fetched_at: now,
+          image_candidates: imageUrl ? [imageUrl] : [],
+          meta: pageTitle && !isJunkTitle(pageTitle) ? {} : title ? { provisionalTitle: title } : {},
+        })
+        .select("id")
+        .single();
+      if (error || !created) {
+        if (error?.code === UNIQUE_VIOLATION) return fail("DUPLICATE", DUPLICATE_MESSAGE);
+        throw new Error(error?.message ?? "insertion impossible");
+      }
+      itemId = created.id;
+      status = "created";
+      needsImage = true;
+    }
+
+    // Photo : téléchargée par le serveur (les serveurs d'images des boutiques répondent en
+    // général), seulement si l'article n'en a pas. Une photo qui échoue ne bloque pas l'ajout.
+    if (needsImage && imageUrl) {
+      const image = await downloadImage(imageUrl).catch(() => null);
+      if (image) {
+        const prefix = await uploadItemImage(ctx.db, ctx.list.id, itemId, image);
+        const { data: row } = await ctx.db.from("items").select("meta").eq("id", itemId).single();
+        const { data: set } = await ctx.db
+          .from("items")
+          .update({
+            image_path: prefix,
+            image_width: image.width,
+            image_height: image.height,
+            image_source_url: imageUrl,
+            image_candidates: [imageUrl],
+            meta: { ...asMeta(row?.meta), lightBackground: image.lightBackground },
+          })
+          .eq("id", itemId)
+          .is("image_path", null)
+          .select("id");
+        if (!set?.length) await removeItemImage(ctx.db, prefix);
+      } else if (status === "created") {
+        await ctx.db.from("items").update({ fetch_status: "partial" }).eq("id", itemId);
+      }
+    }
+
+    revalidateList(ctx.list.slug);
+    const [item] = await readItems(ctx, [itemId]);
+    return item ? ok({ item, status }) : fail("INTERNAL", GENERIC_ERROR);
+  } catch (error) {
+    logError("addFromPage", error);
     return fail("INTERNAL", GENERIC_ERROR);
   }
 }

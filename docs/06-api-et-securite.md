@@ -8,6 +8,8 @@ Enjeu de sécurité faible (listes de cadeaux publiques), mais on fait les chose
 
 Cookie `envies_edit_<listId>` (un par liste déverrouillée), `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`.
 
+Liste privée : cookie de lecture `envies_lire_<listId>`, même format et mêmes durées ; sa charge porte `l = "r:<listId>"` (jamais valable pour modifier) et `v = read_version`. Un accès d'édition ouvre aussi la lecture.
+
 ```
 valeur = base64url(JSON {"l": listId, "v": authVersion, "e": expiresAtUnix}) + "." + base64url(HMAC-SHA256(payload, EDIT_TOKEN_SECRET))
 ```
@@ -24,7 +26,9 @@ valeur = base64url(JSON {"l": listId, "v": authVersion, "e": expiresAtUnix}) + "
 | `createList` | titre, prénom, mot de passe, petit mot, ambiance, `website` (piège) | crée liste + secret, pose le cookie (30 jours), renvoie `{ slug, editKey }` |
 | `unlockWithPassword` | `listId`, `password`, `remember` | limite `unlock:<listId>:<ipHash>` 10 / 15 min ; scrypt ; pose le cookie |
 | `unlockWithKey` | `listId`, `key` | même limite ; compare la clé normalisée (majuscules, sans tirets) ; pose le cookie (30 jours) |
-| `lockDevice` | `listId` | supprime le cookie |
+| `lockDevice` | `listId` | supprime les cookies d'édition et de lecture |
+| `unlockForReading` | `listId`, `password`, `remember` | liste privée ; même limite ; mot de passe de lecture → cookie de lecture, mot de passe de modification → cookie d'édition |
+| `unlockWithReadKey` | `listId`, `key` | lien de lecture `#acces=…` ; même limite ; pose le cookie de lecture (30 jours) |
 
 `ipHash` = SHA-256(`x-forwarded-for` premier élément + `RATE_LIMIT_SALT`), 16 premiers caractères.
 
@@ -47,6 +51,8 @@ Chaque action : 1) valide l'entrée avec zod ; 2) `await requireEdit(listId)` (s
 | `updateSlug` | `listId`, `slug` | slugifié, unique ; ajoute l'ancien dans `list_redirects` ; `DUPLICATE` si pris |
 | `changePassword` | `listId`, `newPassword` (≥ 4) | `auth_version + 1`, nouveau cookie pour l'appareil courant |
 | `regenerateEditKey` | `listId` | nouvelle clé, `auth_version + 1`, nouveau cookie ; renvoie la clé |
+| `setReadPassword` | `listId`, `password` (vide pour retirer, sinon ≥ 4) | `read_version + 1` (les lecteurs déjà entrés doivent rouvrir) |
+| `regenerateReadKey` | `listId` | nouveau lien de lecture, `read_version + 1` ; renvoie la clé |
 | `getEditKey` | `listId` | pour l'afficher dans les réglages |
 | `deleteList` | `listId`, `confirmTitle` | `confirmTitle === title` exactement ; suppression douce ; supprime le cookie |
 

@@ -10,7 +10,14 @@ import { setEditCookie } from "@/server/auth/session";
 import { getServiceDb, type Db } from "@/server/db/client";
 import { fail, GENERIC_ERROR, ok, type Result } from "./result";
 
-export type CreatedList = { slug: string; title: string; editKey: string; isPrivate: boolean };
+export type CreatedList = {
+  slug: string;
+  title: string;
+  editKey: string;
+  isPrivate: boolean;
+  /** Clé du lien de lecture (`#acces=…`), utile pour une liste privée. */
+  readKey: string;
+};
 
 const SLUG_MAX = 80;
 const UNIQUE_VIOLATION = "23505";
@@ -45,11 +52,17 @@ export async function createList(input: CreateListInput): Promise<Result<Created
     const [field, message] = Object.entries(errors)[0] ?? ["title", GENERIC_ERROR];
     return fail("VALIDATION", message, field);
   }
-  const { title, ownerName, password, description, ambiance, isPrivate, website } = parsed.data;
+  const { title, ownerName, password, readPassword, description, ambiance, isPrivate, website } = parsed.data;
 
   // Champ piège rempli : faire comme si tout allait bien, sans rien créer.
   if (website && website.trim() !== "") {
-    return ok({ slug: slugify(title) || "liste", title, editKey: generateEditKey(), isPrivate });
+    return ok({
+      slug: slugify(title) || "liste",
+      title,
+      editKey: generateEditKey(),
+      isPrivate,
+      readKey: generateEditKey(),
+    });
   }
 
   try {
@@ -60,6 +73,7 @@ export async function createList(input: CreateListInput): Promise<Result<Created
 
     const db = getServiceDb();
     const passwordHash = await hashPassword(password);
+    const readPasswordHash = isPrivate && readPassword ? await hashPassword(readPassword) : null;
 
     // Course possible sur le slug : on réessaie quelques fois si l'index unique refuse.
     let created: { id: string; slug: string } | null = null;
@@ -83,13 +97,24 @@ export async function createList(input: CreateListInput): Promise<Result<Created
     if (!created) throw new Error("aucun slug libre");
 
     let editKey = "";
+    let readKey = "";
     for (let attempt = 0; attempt < 5 && !editKey; attempt++) {
       const key = generateEditKey();
-      const { error } = await db
+      const { data, error } = await db
         .from("list_secrets")
-        .insert({ list_id: created.id, password_hash: passwordHash, edit_key: key });
-      if (!error) editKey = key;
-      else if (error.code !== UNIQUE_VIOLATION) break;
+        .insert({
+          list_id: created.id,
+          password_hash: passwordHash,
+          edit_key: key,
+          read_key: generateEditKey(),
+          read_password_hash: readPasswordHash,
+        })
+        .select("read_key")
+        .single();
+      if (!error) {
+        editKey = key;
+        readKey = data.read_key;
+      } else if (error.code !== UNIQUE_VIOLATION) break;
     }
     if (!editKey) {
       // Pas de transaction côté client : on retire la liste orpheline.
@@ -99,7 +124,7 @@ export async function createList(input: CreateListInput): Promise<Result<Created
 
     await setEditCookie(created.id, 1, true);
     revalidatePath("/");
-    return ok({ slug: created.slug, title, editKey, isPrivate });
+    return ok({ slug: created.slug, title, editKey, isPrivate, readKey });
   } catch (error) {
     console.error("createList", error instanceof Error ? error.message : error);
     return fail("INTERNAL", GENERIC_ERROR);

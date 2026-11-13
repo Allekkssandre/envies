@@ -21,10 +21,19 @@ type ListHeroProps = {
   inboxCount?: number;
   /** Liste privée verrouillée : ni chiffres, ni petit mot. */
   locked?: boolean;
+  sharePath?: string;
 };
 
 /** Héros d'ambiance de la page liste : barre du haut, prénom, titre, petit mot et chiffres. */
-export function ListHero({ list, stats, editing = false, inboxCount = 0, locked = false }: ListHeroProps) {
+export function ListHero({
+  list,
+  stats,
+  editing = false,
+  inboxCount = 0,
+  locked = false,
+  sharePath,
+}: ListHeroProps) {
+  const shareTo = sharePath ?? `/l/${list.slug}`;
   const theme = ambianceTheme(list.ambiance);
   const tone = theme.dark ? "dark" : "light";
   const total = stats.totalCents > 0 ? formatTotal(stats.totalCents, list.currency, stats.approximate) : null;
@@ -121,14 +130,14 @@ export function ListHero({ list, stats, editing = false, inboxCount = 0, locked 
             </Link>
             <div className="flex gap-2 sm:gap-2.5">
               <span className="hidden sm:contents">
-                <ShareButton title={list.title} path={`/l/${list.slug}`} variant="full" tone={tone} />
+                <ShareButton title={list.title} path={shareTo} variant="full" tone={tone} />
                 <Link href={`/l/${list.slug}/edition`} className={buttonClasses("linen", 46)}>
                   <Pencil aria-hidden="true" />
                   Modifier
                 </Link>
               </span>
               <span className="contents sm:hidden">
-                <ShareButton title={list.title} path={`/l/${list.slug}`} variant="round" tone={tone} />
+                <ShareButton title={list.title} path={shareTo} variant="round" tone={tone} />
                 <Link
                   href={`/l/${list.slug}/edition`}
                   aria-label="Modifier la liste"

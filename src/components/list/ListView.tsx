@@ -10,15 +10,23 @@ export function ListView({
   list,
   content,
   editing = false,
+  sharePath,
 }: {
   list: ListInfo;
   content: ListContent;
   /** Mode édition (jalon 2 : héros réduit, pastille, verrouiller, terminer). */
   editing?: boolean;
+  /** Lien partagé par « Partager » (liste privée ouverte en édition : le lien de lecture). */
+  sharePath?: string;
 }) {
   return (
     <div className="relative isolate min-h-dvh overflow-clip">
-      <ListHero list={list} stats={listStats(content.items, list.currency)} editing={editing} />
+      <ListHero
+        list={list}
+        stats={listStats(content.items, list.currency)}
+        editing={editing}
+        sharePath={sharePath}
+      />
       <Halo tone="ochre" strength={0.22} className="top-[700px] -right-[200px]" />
       <Halo tone="olive" strength={0.16} className="top-[1150px] -left-[260px]" />
       <main>

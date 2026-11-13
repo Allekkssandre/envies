@@ -25,6 +25,12 @@ export const PASSWORD_MAX = 200;
 
 export const AMBIANCES = ["feuillage", "ciel", "ambre"] as const;
 
+/** Mot de passe facultatif : vide, ou mêmes règles que le mot de passe de modification. */
+export const optionalPassword = z
+  .string()
+  .max(PASSWORD_MAX, `${PASSWORD_MAX} caractères au plus.`)
+  .refine((s) => s === "" || s.length >= PASSWORD_MIN, "4 caractères au moins.");
+
 export const createListSchema = z.object({
   title: singleLine(1, TITLE_MAX, {
     empty: "Donnez un nom à la liste.",
@@ -50,12 +56,14 @@ export const createListSchema = z.object({
   ambiance: z.enum(AMBIANCES),
   /** Privée : le contenu ne se lit qu'avec le mot de passe ou le lien secret. */
   isPrivate: z.boolean().default(false),
+  /** Liste privée : mot de passe de lecture facultatif (le lien de lecture suffit sinon). */
+  readPassword: optionalPassword.default(""),
   /** Champ piège, invisible : rempli par les robots seulement. */
   website: z.string().optional(),
 });
 
 export type CreateListInput = z.input<typeof createListSchema>;
-export type CreateListField = "title" | "ownerName" | "password" | "description";
+export type CreateListField = "title" | "ownerName" | "password" | "readPassword" | "description";
 
 /** Premier message d'erreur par champ. */
 export function fieldErrors(error: z.ZodError): Partial<Record<CreateListField, string>> {

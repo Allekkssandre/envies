@@ -1,12 +1,17 @@
 import "server-only";
 import { notFound } from "next/navigation";
-import { hasEditAccess } from "@/server/auth/session";
+import { hasEditAccess, hasReadAccess } from "@/server/auth/session";
 import type { ListContent, ListInfo } from "@/types/models";
 import { getListBySlug, getListContent } from "./lists";
 
-/** Liste publique, ou liste privée déverrouillée sur cet appareil (même jeton que l'édition). */
+/**
+ * Liste publique, ou liste privée ouverte sur cet appareil : accès en lecture (lien ou mot de
+ * passe de lecture) ou accès d'édition (qui ouvre aussi la lecture).
+ */
 export async function canReadList(list: Pick<ListInfo, "id" | "isPrivate">): Promise<boolean> {
-  return !list.isPrivate || hasEditAccess(list.id);
+  if (!list.isPrivate) return true;
+  const [read, edit] = await Promise.all([hasReadAccess(list.id), hasEditAccess(list.id)]);
+  return read || edit;
 }
 
 const emptyContent = (): ListContent => ({ categories: [], tags: [], items: [], loadedAt: Date.now() });

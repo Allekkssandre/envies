@@ -28,6 +28,7 @@ type Values = {
   title: string;
   ownerName: string;
   password: string;
+  readPassword: string;
   description: string;
   ambiance: Ambiance;
   isPrivate: boolean;
@@ -38,6 +39,7 @@ const INITIAL: Values = {
   title: "",
   ownerName: "",
   password: "",
+  readPassword: "",
   description: "",
   ambiance: "feuillage",
   isPrivate: false,
@@ -77,6 +79,7 @@ function CreateForm({ onCreated }: { onCreated: (c: CreatedList) => void }) {
     event.preventDefault();
     setFormError(null);
     const fields: CreateListField[] = ["title", "ownerName", "password", "description"];
+    if (values.isPrivate) fields.splice(3, 0, "readPassword");
     const next: Errors = {};
     for (const f of fields) next[f] = validateField(f, values[f]);
     setErrors(next);
@@ -86,7 +89,11 @@ function CreateForm({ onCreated }: { onCreated: (c: CreatedList) => void }) {
       return;
     }
     startTransition(async () => {
-      const result = await createList({ ...values, website: honeypot.current?.value ?? "" });
+      const result = await createList({
+        ...values,
+        readPassword: values.isPrivate ? values.readPassword : "",
+        website: honeypot.current?.value ?? "",
+      });
       if (result.ok) onCreated(result.data);
       else if (result.error.field) {
         setErrors((e) => ({ ...e, [result.error.field as CreateListField]: result.error.message }));
@@ -170,11 +177,7 @@ function CreateForm({ onCreated }: { onCreated: (c: CreatedList) => void }) {
                 onChange={(e) => set("password", e.target.value)}
                 onBlur={blur("password")}
                 error={errors.password}
-                hint={
-                  values.isPrivate
-                    ? "Simple, à donner à qui peut voir et modifier."
-                    : "Simple, à donner à qui peut modifier."
-                }
+                hint="Simple, à donner à qui peut modifier."
               />
             </div>
 
@@ -185,9 +188,24 @@ function CreateForm({ onCreated }: { onCreated: (c: CreatedList) => void }) {
                 onCheckedChange={(on) => set("isPrivate", on)}
               />
               <p className="m-0 text-[13px] leading-normal text-muted">
-                Le contenu demande le mot de passe, même pour le lire. La liste reste visible depuis
-                l&apos;accueil, sans son contenu.
+                Le contenu ne s&apos;ouvre qu&apos;avec le lien de lecture ou un mot de passe. La liste reste
+                visible depuis l&apos;accueil, sans son contenu.
               </p>
+              {values.isPrivate ? (
+                <div className="mt-4 lg:max-w-[calc(50%-8px)]">
+                  <PasswordField
+                    id="create-readPassword"
+                    label="Mot de passe pour lire (facultatif)"
+                    autoComplete="new-password"
+                    defaultVisible
+                    value={values.readPassword}
+                    onChange={(e) => set("readPassword", e.target.value)}
+                    onBlur={blur("readPassword")}
+                    error={errors.readPassword}
+                    hint="Pour vos proches. Il ouvre la liste sans permettre de la modifier."
+                  />
+                </div>
+              ) : null}
             </div>
 
             <div
@@ -251,7 +269,7 @@ function CreateForm({ onCreated }: { onCreated: (c: CreatedList) => void }) {
               ) : (
                 <p className="m-0 hidden max-w-[320px] text-[13px] leading-normal text-muted lg:order-2 lg:block">
                   {values.isPrivate
-                    ? "La liste reste visible depuis l'accueil. Son contenu demande le mot de passe."
+                    ? "La liste reste visible depuis l'accueil. Son contenu demande le lien de lecture ou un mot de passe."
                     : "Toutes les listes sont visibles depuis l'accueil. Le mot de passe protège seulement la modification."}
                 </p>
               )}
@@ -382,13 +400,13 @@ function Created({ created }: { created: CreatedList }) {
         <div className="relative flex flex-col gap-[26px]">
           <LinkBox
             variant="public"
-            label="Lien à partager"
+            label={created.isPrivate ? "Lien de lecture" : "Lien à partager"}
             hint={
               created.isPrivate
-                ? "Liste privée : le contenu demande le mot de passe."
+                ? "Pour vos proches : il ouvre la liste privée en lecture seule, sans mot de passe."
                 : "Pour vos proches. Lecture seule."
             }
-            url={publicUrl}
+            url={created.isPrivate ? `${publicUrl}#acces=${created.readKey}` : publicUrl}
           />
           <LinkBox
             variant="secret"

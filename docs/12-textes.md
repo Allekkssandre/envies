@@ -76,7 +76,8 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | list.footer.all | Toutes les listes |
 | private.hero | Liste privée |
 | private.title | Cette liste est privée. |
-| private.text | Son contenu demande le mot de passe. |
+| private.text | Son contenu s'ouvre avec le lien de lecture ou le mot de passe. |
+| private.opening | Ouverture… |
 | private.unlock | Déverrouiller |
 | notFound.title | Introuvable |
 | notFound.text | Cette liste n'existe pas, ou plus. |
@@ -117,9 +118,10 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | create.owner.hint | Affiché sous le titre : « La liste de {prénom} ». |
 | create.password | Mot de passe pour modifier |
 | create.password.hint | Simple, à donner à qui peut modifier. |
-| create.password.hint.private | Simple, à donner à qui peut voir et modifier. |
 | create.private | Liste privée |
-| create.private.hint | Le contenu demande le mot de passe, même pour le lire. La liste reste visible depuis l'accueil, sans son contenu. |
+| create.private.hint | Le contenu ne s'ouvre qu'avec le lien de lecture ou un mot de passe. La liste reste visible depuis l'accueil, sans son contenu. |
+| create.readPassword | Mot de passe pour lire (facultatif) |
+| create.readPassword.hint | Pour vos proches. Il ouvre la liste sans permettre de la modifier. |
 | create.description | Un petit mot (facultatif) |
 | create.description.add | Ajouter un petit mot |
 | create.ambiance | Ambiance |
@@ -127,7 +129,7 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | create.preview | Aperçu |
 | create.submit | Créer la liste |
 | create.note | Toutes les listes sont visibles depuis l'accueil. Le mot de passe protège seulement la modification. |
-| create.note.private | La liste reste visible depuis l'accueil. Son contenu demande le mot de passe. |
+| create.note.private | La liste reste visible depuis l'accueil. Son contenu demande le lien de lecture ou un mot de passe. |
 | create.error.name | Donnez un nom à la liste. |
 | create.error.owner | Indiquez votre prénom. |
 | create.error.password | 4 caractères au moins. |
@@ -136,7 +138,8 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | created.text | « {titre} » est en ligne. Gardez ces deux liens quelque part. |
 | created.publicLink | Lien à partager |
 | created.publicLink.hint | Pour vos proches. Lecture seule. |
-| created.publicLink.hint.private | Liste privée : le contenu demande le mot de passe. |
+| created.readLink | Lien de lecture (liste privée, à la place du lien à partager) |
+| created.readLink.hint | Pour vos proches : il ouvre la liste privée en lecture seule, sans mot de passe. |
 | created.secretLink | Lien secret de modification |
 | created.secretLink.hint | Ouvre la modification sans mot de passe, sur n'importe quel appareil. À ne pas partager. Il reste visible dans les réglages. |
 | created.start | Ajouter les premières envies |
@@ -152,6 +155,9 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | unlock.showPassword / hidePassword | Afficher le mot de passe / Masquer le mot de passe |
 | unlock.remember | Rester déverrouillé sur cet appareil (30 jours) |
 | unlock.view.title | Ouvrir {titre} (liste privée) |
+| unlock.view.text | Saisissez le mot de passe de lecture que l'on vous a donné. |
+| unlock.view.forgot | Pas de mot de passe ? Demandez le lien de lecture à la personne qui a créé la liste. |
+| unlock.error.readKey | Ce lien n'est plus valable. |
 | unlock.view.password | Mot de passe |
 | unlock.submit | Déverrouiller |
 | unlock.forgot | Oublié ? Ouvrez le lien secret de modification reçu à la création, ou demandez-le à la personne qui a créé la liste. |
@@ -323,7 +329,16 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | settings.tags.deleted | Tag supprimé |
 | settings.access.text | Pas de compte : le mot de passe et le lien secret sont les deux clés de la modification. |
 | settings.access.private | Liste privée |
-| settings.access.private.hint | Le contenu ne se lit qu'avec le mot de passe ou le lien secret. La liste reste sur l'accueil, sans son contenu. |
+| settings.access.private.hint | Le contenu ne se lit qu'avec le lien de lecture ou un mot de passe. La liste reste sur l'accueil, sans son contenu. |
+| settings.access.readLink | Lien de lecture |
+| settings.access.readLink.hint | À donner à vos proches : il ouvre la liste en lecture seule, sans mot de passe. |
+| settings.access.readPassword | Mot de passe de lecture |
+| settings.access.readPassword.placeholder | Facultatif · Laissez vide pour garder l'actuel |
+| settings.access.readPassword.hint | Pour ouvrir la liste sans le lien. Il ne permet pas de modifier. · Un mot de passe de lecture est en place. |
+| settings.access.readPassword.save / change / remove | Enregistrer / Changer / Retirer |
+| settings.access.readPassword.saved / removed | Mot de passe de lecture enregistré. / Mot de passe de lecture retiré. |
+| settings.access.readLink.regenerate | Régénérer le lien de lecture |
+| settings.access.readLink.regenerated | Nouveau lien de lecture. L'ancien ne marche plus. |
 | settings.access.private.on / off | La liste est privée. / La liste est publique. |
 | settings.access.newPassword | Nouveau mot de passe |
 | settings.access.newPassword.placeholder | Laissez vide pour garder l'actuel |

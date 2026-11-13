@@ -32,7 +32,7 @@ Storage : bucket public item-images
 | `search_key` | text | rempli par trigger : titre + prénom normalisés (recherche accueil, index trigramme) |
 | `content_updated_at` | timestamptz | mis à jour par trigger à chaque changement d'article (tri « Récentes ») |
 | `deleted_at` | timestamptz | suppression douce |
-| `is_private` | boolean | liste privée (migration `…_private_lists.sql`) : nom, prénom et ambiance restent publics ; petit mot, catégories, tags et articles ne se lisent qu'avec le jeton d'accès (le même que l'édition) |
+| `is_private` | boolean | liste privée (migration `…_private_lists.sql`) : nom, prénom et ambiance restent publics ; petit mot, catégories, tags et articles ne se lisent qu'avec un accès en lecture (lien de lecture, mot de passe de lecture) ou d'édition |
 
 ### `list_secrets` (jamais exposée au client)
 
@@ -87,7 +87,7 @@ Pour l'accueil : `item_count`, `favorite_count`, `total_cents` (dans la devise d
 
 - RLS activée partout.
 - Lecture publique (`anon`, `authenticated`) : listes, catégories, tags, articles, liens article–tag, redirections, **seulement pour les lignes non supprimées** d'une liste non supprimée.
-- Listes privées : les politiques de `categories`, `tags`, `items`, `item_tags` excluent les listes `is_private`. La clé publique ne lit pas la colonne `lists.description` (droits par colonne) ni la vue `list_summaries` : la liste, l'accueil et le contenu d'une liste privée sont lus par le serveur (service role), après `canReadList` (`src/server/db/listPage.ts`). Le temps réel n'est pas utilisé en édition d'une liste privée (rafraîchissement périodique). Les photos restent dans le bucket public, à des adresses impossibles à deviner.
+- Listes privées : les politiques de `categories`, `tags`, `items`, `item_tags` excluent les listes `is_private`. La clé publique ne lit pas la colonne `lists.description` (droits par colonne) ni la vue `list_summaries` : la liste, l'accueil et le contenu d'une liste privée sont lus par le serveur (service role), après `canReadList` (`src/server/db/listPage.ts`). Accès en lecture (migration `…_read_access.sql`) : `list_secrets.read_key` (lien `/l/<slug>#acces=XXXX-XXXX-XXXX`), `read_password_hash` (facultatif, scrypt), `read_version` (+1 à chaque changement, invalide les cookies de lecture). Le temps réel n'est pas utilisé en édition d'une liste privée (rafraîchissement périodique). Les photos restent dans le bucket public, à des adresses impossibles à deviner.
 - Aucune politique d'écriture et `revoke insert, update, delete` pour `anon`/`authenticated` : le navigateur ne peut rien écrire.
 - `list_secrets`, `rate_limits` : RLS sans politique + `revoke select`. Lecture uniquement par le serveur (`service_role`, qui contourne la RLS).
 - **Toute nouvelle table** (migrations suivantes) : `enable row level security`, une politique de lecture si elle doit être publique, et `revoke insert, update, delete, truncate … from anon, authenticated` (Supabase accorde ces droits par défaut aux nouvelles tables).

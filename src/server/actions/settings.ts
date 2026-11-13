@@ -4,7 +4,7 @@ import { randomInt } from "node:crypto";
 import { generateKeyBetween } from "fractional-indexing";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { AMBIANCES, createListSchema } from "@/lib/schemas/list";
+import { AMBIANCES, createListSchema, optionalPassword } from "@/lib/schemas/list";
 import { slugify } from "@/lib/text";
 import { generateEditKey } from "@/server/auth/editKey";
 import { hashPassword } from "@/server/auth/password";
@@ -193,6 +193,66 @@ export async function regenerateEditKey(input: { listId: string }): Promise<Resu
     throw new Error("aucune clé libre");
   } catch (error) {
     logError("regenerateEditKey", error);
+    return fail("INTERNAL", GENERIC_ERROR);
+  }
+}
+
+async function bumpReadVersion(
+  ctx: EditContext,
+  patch: { read_password_hash?: string | null; read_key?: string },
+) {
+  const { data: current } = await ctx.db
+    .from("list_secrets")
+    .select("read_version")
+    .eq("list_id", ctx.list.id)
+    .single();
+  const { error } = await ctx.db
+    .from("list_secrets")
+    .update({ ...patch, read_version: (current?.read_version ?? 1) + 1 })
+    .eq("list_id", ctx.list.id);
+  return error;
+}
+
+/**
+ * Mot de passe de lecture (liste privée) : vide pour le retirer. Les appareils ouverts en
+ * lecture devront le saisir à nouveau (ou rouvrir le lien de lecture).
+ */
+export async function setReadPassword(input: { listId: string; password: string }): Promise<Result<null>> {
+  const parsed = z.object({ listId: uuid, password: optionalPassword }).safeParse(input);
+  if (!parsed.success) {
+    return fail("VALIDATION", parsed.error.issues[0]?.message ?? GENERIC_ERROR, "readPassword");
+  }
+  const guard = await guardList(parsed.data.listId);
+  if (!guard.ok) return guard.result;
+  try {
+    const { password } = parsed.data;
+    const error = await bumpReadVersion(guard.ctx, {
+      read_password_hash: password ? await hashPassword(password) : null,
+    });
+    if (error) throw new Error(error.message);
+    return ok(null);
+  } catch (error) {
+    logError("setReadPassword", error);
+    return fail("INTERNAL", GENERIC_ERROR);
+  }
+}
+
+/** Nouveau lien de lecture : l'ancien ne marche plus, les lecteurs déjà entrés sont refermés. */
+export async function regenerateReadKey(input: { listId: string }): Promise<Result<{ readKey: string }>> {
+  const parsed = uuid.safeParse(input?.listId);
+  if (!parsed.success) return fail("VALIDATION", GENERIC_ERROR);
+  const guard = await guardList(parsed.data);
+  if (!guard.ok) return guard.result;
+  try {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const key = generateEditKey();
+      const error = await bumpReadVersion(guard.ctx, { read_key: key });
+      if (!error) return ok({ readKey: key });
+      if (error.code !== UNIQUE_VIOLATION) throw new Error(error.message);
+    }
+    throw new Error("aucune clé libre");
+  } catch (error) {
+    logError("regenerateReadKey", error);
     return fail("INTERNAL", GENERIC_ERROR);
   }
 }

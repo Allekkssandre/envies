@@ -262,6 +262,9 @@ export type Database = {
           edit_key: string
           list_id: string
           password_hash: string
+          read_key: string
+          read_password_hash: string | null
+          read_version: number
           updated_at: string
         }
         Insert: {
@@ -269,6 +272,9 @@ export type Database = {
           edit_key: string
           list_id: string
           password_hash: string
+          read_key?: string
+          read_password_hash?: string | null
+          read_version?: number
           updated_at?: string
         }
         Update: {
@@ -276,6 +282,9 @@ export type Database = {
           edit_key?: string
           list_id?: string
           password_hash?: string
+          read_key?: string
+          read_password_hash?: string | null
+          read_version?: number
           updated_at?: string
         }
         Relationships: [

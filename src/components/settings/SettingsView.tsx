@@ -31,6 +31,8 @@ import {
   changePassword,
   deleteList,
   regenerateEditKey,
+  regenerateReadKey,
+  setReadPassword,
   updateList,
   updateSlug,
 } from "@/server/actions/settings";
@@ -47,6 +49,8 @@ type Props = {
   uncategorized: number;
   itemCount: number;
   editKey: string;
+  readKey: string;
+  hasReadPassword: boolean;
 };
 
 const NETWORK_ERROR = "Pas enregistré. Vérifiez la connexion.";
@@ -156,7 +160,14 @@ export function SettingsView(props: Props) {
             track={track}
           />
           <TagsSection listId={list.id} initial={props.tags} counts={props.tagCounts} track={track} />
-          <AccessSection list={list} editKey={props.editKey} track={track} onChange={setList} />
+          <AccessSection
+            list={list}
+            editKey={props.editKey}
+            readKey={props.readKey}
+            hasReadPassword={props.hasReadPassword}
+            track={track}
+            onChange={setList}
+          />
           <Card id="exporter" title="Exporter">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <a
@@ -393,11 +404,15 @@ function ListSection({
 function AccessSection({
   list,
   editKey: initialKey,
+  readKey,
+  hasReadPassword,
   track,
   onChange,
 }: {
   list: ListInfo;
   editKey: string;
+  readKey: string;
+  hasReadPassword: boolean;
   track: Track;
   onChange: (list: ListInfo) => void;
 }) {
@@ -465,10 +480,20 @@ function AccessSection({
       <div className="flex flex-col gap-1">
         <Toggle label="Liste privée" checked={list.isPrivate} onCheckedChange={(on) => void setPrivate(on)} />
         <p className="m-0 text-[13px] leading-normal text-muted">
-          Le contenu ne se lit qu&apos;avec le mot de passe ou le lien secret. La liste reste sur
+          Le contenu ne se lit qu&apos;avec le lien de lecture ou un mot de passe. La liste reste sur
           l&apos;accueil, sans son contenu.
         </p>
       </div>
+
+      {list.isPrivate ? (
+        <ReadAccess
+          listId={list.id}
+          slug={list.slug}
+          initialKey={readKey}
+          hasPassword={hasReadPassword}
+          track={track}
+        />
+      ) : null}
 
       <form
         className="flex flex-col gap-3 sm:flex-row sm:items-start"
@@ -532,6 +557,131 @@ function AccessSection({
         </Button>
       </div>
     </Card>
+  );
+}
+
+/** Liste privée : lien de lecture et mot de passe de lecture (lecture seule, sans modifier). */
+function ReadAccess({
+  listId,
+  slug,
+  initialKey,
+  hasPassword: initialHas,
+  track,
+}: {
+  listId: string;
+  slug: string;
+  initialKey: string;
+  hasPassword: boolean;
+  track: Track;
+}) {
+  const [key, setKey] = useState(initialKey);
+  const [hasPassword, setHasPassword] = useState(initialHas);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | undefined>();
+  const [confirming, setConfirming] = useState(false);
+  const [origin, setOrigin] = useState("");
+  useEffect(() => {
+    queueMicrotask(() => setOrigin(window.location.origin));
+  }, []);
+
+  const save = async (value: string) => {
+    const result = await track(() => setReadPassword({ listId, password: value }));
+    if (!result) return;
+    if (!result.ok) {
+      setError(result.error.message);
+      return;
+    }
+    setError(undefined);
+    setPassword("");
+    setHasPassword(Boolean(value));
+    toast(value ? "Mot de passe de lecture enregistré." : "Mot de passe de lecture retiré.", {
+      duration: 4000,
+    });
+  };
+
+  const regenerate = async () => {
+    setConfirming(false);
+    const result = await track(() => regenerateReadKey({ listId }));
+    if (result?.ok) {
+      setKey(result.data.readKey);
+      toast("Nouveau lien de lecture. L'ancien ne marche plus.", { duration: 6000 });
+    } else if (result) toast(result.error.message, { duration: 4000 });
+  };
+
+  return (
+    <div className="flex flex-col gap-5 rounded-[20px] border border-line bg-white/40 p-4 sm:p-5">
+      <LinkBox
+        variant="public"
+        label="Lien de lecture"
+        url={`${origin}/l/${slug}#acces=${key}`}
+        hint="À donner à vos proches : il ouvre la liste en lecture seule, sans mot de passe."
+      />
+      <form
+        className="flex flex-col gap-3 sm:flex-row sm:items-start"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (password) void save(password);
+        }}
+      >
+        <div className="min-w-0 flex-1">
+          <PasswordField
+            label="Mot de passe de lecture"
+            autoComplete="new-password"
+            placeholder={hasPassword ? "Laissez vide pour garder l'actuel" : "Facultatif"}
+            value={password}
+            error={error}
+            hint={
+              hasPassword
+                ? "Un mot de passe de lecture est en place."
+                : "Pour ouvrir la liste sans le lien. Il ne permet pas de modifier."
+            }
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setError(undefined);
+            }}
+          />
+        </div>
+        <Button type="submit" variant="ink" size={52} className="sm:mt-[26px]" disabled={!password}>
+          {hasPassword ? "Changer" : "Enregistrer"}
+        </Button>
+        {hasPassword ? (
+          <Button
+            type="button"
+            variant="outline"
+            size={52}
+            className="sm:mt-[26px]"
+            onClick={() => void save("")}
+          >
+            Retirer
+          </Button>
+        ) : null}
+      </form>
+      {confirming ? (
+        <div
+          role="group"
+          aria-label="Régénérer le lien de lecture"
+          className="flex flex-wrap items-center gap-2.5"
+        >
+          <span className="text-sm font-semibold">L&apos;ancien lien ne marchera plus. Régénérer ?</span>
+          <Button autoFocus variant="ink" size={44} onClick={() => void regenerate()}>
+            Oui
+          </Button>
+          <Button variant="outline" size={44} onClick={() => setConfirming(false)}>
+            Non
+          </Button>
+        </div>
+      ) : (
+        <Button
+          variant="outline"
+          size={44}
+          className="self-start"
+          icon={<RefreshCw aria-hidden="true" />}
+          onClick={() => setConfirming(true)}
+        >
+          Régénérer le lien de lecture
+        </Button>
+      )}
+    </div>
   );
 }
 

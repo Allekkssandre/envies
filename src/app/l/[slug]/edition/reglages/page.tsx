@@ -8,7 +8,7 @@ export default async function SettingsPage({ params }: PageProps<"/l/[slug]/edit
   const { list, content } = await loadListPage(slug);
   const { data: secret } = await getServiceDb()
     .from("list_secrets")
-    .select("edit_key")
+    .select("edit_key, read_key, read_password_hash")
     .eq("list_id", list.id)
     .single();
 
@@ -31,6 +31,8 @@ export default async function SettingsPage({ params }: PageProps<"/l/[slug]/edit
       uncategorized={uncategorized}
       itemCount={content.items.length}
       editKey={secret?.edit_key ?? ""}
+      readKey={secret?.read_key ?? ""}
+      hasReadPassword={Boolean(secret?.read_password_hash)}
     />
   );
 }

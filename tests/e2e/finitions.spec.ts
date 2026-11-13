@@ -86,7 +86,8 @@ test.describe("finitions", () => {
     const { data: items } = await db
       .from("items")
       .select("title, price_cents, currency, price_source, fetch_status")
-      .eq("list_id", list!.id);
+      .eq("list_id", list!.id)
+      .eq("url_key", n.urlKey);
     expect(items).toEqual([
       {
         title: "Lampe champignon en céramique",

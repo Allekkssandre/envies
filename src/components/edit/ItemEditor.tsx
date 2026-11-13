@@ -2,6 +2,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import Link from "next/link";
 import {
   Camera,
   CircleAlert,
@@ -649,7 +650,15 @@ function EditorFields(props: FieldsProps) {
       {item.fetchStatus === "failed" ? (
         <p className="-mt-2 mb-0 flex items-center gap-2 text-sm text-ink-soft">
           <CircleAlert aria-hidden="true" size={16} strokeWidth={1.8} className="flex-none text-rust" />
-          Les infos n&apos;ont pas pu être lues sur la page.
+          <span>
+            Les infos n&apos;ont pas pu être lues sur la page.{" "}
+            <Link
+              href={`/l/${list.slug}/edition/reglages#favori`}
+              className="font-semibold text-ink underline underline-offset-2"
+            >
+              Utiliser le bouton d&apos;ajout
+            </Link>
+          </span>
         </p>
       ) : null}
       {!item.imagePath && !mobile ? (

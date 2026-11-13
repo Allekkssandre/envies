@@ -260,7 +260,7 @@ export function cleanTitle(title: string, siteName: string | null, domain: strin
 
 /** Titres de pages d'erreur, de connexion ou de vérification : jamais un nom de produit. */
 const JUNK_TITLE =
-  /^(?:amazon(?:\.[a-z.]+)?|access denied|accès refusé|robot check|just a moment\.*|attention required.*|are you a (?:robot|human)\??|page (?:introuvable|non trouvée|not found)|not found|404.*|erreur(?: d+)?|error(?: d+)?|oops.*|oups.*|sign in|se connecter|connexion|log in|login|accueil|home|homepage|untitled|sans titre|loading\.*|chargement\.*|captcha|security check|vérification.*|une erreur est survenue.*)$/i;
+  /^(?:amazon(?:\.[a-z.]+)?|access denied|accès refusé|robot check|just a moment\.*|attention required.*|are you a (?:robot|human)\??|page (?:introuvable|non trouvée|not found)|not found|404.*|erreur(?: \d+)?|error(?: \d+)?|oops.*|oups.*|sign in|se connecter|connexion|log in|login|accueil|home|homepage|untitled|sans titre|loading\.*|chargement\.*|captcha|security check|vérification.*|une erreur est survenue.*)$/i;
 
 export function isJunkTitle(title: string): boolean {
   const t = title.trim();

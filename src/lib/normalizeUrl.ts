@@ -18,8 +18,15 @@ const TRACKING = new Set([
   "srsltid",
   "spm",
   "scm",
+  "gbraid",
+  "wbraid",
+  "dclid",
+  "yclid",
+  "twclid",
+  "ttclid",
+  "_x_sessn_id",
 ]);
-const TRACKING_PREFIXES = ["utm_", "pd_rd_", "pf_rd_", "ga_"];
+const TRACKING_PREFIXES = ["utm_", "pd_rd_", "pf_rd_", "ga_", "gad_", "_oak_", "refer_page_"];
 
 function isTracking(name: string): boolean {
   const n = name.toLowerCase();

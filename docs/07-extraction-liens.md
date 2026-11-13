@@ -139,3 +139,14 @@ Sans IA : comparaison de mots.
 | `partial` | ce qui a été trouvé, « prix inconnu » si besoin | normal |
 | `failed` | « Rien trouvé · compléter » | « Les infos n'ont pas pu être lues sur la page. Complétez à la main. » |
 | `none` (sans lien) | initiale, « sans lien » | normal |
+
+## Nom et photo de secours (boutiques qui bloquent les robots)
+
+Beaucoup de grandes boutiques (Fnac, Amazon, Leroy Merlin, Etsy, Decathlon, Leboncoin, Back Market) renvoient une page de vérification au serveur (`blocked`). On ne contourne pas ces protections. À la place :
+
+- **Nom provisoire dès l'ajout** : le texte partagé avec le lien (« Nom du produit https://… », partage depuis une appli), sinon le nom lu dans l'adresse (`src/lib/titleFromUrl.ts` : morceau le plus long, sans identifiants ni extension, deux mots au moins). Gardé dans `meta.provisionalTitle` : le nom de la page le remplace s'il est lu ; un nom saisi n'est jamais remplacé.
+- **Après redirection** (lien court `amzn.eu`) : le nom est relu dans l'adresse finale.
+- **Amazon** : photo publique d'après le code produit (`images-na.ssl-images-amazon.com/images/P/<ASIN>.01.LZZZZZZZ.jpg`), écartée si c'est l'image vide de 1 px.
+- **Titres parasites** écartés (« Amazon.fr », « Access Denied », « Page introuvable »…).
+- **Photo à la main, en un geste** : dans la fiche, coller une image copiée sur la boutique (ou son adresse), ou la glisser sur la photo. Dans la barre d'ajout, coller une image crée un article avec cette photo.
+

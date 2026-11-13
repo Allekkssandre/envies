@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { formatPrice } from "@/lib/format";
+import { splitLinkAndText, titleFromUrl } from "@/lib/titleFromUrl";
 import { looksLikeUrl, normalizeUrl } from "@/lib/normalizeUrl";
 import { byPosition, keyBetween, keysAtEndOf, keysAtStart } from "@/lib/positions";
 import { PRICE_MAX_CENTS } from "@/lib/price";
@@ -112,10 +113,13 @@ export async function addItems(input: z.input<typeof addInput>): Promise<Result<
       domain: string | null;
     };
     const drafts: Draft[] = lines.map((line) => {
-      const n = looksLikeUrl(line) ? normalizeUrl(line) : null;
-      return n
-        ? { line, title: null, url: n.url, urlKey: n.urlKey, domain: n.domain }
-        : { line, title: line.slice(0, 200), url: null, urlKey: null, domain: null };
+      // Un lien seul, ou glissé dans un texte (partage depuis une appli : « Nom du produit https://… »).
+      const shared = looksLikeUrl(line) ? { url: line, text: null } : splitLinkAndText(line);
+      const n = shared ? normalizeUrl(shared.url) : null;
+      if (!shared || !n) return { line, title: line.slice(0, 200), url: null, urlKey: null, domain: null };
+      // Nom provisoire tout de suite (texte partagé, sinon l'adresse) ; la page le remplacera.
+      const title = shared.text ?? titleFromUrl(shared.url);
+      return { line, title, url: n.url, urlKey: n.urlKey, domain: n.domain };
     });
 
     // Doublons : déjà dans la liste, ou répétés dans le même collage.
@@ -164,6 +168,7 @@ export async function addItems(input: z.input<typeof addInput>): Promise<Result<
           sorted_at: categoryId ? now : null,
           position: keysForNew[i]!,
           fetch_status: d.url ? ("pending" as const) : ("none" as const),
+          meta: d.url && d.title ? { provisionalTitle: d.title } : {},
         })),
       )
       .select(ITEM_COLUMNS);
@@ -389,9 +394,12 @@ export async function updateItem(input: z.input<typeof updateInput>): Promise<Re
   }
 }
 
+const IMAGE_URL_ERROR = "Cette image ne se lit pas. Copiez l'image elle-même, puis collez-la.";
+
 /**
  * Change la photo ou la retire. FormData : itemId + file (envoi), itemId + candidateUrl
- * (une des photos trouvées sur la page), ou itemId + remove=1.
+ * (une des photos trouvées sur la page), itemId + imageUrl (adresse d'image collée), ou
+ * itemId + remove=1.
  */
 export async function setItemImage(form: FormData): Promise<Result<ItemInfo>> {
   const itemId = uuid.safeParse(form.get("itemId"));
@@ -421,15 +429,25 @@ export async function setItemImage(form: FormData): Promise<Result<ItemInfo>> {
         .eq("id", itemId.data);
     } else {
       const candidate = form.get("candidateUrl");
+      const pastedUrl = form.get("imageUrl");
       const file = readFile(form);
-      if (!file && typeof candidate !== "string") return fail("VALIDATION", GENERIC_ERROR);
+      if (!file && typeof candidate !== "string" && typeof pastedUrl !== "string")
+        return fail("VALIDATION", GENERIC_ERROR);
       const limit = await hitRateLimit(`upload:${ctx.list.id}`, 60, 60 * 60);
       if (!limit.allowed)
         return fail("RATE_LIMITED", "Beaucoup d'ajouts d'un coup. Réessayez dans quelques minutes.");
 
       let image: ProcessedImage;
       let sourceUrl: string | null = null;
-      if (typeof candidate === "string") {
+      if (typeof pastedUrl === "string" && !file && typeof candidate !== "string") {
+        // Adresse d'image collée (« Copier l'adresse de l'image ») : même porte sécurisée que les pages.
+        const url = pastedUrl.trim();
+        if (url.length > 2048 || !/^https?:\/\//i.test(url)) return fail("VALIDATION", IMAGE_URL_ERROR);
+        const downloaded = await downloadImage(url);
+        if (!downloaded) return fail("VALIDATION", IMAGE_URL_ERROR);
+        image = downloaded;
+        sourceUrl = url;
+      } else if (typeof candidate === "string") {
         // Seulement une photo trouvée sur la page de l'article.
         if (!stringArray(row?.image_candidates ?? null).includes(candidate))
           return fail("VALIDATION", GENERIC_ERROR);

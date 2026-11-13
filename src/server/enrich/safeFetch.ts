@@ -23,7 +23,8 @@ export type FetchError =
   | "network"
   | "redirects";
 
-export type FetchFail = { ok: false; error: FetchError };
+/** `finalUrl` : dernière adresse atteinte (après redirections), quand la page a répondu. */
+export type FetchFail = { ok: false; error: FetchError; finalUrl?: string };
 export type HtmlResult = { ok: true; html: string; finalUrl: string } | FetchFail;
 export type BinaryResult = { ok: true; body: Buffer; contentType: string; finalUrl: string } | FetchFail;
 
@@ -285,17 +286,18 @@ async function fetchBytes(
         }
         continue;
       }
+      const reached = url.toString();
       if (res.status === 403 || res.status === 429 || res.status === 503) {
         res.body.resume();
-        return { ok: false, error: "blocked" };
+        return { ok: false, error: "blocked", finalUrl: reached };
       }
       if (res.status >= 500) {
         res.body.resume();
-        return { ok: false, error: "http_5xx" };
+        return { ok: false, error: "http_5xx", finalUrl: reached };
       }
       if (res.status >= 400) {
         res.body.resume();
-        return { ok: false, error: "http_4xx" };
+        return { ok: false, error: "http_4xx", finalUrl: reached };
       }
 
       const contentType = (res.headers["content-type"] ?? "").toLowerCase();
@@ -332,7 +334,7 @@ export async function safeFetch(url: string, options?: SafeFetchOptions): Promis
   if (!res.ok) return res;
   const html = decodeHtml(res.body, res.contentType);
   if (looksBlocked(html) || (res.status === 202 && html.length < 20_000))
-    return { ok: false, error: "blocked" };
+    return { ok: false, error: "blocked", finalUrl: res.finalUrl };
   return { ok: true, html, finalUrl: res.finalUrl };
 }
 

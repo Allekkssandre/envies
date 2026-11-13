@@ -272,6 +272,42 @@ export function ItemEditor({
     await sendPhoto(form);
   };
 
+  /** Adresse d'image collée : le serveur la télécharge (même porte sécurisée que les pages). */
+  const pasteImageUrl = async (url: string) => {
+    const form = new FormData();
+    form.set("itemId", item.id);
+    form.set("imageUrl", url);
+    await sendPhoto(form);
+  };
+
+  // Coller une image (copiée sur la boutique) ou l'adresse d'une image, hors d'un champ texte :
+  // elle devient la photo. Utile quand la boutique empêche de lire sa page.
+  const pasteRef = useRef({ changePhoto, pasteImageUrl });
+  useLayoutEffect(() => {
+    pasteRef.current = { changePhoto, pasteImageUrl };
+  });
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const data = e.clipboardData;
+      if (!data) return;
+      const image = Array.from(data.files).find((f) => f.type.startsWith("image/"));
+      if (image) {
+        e.preventDefault();
+        void pasteRef.current.changePhoto(image);
+        return;
+      }
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("input, textarea, [contenteditable=true]")) return;
+      const text = data.getData("text").trim();
+      if (/^https?:\/\/\S+$/i.test(text)) {
+        e.preventDefault();
+        void pasteRef.current.pasteImageUrl(text);
+      }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, []);
+
   /** « Trouvées sur la page » : la photo choisie est téléchargée et traitée par le serveur. */
   const pickCandidate = async (url: string) => {
     const form = new FormData();
@@ -551,52 +587,74 @@ function EditorFields(props: FieldsProps) {
 
   return (
     <div className={cn("flex flex-col gap-6", mobile ? "px-4 pt-2 pb-10" : "px-12 pt-3 pb-12")}>
-      <ItemPhoto
-        name={name}
-        src480={item.imagePath ? imageUrl(item.imagePath, 480) : null}
-        src1200={item.imagePath ? imageUrl(item.imagePath, 1200) : null}
-        lightBackground={item.lightBackground}
-        sizes={mobile ? "100vw" : "544px"}
-        initialSize={mobile ? 90 : 130}
-        className={cn("rounded-[22px]", mobile ? "h-[220px]" : "h-[300px]")}
+      <div
+        onDragOver={(e) => {
+          if (Array.from(e.dataTransfer.types).includes("Files")) e.preventDefault();
+        }}
+        onDrop={(e) => {
+          const f = Array.from(e.dataTransfer.files).find((x) => x.type.startsWith("image/"));
+          if (!f) return;
+          // Pas de nouvel article : l'image glissée ici devient la photo de celui-ci.
+          e.preventDefault();
+          e.stopPropagation();
+          props.onPhoto(f);
+        }}
       >
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger className="absolute bottom-3 left-3 inline-flex h-10 items-center gap-2 rounded-full border border-white/60 bg-linen/85 px-3.5 text-sm font-semibold text-ink backdrop-blur-[10px]">
-            <ImageIcon aria-hidden="true" size={17} strokeWidth={1.7} />
-            Changer la photo
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content align="start" sideOffset={8} className={menuPanel}>
-              <DropdownMenu.Item className={menuItem} onSelect={() => file.current?.click()}>
-                <span className="flex items-center gap-2.5">
-                  <FileImage aria-hidden="true" size={17} strokeWidth={1.7} />
-                  Choisir un fichier
-                </span>
-              </DropdownMenu.Item>
-              {mobile ? (
-                <DropdownMenu.Item className={menuItem} onSelect={() => camera.current?.click()}>
+        <ItemPhoto
+          name={name}
+          src480={item.imagePath ? imageUrl(item.imagePath, 480) : null}
+          src1200={item.imagePath ? imageUrl(item.imagePath, 1200) : null}
+          lightBackground={item.lightBackground}
+          sizes={mobile ? "100vw" : "544px"}
+          initialSize={mobile ? 90 : 130}
+          className={cn("rounded-[22px]", mobile ? "h-[220px]" : "h-[300px]")}
+        >
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger className="absolute bottom-3 left-3 inline-flex h-10 items-center gap-2 rounded-full border border-white/60 bg-linen/85 px-3.5 text-sm font-semibold text-ink backdrop-blur-[10px]">
+              <ImageIcon aria-hidden="true" size={17} strokeWidth={1.7} />
+              Changer la photo
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content align="start" sideOffset={8} className={menuPanel}>
+                <DropdownMenu.Item className={menuItem} onSelect={() => file.current?.click()}>
                   <span className="flex items-center gap-2.5">
-                    <Camera aria-hidden="true" size={17} strokeWidth={1.7} />
-                    Prendre une photo
+                    <FileImage aria-hidden="true" size={17} strokeWidth={1.7} />
+                    Choisir un fichier
                   </span>
                 </DropdownMenu.Item>
-              ) : null}
-              {item.imagePath ? (
-                <DropdownMenu.Item className={cn(menuItem, "text-rust")} onSelect={() => props.onPhoto(null)}>
-                  <span className="flex items-center gap-2.5">
-                    <Trash2 aria-hidden="true" size={17} strokeWidth={1.7} />
-                    Retirer la photo
-                  </span>
-                </DropdownMenu.Item>
-              ) : null}
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
-      </ItemPhoto>
+                {mobile ? (
+                  <DropdownMenu.Item className={menuItem} onSelect={() => camera.current?.click()}>
+                    <span className="flex items-center gap-2.5">
+                      <Camera aria-hidden="true" size={17} strokeWidth={1.7} />
+                      Prendre une photo
+                    </span>
+                  </DropdownMenu.Item>
+                ) : null}
+                {item.imagePath ? (
+                  <DropdownMenu.Item
+                    className={cn(menuItem, "text-rust")}
+                    onSelect={() => props.onPhoto(null)}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Trash2 aria-hidden="true" size={17} strokeWidth={1.7} />
+                      Retirer la photo
+                    </span>
+                  </DropdownMenu.Item>
+                ) : null}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        </ItemPhoto>
+      </div>
       {item.fetchStatus === "failed" ? (
         <p className="-mt-2 mb-0 flex items-center gap-2 text-sm text-ink-soft">
           <CircleAlert aria-hidden="true" size={16} strokeWidth={1.8} className="flex-none text-rust" />
           Les infos n&apos;ont pas pu être lues sur la page.
+        </p>
+      ) : null}
+      {!item.imagePath && !mobile ? (
+        <p className="-mt-3 mb-0 text-[13px] text-muted">
+          Copiez l&apos;image sur la boutique, puis collez-la ici, ou glissez-la sur la photo.
         </p>
       ) : null}
       {item.imageCandidates.length ? (

@@ -1,5 +1,7 @@
 "use client";
 
+import { looksLikeUrl } from "@/lib/normalizeUrl";
+import { splitLinkAndText, titleFromUrl } from "@/lib/titleFromUrl";
 import { generateKeyBetween } from "fractional-indexing";
 import { useRouter } from "next/navigation";
 import {
@@ -125,13 +127,20 @@ function tempItem(fields: Partial<ItemInfo> & { position: string }, n: number): 
 
 /** Ligne → aperçu local immédiat (lien : domaine en attendant ; nom : tel quel). */
 function draftFromLine(line: string) {
-  const isLink = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}(\/|\?|$)/i.test(line) && !/\s/.test(line);
-  if (!isLink) return { title: line.slice(0, 200), url: null, domain: null, fetchStatus: "none" as const };
-  const host = line
+  const isLink = looksLikeUrl(line);
+  const shared = isLink ? { url: line, text: null } : splitLinkAndText(line);
+  if (!shared) return { title: line.slice(0, 200), url: null, domain: null, fetchStatus: "none" as const };
+  const host = shared.url
     .replace(/^https?:\/\//i, "")
     .split(/[/?#]/)[0]!
     .toLowerCase();
-  return { title: null, url: line, domain: host.replace(/^(www|m)\./, ""), fetchStatus: "pending" as const };
+  return {
+    // Même nom provisoire que le serveur : la carte a un nom dès l'ajout.
+    title: shared.text ?? titleFromUrl(shared.url),
+    url: shared.url,
+    domain: host.replace(/^(www|m)\./, ""),
+    fetchStatus: "pending" as const,
+  };
 }
 
 /**

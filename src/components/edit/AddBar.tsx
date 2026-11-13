@@ -51,6 +51,13 @@ export function AddBar() {
   };
 
   const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    // Image copiée (sur une boutique, une capture) : un article avec cette photo.
+    const image = Array.from(e.clipboardData.files).find((f) => f.type.startsWith("image/"));
+    if (image) {
+      e.preventDefault();
+      void board.addPhoto(image, target?.id ?? null);
+      return;
+    }
     const pasted = e.clipboardData.getData("text");
     if (splitLines(pasted).length > 1) {
       e.preventDefault();
@@ -169,14 +176,21 @@ export function DropImages() {
         void board.addPhoto(file, board.addTarget?.id ?? null);
       }
     };
+    // Toujours vu en premier (capture) : la zone s'efface même si la fiche ouverte garde l'image.
+    const reset = () => {
+      depth = 0;
+      setOver(false);
+    };
     window.addEventListener("dragenter", enter);
     window.addEventListener("dragleave", leave);
     window.addEventListener("dragover", dragOver);
+    window.addEventListener("drop", reset, true);
     window.addEventListener("drop", drop);
     return () => {
       window.removeEventListener("dragenter", enter);
       window.removeEventListener("dragleave", leave);
       window.removeEventListener("dragover", dragOver);
+      window.removeEventListener("drop", reset, true);
       window.removeEventListener("drop", drop);
     };
   }, [board, router]);

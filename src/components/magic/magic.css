@@ -1,0 +1,372 @@
+/* La Magie de Noël : univers propre au jeu (nuit d'hiver, lumière dorée, givre).
+   Remplace le style de base d'Envies sur les pages du jeu. Classes préfixées « mg- ». */
+
+.mg {
+  --mg-night: #0b1322;
+  --mg-night-2: #14213a;
+  --mg-night-3: #1c2c4a;
+  --mg-ink: #eef1f7;
+  --mg-soft: #a9b4c8;
+  --mg-faint: #7d8aa3;
+  --mg-gold: #e8c170;
+  --mg-gold-hi: #f7e7c1;
+  --mg-gold-deep: #b8862f;
+  --mg-frost: #cfe3f5;
+  --mg-pn: #9e2f22;
+  --mg-pn-deep: #3d0e0c;
+  --mg-gr: #2f6b4f;
+  --mg-gr-deep: #0d2219;
+  --mg-paper: #f4ebd8;
+  --mg-paper-ink: #2b2416;
+  --mg-paper-soft: #5c4f37;
+  --mg-line: rgba(232, 193, 112, 0.22);
+  color: var(--mg-ink);
+  background-color: var(--mg-night);
+  background-image:
+    radial-gradient(120% 60% at 50% -10%, rgba(78, 120, 170, 0.35), transparent 60%),
+    radial-gradient(80% 50% at 85% 10%, rgba(232, 193, 112, 0.1), transparent 60%),
+    linear-gradient(180deg, #0e1a30 0%, var(--mg-night) 55%, #070c17 100%);
+}
+
+/* Ciel étoilé fixe */
+.mg-sky {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgba(255, 255, 255, 0.7), transparent 60%),
+    radial-gradient(1px 1px at 28% 8%, rgba(255, 255, 255, 0.5), transparent 60%),
+    radial-gradient(1.5px 1.5px at 44% 22%, rgba(247, 231, 193, 0.8), transparent 60%),
+    radial-gradient(1px 1px at 63% 12%, rgba(255, 255, 255, 0.6), transparent 60%),
+    radial-gradient(1px 1px at 78% 26%, rgba(255, 255, 255, 0.45), transparent 60%),
+    radial-gradient(1.5px 1.5px at 90% 6%, rgba(255, 255, 255, 0.7), transparent 60%),
+    radial-gradient(1px 1px at 6% 40%, rgba(255, 255, 255, 0.4), transparent 60%),
+    radial-gradient(1px 1px at 55% 38%, rgba(255, 255, 255, 0.35), transparent 60%),
+    radial-gradient(1px 1px at 95% 44%, rgba(255, 255, 255, 0.4), transparent 60%);
+  background-size: 640px 520px;
+}
+
+/* Neige légère, deux couches */
+.mg-snow,
+.mg-snow::after {
+  position: absolute;
+  inset: -20% 0 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(2px 2px at 10% 20%, rgba(255, 255, 255, 0.8), transparent 70%),
+    radial-gradient(2.5px 2.5px at 30% 60%, rgba(255, 255, 255, 0.6), transparent 70%),
+    radial-gradient(1.5px 1.5px at 55% 35%, rgba(255, 255, 255, 0.7), transparent 70%),
+    radial-gradient(2px 2px at 75% 75%, rgba(255, 255, 255, 0.55), transparent 70%),
+    radial-gradient(3px 3px at 90% 15%, rgba(255, 255, 255, 0.5), transparent 70%);
+  background-size: 360px 360px;
+  animation: mg-fall 28s linear infinite;
+  opacity: 0.55;
+}
+.mg-snow::after {
+  content: "";
+  inset: 0;
+  background-size: 520px 520px;
+  animation-duration: 44s;
+  opacity: 0.7;
+}
+@keyframes mg-fall {
+  from {
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      40px 360px,
+      -30px 360px,
+      20px 360px,
+      -10px 360px,
+      30px 360px;
+  }
+}
+
+.mg-title {
+  font-family: var(--font-serif);
+  font-variation-settings:
+    "SOFT" 100,
+    "WONK" 1,
+    "opsz" 144;
+  color: var(--mg-gold-hi);
+  text-shadow: 0 0 28px rgba(232, 193, 112, 0.35);
+}
+
+/* Panneau de verre nocturne */
+.mg-panel {
+  position: relative;
+  border: 1px solid rgba(207, 227, 245, 0.14);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(28, 44, 74, 0.72), rgba(14, 22, 38, 0.82));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 24px 60px -30px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+}
+.mg-kicker {
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--mg-gold);
+}
+
+/* Boutons */
+.mg-btn {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 0 22px;
+  font-weight: 600;
+  font-size: 15px;
+  color: #141d30;
+  background: linear-gradient(180deg, var(--mg-gold-hi), var(--mg-gold));
+  box-shadow: 0 8px 24px -10px rgba(232, 193, 112, 0.7);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.mg-btn:hover {
+  transform: translateY(-1px);
+}
+.mg-btn:disabled {
+  opacity: 0.6;
+}
+.mg-btn-ghost {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 0 14px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--mg-soft);
+}
+.mg-btn-ghost:hover {
+  color: var(--mg-ink);
+}
+.mg :focus-visible {
+  outline: 2px solid var(--mg-gold-hi);
+  outline-offset: 3px;
+}
+
+/* Suspects */
+.mg-suspect {
+  position: relative;
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  gap: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(207, 227, 245, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 8px 14px 8px 8px;
+  text-align: left;
+  font-size: 15px;
+  color: var(--mg-ink);
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+.mg-suspect:hover:not(:disabled) {
+  border-color: rgba(232, 193, 112, 0.5);
+  background: rgba(232, 193, 112, 0.06);
+}
+.mg-suspect[aria-pressed="true"] {
+  border-color: var(--mg-gold);
+  background: linear-gradient(180deg, rgba(232, 193, 112, 0.2), rgba(232, 193, 112, 0.08));
+  box-shadow:
+    0 0 0 1px var(--mg-gold) inset,
+    0 0 28px -8px rgba(232, 193, 112, 0.6);
+}
+.mg-avatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+  font-family: var(--font-serif);
+  font-size: 17px;
+  color: var(--mg-gold-hi);
+  background: radial-gradient(circle at 35% 30%, #2a3d63, #121c30);
+  border: 1px solid rgba(232, 193, 112, 0.35);
+}
+
+/* Carte de rôle : recto verso */
+.mg-card {
+  perspective: 1200px;
+}
+.mg-card-inner {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  transform-style: preserve-3d;
+  transition: transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.mg-card[data-flipped="true"] .mg-card-inner {
+  transform: rotateY(180deg);
+}
+.mg-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 22px;
+  backface-visibility: hidden;
+  box-shadow: 0 30px 60px -28px rgba(0, 0, 0, 0.9);
+}
+.mg-face-front {
+  transform: rotateY(180deg);
+}
+.mg-face-back {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(232, 193, 112, 0.28), transparent 55%),
+    repeating-linear-gradient(45deg, rgba(232, 193, 112, 0.07) 0 2px, transparent 2px 14px),
+    repeating-linear-gradient(-45deg, rgba(232, 193, 112, 0.07) 0 2px, transparent 2px 14px),
+    linear-gradient(160deg, #1d2f52, #0b1322);
+  border: 1px solid rgba(232, 193, 112, 0.45);
+}
+.mg-face-pn {
+  background:
+    radial-gradient(circle at 50% 30%, rgba(247, 231, 193, 0.35), transparent 50%),
+    linear-gradient(165deg, #a8392a, var(--mg-pn-deep));
+  border: 1px solid rgba(247, 231, 193, 0.5);
+}
+.mg-face-gr {
+  background:
+    radial-gradient(circle at 50% 30%, rgba(207, 227, 245, 0.25), transparent 50%),
+    linear-gradient(165deg, #2f6b4f, var(--mg-gr-deep));
+  border: 1px solid rgba(207, 227, 245, 0.45);
+}
+.mg-frame {
+  position: absolute;
+  inset: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(247, 231, 193, 0.4);
+}
+
+/* Gazette */
+.mg-gazette {
+  position: relative;
+  border-radius: 18px;
+  background: radial-gradient(120% 80% at 0% 0%, rgba(255, 255, 255, 0.5), transparent 60%), var(--mg-paper);
+  color: var(--mg-paper-ink);
+  box-shadow: 0 24px 50px -28px rgba(0, 0, 0, 0.9);
+}
+.mg-gazette-head {
+  font-family: var(--font-serif);
+  font-variation-settings:
+    "SOFT" 0,
+    "WONK" 0,
+    "opsz" 144;
+  letter-spacing: 0.01em;
+}
+.mg-rule {
+  border: 0;
+  border-top: 3px double rgba(43, 36, 22, 0.55);
+  margin: 0;
+}
+.mg-clue {
+  border-radius: 12px;
+  border: 1px dashed rgba(43, 36, 22, 0.45);
+  background: rgba(184, 134, 47, 0.12);
+}
+
+/* Boule à neige */
+.mg-globe .mg-flake {
+  animation: mg-flake var(--d, 9s) linear infinite;
+  animation-delay: var(--delay, 0s);
+}
+@keyframes mg-flake {
+  from {
+    transform: translate(0, -20px);
+  }
+  50% {
+    transform: translate(var(--drift, 6px), 110px);
+  }
+  to {
+    transform: translate(0, 230px);
+  }
+}
+.mg-globe .mg-wave {
+  animation: mg-wave 7s ease-in-out infinite alternate;
+}
+@keyframes mg-wave {
+  from {
+    transform: translateX(-40px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.mg-globe .mg-liquid {
+  transition: transform 1.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.mg-globe .mg-spark {
+  animation: mg-twinkle 3.2s ease-in-out infinite;
+}
+@keyframes mg-twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.mg-globe .mg-glow {
+  animation: mg-breathe 5s ease-in-out infinite;
+}
+@keyframes mg-breathe {
+  50% {
+    opacity: 0.7;
+  }
+}
+.mg-globe[data-state="critical"] .mg-star {
+  animation: mg-flicker 2.4s steps(1) infinite;
+}
+@keyframes mg-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  12% {
+    opacity: 0.35;
+  }
+  16% {
+    opacity: 0.9;
+  }
+  52% {
+    opacity: 0.5;
+  }
+  56% {
+    opacity: 1;
+  }
+}
+.mg-pips span {
+  width: 10px;
+  height: 10px;
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  background: rgba(207, 227, 245, 0.18);
+}
+.mg-pips span[data-on="true"] {
+  background: var(--mg-gold);
+  filter: drop-shadow(0 0 4px rgba(232, 193, 112, 0.8));
+}
+
+.mg details > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.mg details > summary::-webkit-details-marker {
+  display: none;
+}

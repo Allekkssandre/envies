@@ -1,7 +1,7 @@
 import "server-only";
 import type { Db } from "@/server/db/client";
 import { MAX_ATTEMPTS, runEnrichment } from "@/server/enrich/run";
-import { advanceMagic } from "@/server/magic/game";
+import { advanceMagic, sendPendingMails } from "@/server/magic/game";
 
 // Tâche quotidienne (docs/05-donnees.md § Suppression et purge, docs/10 § Sauvegardes).
 
@@ -232,14 +232,21 @@ export async function writeBackup(db: Db, now = Date.now()) {
   return { backup: name, lists: backup.lists.length, items: backup.items.length, removedBackups: old.length };
 }
 
-/** 5. La Magie de Noël : résout les échéances passées, même si personne n'a ouvert le jeu. */
+/**
+ * 5. La Magie de Noël : résout les semaines échues et envoie les gazettes, même si personne
+ * n'a ouvert le jeu.
+ */
 export async function advanceMagicGames(db: Db, now = Date.now()) {
   const { data, error } = await db
     .from("magic_games")
     .select("santa_id")
-    .in("status", ["joining", "playing"]);
+    .in("status", ["waiting", "playing", "over", "revealed"])
+    .gte("created_at", new Date(now - 120 * 24 * 60 * 60 * 1000).toISOString());
   if (error) throw new Error(error.message);
-  for (const game of data ?? []) await advanceMagic(game.santa_id, now);
+  for (const game of data ?? []) {
+    await advanceMagic(game.santa_id, now);
+    await sendPendingMails(game.santa_id);
+  }
   return { games: (data ?? []).length };
 }
 

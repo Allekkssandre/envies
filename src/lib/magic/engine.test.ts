@@ -1,260 +1,252 @@
-import { randomInt } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
-  GR_CARDS,
-  PN_CARDS,
-  assignJoin,
-  checkRoster,
-  joinOption,
+  CATCH_GAIN,
+  MAX_PLAYERS,
+  MIN_PLAYERS,
+  ROUNDS,
+  assignRoles,
+  certificates,
+  displayNames,
+  flair,
+  grinchCount,
   letterCount,
+  makeClue,
   resolveRound,
-  scores,
+  startMagic,
   tally,
-  type GrCard,
-  type PlayerSecret,
-  type PnCard,
-  type Role,
+  threshold,
+  type Player,
+  type Rng,
+  type Vote,
 } from "./engine";
 
-function fill(choices: (Role | null)[]): PlayerSecret[] {
-  const joined: PlayerSecret[] = [];
-  for (const c of choices) joined.push(assignJoin(joined, c, randomInt));
-  return joined;
+const random: Rng = (max) => Math.floor(Math.random() * max);
+
+function seeded(seed: number): Rng {
+  let s = seed >>> 0;
+  return (max) => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return Math.floor((s / 2 ** 32) * max);
+  };
 }
 
-describe("choix du camp", () => {
-  it("12 arrivées au hasard : toujours 5 + 5 + 2, cartes et pseudonymes différents", () => {
-    for (let run = 0; run < 3000; run++) {
-      const players = fill(Array.from({ length: 12 }, () => null));
-      expect(() => checkRoster(players)).not.toThrow();
+const players = (roles: string): Player[] =>
+  [...roles].map((r, i) => ({ id: `p${i}`, role: r === "g" ? "gr" : "pn", out: false }));
+
+describe("mise en place", () => {
+  it("environ un Grinch pour quatre joueurs", () => {
+    expect(grinchCount(5)).toBe(1);
+    expect(grinchCount(8)).toBe(2);
+    expect(grinchCount(12)).toBe(3);
+    expect(grinchCount(20)).toBe(5);
+    expect(threshold(5)).toBe(2);
+    expect(threshold(12)).toBe(3);
+  });
+
+  it("tire le bon nombre de Grinchs, au hasard", () => {
+    const ids = Array.from({ length: 12 }, (_, i) => `p${i}`);
+    const seen = new Set<string>();
+    for (let k = 0; k < 200; k++) {
+      const roles = assignRoles(ids, random);
+      const grinchs = ids.filter((id) => roles.get(id) === "gr");
+      expect(grinchs).toHaveLength(3);
+      for (const g of grinchs) seen.add(g);
     }
+    expect(seen.size).toBe(12);
   });
 
-  it("un camp complet envoie dans l'autre, les deux derniers sont infiltrés", () => {
-    const players = fill(["gr", "gr", "gr", "gr", "gr", "gr", "gr", "pn", "pn", "pn", "inf_pn", "inf_pn"]);
-    expect(players.map((p) => p.role)).toEqual([
-      "gr",
-      "gr",
-      "gr",
-      "gr",
-      "gr",
-      "pn",
-      "pn",
-      "pn",
-      "pn",
-      "pn",
-      "inf_pn",
-      "inf_gr",
-    ]);
-    checkRoster(players);
-  });
-
-  it("ce que voit l'arrivant : choix du camp, rôle donné, puis choix de l'infiltré", () => {
-    const joined: PlayerSecret[] = [];
-    const seen: string[] = [];
-    for (const c of ["pn", "pn", "pn", "pn", "pn", "pn", "gr", "gr", "gr", "gr", "inf_gr", null] as const) {
-      seen.push(joinOption(joined));
-      joined.push(assignJoin(joined, c, randomInt));
+  it("Magie de départ pour chaque taille de groupe, réglable", () => {
+    for (let n = MIN_PLAYERS; n <= MAX_PLAYERS; n++) {
+      const base = startMagic(n);
+      expect(base).toBeGreaterThan(1);
+      // Les Grinchs peuvent toujours gagner par le seul sabotage.
+      expect(base).toBeLessThanOrEqual(grinchCount(n) * ROUNDS);
+      expect(startMagic(n, "pn")).toBeGreaterThanOrEqual(base);
+      expect(startMagic(n, "gr")).toBeLessThanOrEqual(base);
     }
-    expect(seen).toEqual([
-      "camp",
-      "camp",
-      "camp",
-      "camp",
-      "camp",
-      "auto",
-      "auto",
-      "auto",
-      "auto",
-      "auto",
-      "infiltre",
-      "auto",
-    ]);
-    expect(() => assignJoin(joined, null, randomInt)).toThrow();
+    expect(startMagic(12)).toBe(12);
   });
 });
 
-describe("vote", () => {
-  const voters = ["a", "b", "c", "d"];
-  it("le plus voté gagne ; votes hors liste ou en double ignorés", () => {
-    const t = tally(
-      [
-        { voter: "a", target: "x" },
-        { voter: "b", target: "x" },
-        { voter: "c", target: "y" },
-        { voter: "c", target: "y" },
-        { voter: "z", target: "y" },
-        { voter: "d", target: "déjà joué" },
-      ],
-      voters,
-      ["x", "y"],
-      randomInt,
-    );
-    expect(t).toMatchObject({ winner: "x", counts: { x: 2, y: 1 }, tie: false, noVote: false });
+describe("désignations", () => {
+  const roster = players("ggg" + "p".repeat(9));
+  const v = (voter: number, target: number): Vote => ({ voter: `p${voter}`, target: `p${target}` });
+
+  it("démasque le plus désigné s'il atteint le seuil, sans égalité", () => {
+    expect(tally(roster, [v(3, 0), v(4, 0), v(5, 0)]).unmasked).toBe("p0");
+    expect(tally(roster, [v(3, 0), v(4, 0)]).unmasked).toBeNull();
+    expect(tally(roster, [v(3, 0), v(4, 0), v(5, 0), v(6, 7), v(8, 7), v(9, 7)]).unmasked).toBeNull();
   });
-  it("égalité ou aucun vote : tirage au sort parmi les concernés", () => {
-    const tie = tally(
-      [
-        { voter: "a", target: "x" },
-        { voter: "b", target: "y" },
-      ],
-      voters,
-      ["x", "y", "w"],
-      () => 1,
-    );
-    expect(tie).toMatchObject({ winner: "y", tie: true });
-    expect(tally([], voters, ["x", "y", "w"], () => 2)).toMatchObject({ winner: "w", noVote: true });
+
+  it("ignore les votes pour soi, des Grinchs démasqués et contre les démasqués", () => {
+    const r = roster.map((p) => (p.id === "p1" || p.id === "p10" ? { ...p, out: true } : p));
+    const counts = tally(r, [v(3, 3), v(1, 4), v(5, 10), v(6, 4)]).counts;
+    expect(counts).toEqual({ p4: 1 });
   });
 });
 
-describe("résolution d'une manche", () => {
-  const base = { round: 2, gauge: 4, frozen: false, maxLoss: 0 };
-  it("attaque et défense comptées ensemble", () => {
-    expect(resolveRound({ ...base, pnCard: "lanterne", grCard: "siphon" })).toMatchObject({
-      loss: 2,
-      gain: 1,
-      gaugeAfter: 3,
-      lanterne: true,
-      nature: "mag",
-    });
-  });
-  it("Pare-feu et Bouclier ne bloquent que leur nature ; un blocage annule tout l'effet", () => {
-    expect(resolveRound({ ...base, pnCard: "parefeu", grCard: "cyber" })).toMatchObject({
-      blocked: true,
-      loss: 0,
-      grVisit: false,
-    });
-    expect(resolveRound({ ...base, pnCard: "parefeu", grCard: "siphon" })).toMatchObject({
-      blocked: false,
-      loss: 2,
-    });
-    expect(resolveRound({ ...base, pnCard: "bouclier", grCard: "corrupteur" })).toMatchObject({
-      blocked: true,
-      corrupteur: false,
-    });
-    expect(resolveRound({ ...base, pnCard: "bouclier", grCard: "givre" })).toMatchObject({
-      blocked: false,
-      frozenNext: true,
-    });
-  });
-  it("pouvoir gelé : consommé sans effet, visite comprise", () => {
-    expect(resolveRound({ ...base, frozen: true, pnCard: "facteur", grCard: "siphon" })).toMatchObject({
-      gain: 0,
-      pnVisit: false,
-      loss: 2,
-    });
-    expect(resolveRound({ ...base, frozen: true, pnCard: "parefeu", grCard: "cyber" })).toMatchObject({
-      blocked: false,
-      grVisit: true,
-    });
-  });
-  it("Givré à la dernière manche : −2, rien à geler", () => {
-    expect(resolveRound({ ...base, round: 5, pnCard: "lanterne", grCard: "givre" })).toMatchObject({
-      loss: 2,
-      frozenNext: false,
-    });
-  });
-  it("Fée : rend la plus grosse perte passée, au moins 1", () => {
-    expect(resolveRound({ ...base, maxLoss: 3, pnCard: "fee", grCard: "cyber" }).gain).toBe(3);
-    expect(resolveRound({ ...base, maxLoss: 0, pnCard: "fee", grCard: "cyber" }).gain).toBe(1);
-  });
-  it("les deux espionnages ont le même effet visible que la vraie carte", () => {
-    const a = resolveRound({ ...base, pnCard: "espion", grCard: "espion" });
-    const b = resolveRound({ ...base, pnCard: "facteur", grCard: "cyber" });
-    expect(a).toEqual(b);
-    expect(a).toMatchObject({ pnVisit: true, grVisit: true, loss: 1, gain: 1 });
-  });
-  it("Brouilleur : la nature est cachée aux Pères Noël", () => {
-    expect(resolveRound({ ...base, pnCard: "lanterne", grCard: "brouilleur" }).natureShown).toBeNull();
-  });
-  it("jauge à 0 : les Grinchs gagnent", () => {
-    expect(resolveRound({ ...base, gauge: 2, pnCard: "parefeu", grCard: "corrupteur" })).toMatchObject({
-      gaugeAfter: 0,
-      grinchsWin: true,
-    });
-  });
-});
+describe("résolution d'une semaine", () => {
+  const roster = players("ggg" + "p".repeat(9));
+  const votes = (target: number) => [3, 4, 5].map((i) => ({ voter: `p${i}`, target: `p${target}` }));
 
-function permutations<T>(items: T[], k: number): T[][] {
-  if (k === 0) return [[]];
-  return items.flatMap((x, i) =>
-    permutations([...items.slice(0, i), ...items.slice(i + 1)], k - 1).map((rest) => [x, ...rest]),
-  );
-}
+  it("Grinch démasqué : +2 plafonné, puis sabotage des autres", () => {
+    const r = resolveRound({ round: 1, magic: 9, startMagic: 12, players: roster, votes: votes(0) });
+    expect(r.unmaskedRole).toBe("gr");
+    expect(r.accusation).toBe(CATCH_GAIN);
+    expect(r.sabotage).toBe(2);
+    expect(r.after).toBe(9);
+    const capped = resolveRound({ round: 1, magic: 12, startMagic: 12, players: roster, votes: votes(0) });
+    expect(capped.accusation).toBe(0);
+    expect(capped.after).toBe(10);
+  });
 
-describe("équilibre", { timeout: 120_000 }, () => {
-  it("jauge de départ 4, tous les ordres de vote possibles : entre 45 % et 58 % pour les Grinchs", () => {
-    const grOrders = permutations<GrCard | "espion">([...GR_CARDS, "espion"], 5);
-    const pnOrders = permutations<PnCard | "espion">([...PN_CARDS, "espion"], 5);
-    let total = 0;
-    let wins = 0;
-    for (const go of grOrders) {
-      for (const po of pnOrders) {
-        let gauge = 4;
-        let frozen = false;
-        let maxLoss = 0;
-        let won = false;
-        for (let r = 1; r <= 5 && !won; r++) {
-          const res = resolveRound({
-            round: r,
-            gauge,
-            frozen,
-            maxLoss,
-            pnCard: po[r - 1]!,
-            grCard: go[r - 1]!,
-          });
-          gauge = res.gaugeAfter;
-          frozen = res.frozenNext;
-          maxLoss = res.maxLossAfter;
-          won = res.grinchsWin;
-        }
-        total++;
-        if (won) wins++;
-      }
+  it("Père Noël démasqué : −1, et tous les Grinchs sabotent", () => {
+    const r = resolveRound({ round: 1, magic: 12, startMagic: 12, players: roster, votes: votes(6) });
+    expect(r.unmaskedRole).toBe("pn");
+    expect(r.after).toBe(12 - 1 - 3);
+  });
+
+  it("sans personne : seul le sabotage joue, et la partie se termine quand même", () => {
+    let magic = startMagic(12);
+    let result = null;
+    for (let round = 1; round <= ROUNDS && !result?.end; round++) {
+      result = resolveRound({ round, magic, startMagic: 12, players: roster, votes: [] });
+      magic = result.after;
     }
-    expect(total).toBe(720 * 720);
-    expect(wins / total).toBeGreaterThan(0.45);
-    expect(wins / total).toBeLessThan(0.58);
+    expect(result?.end).toBe("zero");
+    expect(result?.winner).toBe("gr");
+  });
+
+  it("victoire des Pères Noël quand tous les Grinchs sont démasqués", () => {
+    const r = roster.map((p) => (p.id === "p0" || p.id === "p1" ? { ...p, out: true } : p));
+    const res = resolveRound({ round: 3, magic: 5, startMagic: 12, players: r, votes: votes(2) });
+    expect(res.end).toBe("all-caught");
+    expect(res.winner).toBe("pn");
+  });
+
+  it("victoire des Pères Noël si la Magie tient cinq semaines", () => {
+    const r = roster.map((p) => (p.id === "p0" || p.id === "p1" ? { ...p, out: true } : p));
+    const res = resolveRound({ round: ROUNDS, magic: 4, startMagic: 12, players: r, votes: [] });
+    expect(res.after).toBe(3);
+    expect(res.end).toBe("last-round");
   });
 });
 
-describe("identifications", () => {
-  const players: { id: string; role: Role }[] = [
-    ...["p1", "p2", "p3", "p4", "p5"].map((id) => ({ id, role: "pn" as const })),
-    ...["g1", "g2", "g3", "g4", "g5"].map((id) => ({ id, role: "gr" as const })),
-    { id: "i1", role: "inf_gr" },
-    { id: "i2", role: "inf_pn" },
+describe("indices", () => {
+  const people = [
+    { id: "a", firstName: "Hélène", lastName: "Martin", role: "gr" as const, out: false },
+    { id: "b", firstName: "Paul", lastName: "Durand", role: "pn" as const, out: false },
+    { id: "c", firstName: "Zoé", lastName: "Petit", role: "pn" as const, out: false },
+    { id: "d", firstName: "Paul", lastName: "Simon", role: "pn" as const, out: false },
   ];
-  it("barème : +1, +2, +4 ; faux : −1, −2, −1 ; démasqué : −1", () => {
-    const s = scores(players, [
-      { accuser: "p1", target: "g1", role: "gr" },
-      { accuser: "p1", target: "i1", role: "inf" },
-      { accuser: "p2", target: "p3", role: "gr" },
-      { accuser: "g1", target: "p1", role: "pn" },
-      { accuser: "g2", target: "i2", role: "gr" },
-    ]);
-    expect(s.get("p1")).toEqual({ points: 2 + 4 - 1, right: 2, wrong: 0, unmasked: 1 });
-    expect(s.get("p2")?.points).toBe(-2);
-    expect(s.get("g1")?.points).toBe(1 - 1);
-    expect(s.get("i1")?.points).toBe(-1);
-    // Un infiltré accusé d'être « Grinch » : faux.
-    expect(s.get("g2")?.points).toBe(-2);
+
+  it("de plus en plus précis, toujours vrais", () => {
+    expect(makeClue(1, people, random)).toEqual({ t: "letters", n: 6 });
+    expect(makeClue(2, people, random)).toEqual({ t: "range", from: "A", to: "L" });
+    const innocent = makeClue(3, people, random);
+    expect(innocent?.t).toBe("innocent");
+    if (innocent?.t === "innocent") expect(innocent.names).not.toContain("Hélène");
+    const among = makeClue(4, people, random);
+    expect(among?.t).toBe("among");
+    if (among?.t === "among") expect(among.names).toContain("Hélène");
   });
-  it("identifier au hasard perd des points en moyenne, pour tout joueur et tout rôle", () => {
-    for (const me of players) {
-      for (const role of ["pn", "gr", "inf"] as const) {
-        let sum = 0;
-        for (const other of players) {
-          if (other.id === me.id) continue;
-          sum += scores(players, [{ accuser: me.id, target: other.id, role }]).get(me.id)!.points;
-        }
-        expect(sum, `${me.role} accuse ${role}`).toBeLessThan(0);
-      }
-    }
+
+  it("aucun indice quand tous les Grinchs sont démasqués", () => {
+    const caught = people.map((p) => ({ ...p, out: p.role === "gr" }));
+    expect(makeClue(2, caught, random)).toBeNull();
+  });
+
+  it("prénoms en double distingués par l'initiale", () => {
+    const names = displayNames(people);
+    expect(names.get("b")).toBe("Paul D.");
+    expect(names.get("d")).toBe("Paul S.");
+    expect(names.get("c")).toBe("Zoé");
+    expect(letterCount("Jean-Éric")).toBe(8);
   });
 });
 
-it("nombre de lettres d'un prénom", () => {
-  expect(letterCount("Jean-Noël")).toBe(8);
-  expect(letterCount(" Zoé ")).toBe(3);
+describe("secrets et flair", () => {
+  it("chaque Père Noël reçoit un autre Père Noël, les Grinchs rien", () => {
+    const roster = players("gg" + "p".repeat(8));
+    const certs = certificates(roster, random);
+    expect(certs.size).toBe(8);
+    for (const [id, cert] of certs) {
+      expect(cert).not.toBe(id);
+      expect(roster.find((p) => p.id === cert)?.role).toBe("pn");
+    }
+  });
+
+  it("flair : désignations portées sur un Grinch encore caché", () => {
+    const points = flair([
+      {
+        votes: [
+          { voter: "x", target: "g" },
+          { voter: "y", target: "p" },
+        ],
+        hiddenGrinchs: ["g"],
+      },
+      { votes: [{ voter: "x", target: "g" }], hiddenGrinchs: [] },
+    ]);
+    expect(points.get("x")).toBe(1);
+    expect(points.get("y")).toBeUndefined();
+  });
+});
+
+/**
+ * Équilibre (docs/14-magie-de-noel.md § Équilibre) : les Pères Noël visent juste de plus en
+ * plus souvent au fil des indices, les Grinchs accusent ensemble un innocent.
+ */
+function simulate(n: number, participation: number, rng: Rng): "pn" | "gr" {
+  const ids = Array.from({ length: n }, (_, i) => `p${i}`);
+  const roles = assignRoles(ids, rng);
+  let roster: Player[] = ids.map((id) => ({ id, role: roles.get(id)!, out: false }));
+  const start = startMagic(n);
+  let magic = start;
+  const accuracy = [0.3, 0.4, 0.5, 0.6, 0.65];
+  const chance = (p: number) => rng(1000) < p * 1000;
+  for (let round = 1; round <= ROUNDS; round++) {
+    const hiddenG = roster.filter((p) => p.role === "gr" && !p.out);
+    const hiddenP = roster.filter((p) => p.role === "pn" && !p.out);
+    const lead = hiddenG[rng(hiddenG.length)]!;
+    const frame = hiddenP[rng(hiddenP.length)];
+    const votes: Vote[] = [];
+    for (const voter of roster) {
+      if ((voter.out && voter.role === "gr") || !chance(participation)) continue;
+      if (voter.role === "gr") {
+        if (frame) votes.push({ voter: voter.id, target: frame.id });
+      } else if (chance(accuracy[round - 1]!)) {
+        const g = chance(0.6) ? lead : hiddenG[rng(hiddenG.length)]!;
+        votes.push({ voter: voter.id, target: g.id });
+      } else {
+        const others = hiddenP.filter((p) => p.id !== voter.id);
+        if (others.length) votes.push({ voter: voter.id, target: others[rng(others.length)]!.id });
+      }
+    }
+    const res = resolveRound({ round, magic, startMagic: start, players: roster, votes });
+    magic = res.after;
+    roster = roster.map((p) => (p.id === res.unmasked ? { ...p, out: true } : p));
+    if (res.winner) return res.winner;
+  }
+  return "pn";
+}
+
+describe("équilibre", () => {
+  it("à 12 joueurs, environ une chance sur deux quand 60 % désignent", () => {
+    const rng = seeded(42);
+    const games = 4000;
+    let pn = 0;
+    for (let i = 0; i < games; i++) if (simulate(12, 0.6, rng) === "pn") pn++;
+    expect(pn / games).toBeGreaterThan(0.4);
+    expect(pn / games).toBeLessThan(0.65);
+  });
+
+  it("plus on joue, plus les Pères Noël gagnent", () => {
+    const rng = seeded(7);
+    const rate = (p: number) => {
+      let pn = 0;
+      for (let i = 0; i < 2000; i++) if (simulate(12, p, rng) === "pn") pn++;
+      return pn / 2000;
+    };
+    expect(rate(0.2)).toBeLessThan(rate(0.6));
+  });
 });

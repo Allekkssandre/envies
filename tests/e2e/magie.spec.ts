@@ -1,28 +1,35 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { db, skipWithoutDb } from "./helpers";
 
-// La Magie de Noël de bout en bout : 12 joueurs, choix des camps, vote, gazette,
-// identification, cinq manches, révélation.
+// La Magie de Noël de bout en bout : 8 joueurs, rôles tirés, carte retournée, désignations,
+// masque qui tombe, gazette par mail, révélation.
 skipWithoutDb();
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 const MAIL_DIR = process.env.SANTA_MAIL_DIR ?? "";
 test.skip(!MAIL_DIR, "SANTA_MAIL_DIR requis");
 
-type Mail = { to: string; text: string };
+type Mail = { to: string; subject: string; text: string };
 
-async function links(emails: string[]): Promise<string[]> {
+async function mails(): Promise<Mail[]> {
+  const files = existsSync(MAIL_DIR) ? (await readdir(MAIL_DIR)).sort() : [];
+  return Promise.all(
+    files.map(async (f) => JSON.parse(await readFile(path.join(MAIL_DIR, f), "utf8")) as Mail),
+  );
+}
+
+async function links(emails: string[], suffix: RegExp): Promise<string[]> {
   const found = new Map<string, string>();
   await expect
     .poll(
       async () => {
-        const files = existsSync(MAIL_DIR) ? (await readdir(MAIL_DIR)).sort() : [];
-        for (const file of files) {
-          const mail = JSON.parse(await readFile(path.join(MAIL_DIR, file), "utf8")) as Mail;
+        for (const mail of await mails()) {
           const link = /https?:\/\/\S+\/lutins\/moi\/\S+/.exec(mail.text)?.[0];
-          if (emails.includes(mail.to) && link) found.set(mail.to, new URL(link).pathname);
+          if (emails.includes(mail.to) && link && suffix.test(link)) {
+            found.set(mail.to, new URL(link).pathname);
+          }
         }
         return found.size;
       },
@@ -32,7 +39,7 @@ async function links(emails: string[]): Promise<string[]> {
   return emails.map((e) => found.get(e)!);
 }
 
-/** Recule le début de la partie : les échéances passées se résolvent à la prochaine visite. */
+/** Recule le début de la partie : les semaines échues se résolvent à la prochaine visite. */
 async function rewind(santaId: string, days: number) {
   await db
     .from("magic_games")
@@ -40,26 +47,20 @@ async function rewind(santaId: string, days: number) {
     .eq("santa_id", santaId);
 }
 
-async function join(page: Page, link: string) {
-  await page.goto(`${link}/jeu`);
-  const buttons = page.getByRole("button", {
-    name: /^(Père Noël|Grinch|Pour les Pères Noël|Pour les Grinchs|Découvrir mon rôle)$/,
-  });
-  await buttons.first().click();
-  await expect(page.getByRole("region", { name: "Mon rôle" })).toBeVisible({ timeout: 15_000 });
-}
-
-test("La Magie de Noël : camps, vote, gazette, identification, révélation", async ({ page }, info) => {
+test("La Magie de Noël : rôle, désignations, masque qui tombe, gazette, révélation", async ({
+  page,
+}, info) => {
   test.setTimeout(240_000);
   const run = `${info.project.name}-${Date.now()}`;
   const title = `Test e2e magie ${run}`;
-  const people = Array.from({ length: 12 }, (_, i) => ({
+  const people = Array.from({ length: 8 }, (_, i) => ({
     first: `Joueur${String.fromCharCode(65 + i)}`,
     last: `Test${i + 1}`,
     email: `magie${i + 1}-${run}@exemple.test`,
   }));
+  const emails = people.map((p) => p.email);
 
-  // Secret Santa à 12, lancé
+  // Secret Santa à 8, lancé
   await page.goto("/lutins");
   await page.getByLabel("Nom du Secret Santa").fill(title);
   await page.getByLabel("Mot de passe de l'organisation").fill("bouleau");
@@ -85,65 +86,74 @@ test("La Magie de Noël : camps, vote, gazette, identification, révélation", a
   await page.getByLabel("Début de la partie").fill(local);
   await page.getByLabel("Durée d'une manche (jours)").fill("1");
   await page.getByRole("button", { name: "Ouvrir le jeu" }).click();
-  await expect(page.getByText(/^Choix des camps jusqu'au/)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/^8 joueurs\. Première semaine le/)).toBeVisible({ timeout: 15_000 });
 
   const { data: santa } = await db.from("santas").select("id").eq("title", title).single();
   const santaId = santa!.id;
-  const paths = await links(people.map((p) => p.email));
 
-  // Onze joueurs choisissent, dans l'ordre. Le douzième sera placé d'office au début de la partie.
+  // Chacun reçoit un mail d'ouverture avec son lien direct vers le jeu, sans son rôle.
+  const paths = await links(emails, /\/jeu$/);
+  const opening = (await mails()).filter((m) => emails.includes(m.to) && /rôle vous attend/.test(m.subject));
+  expect(opening).toHaveLength(8);
+  for (const m of opening) expect(m.text).not.toMatch(/Vous êtes (un )?(Grinch|Père Noël)/);
+
+  // La base ne contient aucun rôle en clair.
+  const { data: stored } = await db.from("magic_players").select("secret, out_role").eq("santa_id", santaId);
+  expect(stored).toHaveLength(8);
+  for (const row of stored!) {
+    expect(row.secret).toMatch(/^v1\./);
+    expect(row.out_role).toBeNull();
+  }
+
+  // Avant le début : la carte se retourne, la désignation n'est pas encore ouverte.
   await page.goto(paths[0]!);
-  await page.getByRole("link", { name: "Entrer dans le jeu" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "La Magie de Noël" })).toBeVisible();
-  await expect(page.getByText(/Choisissez votre camp/)).toBeVisible();
-  for (const link of paths.slice(0, 11)) await join(page, link);
-  // Aucun message tant que la partie n'a pas commencé.
-  await expect(page.getByRole("log")).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1, name: /La Magie de Noël/ })).toBeVisible();
+  await expect(page.getByRole("meter", { name: "Magie de Noël" })).toBeVisible();
+  await expect(page.getByText(/^La désignation ouvre le/)).toBeVisible();
+  await page.getByRole("button", { name: "Retourner la carte" }).click();
+  await expect(page.getByRole("region", { name: "Mon rôle" })).toContainText(/Père Noël|Grinch/);
+  await expect(page.getByRole("region", { name: "Gazette" })).toContainText("Indice pour la semaine 1");
 
-  // Début de la partie : tchat ouvert, vote de la manche 1
+  // Semaine 1 : sept joueurs désignent JoueurH, qui désigne JoueurA.
   await rewind(santaId, 0);
-  await page.goto(`${paths[11]!}/jeu`);
-  await expect(page.getByRole("region", { name: "Mon rôle" })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText(/^Manche 1 sur 5/)).toBeVisible();
-  await expect(page.getByRole("log")).toContainText("La partie commence.");
-  await expect(page.getByLabel("Présents").getByRole("listitem")).toHaveCount(6);
-  await expect(page.getByRole("region", { name: "Identifications" })).toContainText("2 restantes");
+  for (const [i, link] of paths.entries()) {
+    await page.goto(link);
+    const panel = page.getByRole("region", { name: "Votre suspect" });
+    await expect(panel).toContainText("Votre suspect de la semaine 1", { timeout: 15_000 });
+    const target = i === 7 ? "JoueurA" : "JoueurH";
+    await panel.getByRole("button", { name: target, exact: true }).click();
+    await expect(panel.getByRole("button", { name: target, exact: true })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(panel).toContainText(`Vous soupçonnez ${target}.`);
+  }
+  await expect(page.getByText("8 personnes ont désigné cette semaine.")).toBeVisible({ timeout: 25_000 });
 
-  // Message et vote
-  await page.getByLabel("Votre message").fill("Bonjour à tous");
-  await page.getByRole("button", { name: "Envoyer" }).click();
-  await expect(page.getByRole("log")).toContainText("Bonjour à tous");
-  const vote = page.getByRole("region", { name: "Vote de la manche 1" });
-  await vote.getByRole("button").first().click();
-  await expect(vote.getByRole("button", { pressed: true })).toContainText("votre vote");
-
-  // Identification : définitive, une de moins
-  const ids = page.getByRole("region", { name: "Identifications" });
-  await ids.getByLabel("Personne").selectOption({ index: 1 });
-  await ids.getByLabel("Rôle").selectOption("inf");
-  await ids.getByRole("button", { name: "Déposer" }).click();
-  await expect(ids).toContainText("1 restante");
-  await expect(ids).toContainText(": Infiltré");
-
-  // Fin du vote de la manche 1 : gazette, manche 2
+  // Fin de la semaine 1 : le masque de JoueurH tombe, la gazette part par mail.
   await rewind(santaId, 1);
-  await page.reload();
-  await expect(page.getByText(/^(Manche 2 sur 5|Partie terminée)/)).toBeVisible({ timeout: 15_000 });
-  const { data: rounds } = await db.from("magic_rounds").select("round").eq("santa_id", santaId);
-  expect(rounds).toHaveLength(1);
-  const { data: gazettes } = await db
-    .from("magic_messages")
-    .select("chat")
+  await page.goto(paths[0]!);
+  await expect(page.getByText(/^(Semaine 2 sur 5|Partie terminée)/)).toBeVisible({ timeout: 15_000 });
+  const gazette = page.getByRole("region", { name: "Gazette" });
+  await expect(gazette).toContainText("Le masque de JoueurH est tombé");
+  await expect(gazette.getByText(/^Qui a désigné qui \(8\)$/)).toBeVisible();
+  await expect(page.getByRole("region", { name: "Votre suspect" })).toContainText("Masques tombés");
+  await expect
+    .poll(
+      async () => (await mails()).filter((m) => emails.includes(m.to) && /semaine 1$/.test(m.subject)).length,
+      {
+        timeout: 30_000,
+      },
+    )
+    .toBe(8);
+  const { data: fallen } = await db
+    .from("magic_players")
+    .select("out_round")
     .eq("santa_id", santaId)
-    .eq("kind", "gazette");
-  expect(gazettes!.map((g) => g.chat).sort()).toEqual(["gr", "pn"]);
+    .not("out_round", "is", null);
+  expect(fallen).toHaveLength(1);
 
-  // La base ne contient aucun rôle en clair
-  const { data: stored } = await db.from("magic_players").select("secret").eq("santa_id", santaId);
-  expect(stored).toHaveLength(12);
-  for (const row of stored!) expect(row.secret).toMatch(/^v1\./);
-
-  // Fin de partie, puis révélation par l'organisation
+  // Fin de partie, puis révélation par l'organisation.
   await rewind(santaId, 6);
   await page.reload();
   await expect(page.getByText(/^Partie terminée/)).toBeVisible({ timeout: 20_000 });
@@ -151,10 +161,9 @@ test("La Magie de Noël : camps, vote, gazette, identification, révélation", a
   await page.getByRole("button", { name: "Révéler les rôles et le classement" }).click();
   await expect(page.getByText(/Rôles et classement révélés\.$/)).toBeVisible({ timeout: 15_000 });
 
-  await page.goto(`${paths[3]!}/jeu`);
-  const table = page.getByRole("region", { name: "Rôles et classement" }).getByRole("table");
-  await expect(table.getByRole("row")).toHaveCount(13);
-  await expect(table.getByRole("cell", { name: "Grinch", exact: true })).toHaveCount(5);
-  await expect(table.getByRole("cell", { name: "Père Noël", exact: true })).toHaveCount(5);
-  await expect(table.getByRole("cell", { name: /infiltré$/ })).toHaveCount(2);
+  await page.goto(paths[3]!);
+  const table = page.getByRole("region", { name: "Rôles et flair" }).getByRole("table");
+  await expect(table.getByRole("row")).toHaveCount(9);
+  await expect(table.getByText("Grinch", { exact: true })).toHaveCount(2);
+  await expect(table.getByText("Père Noël", { exact: true })).toHaveCount(6);
 });

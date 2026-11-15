@@ -461,6 +461,7 @@ export type Database = {
           santa_id: string
           shoe_size: string | null
           tastes: string | null
+          token_enc: string | null
           token_hash: string | null
         }
         Insert: {
@@ -481,6 +482,7 @@ export type Database = {
           santa_id: string
           shoe_size?: string | null
           tastes?: string | null
+          token_enc?: string | null
           token_hash?: string | null
         }
         Update: {
@@ -501,204 +503,118 @@ export type Database = {
           santa_id?: string
           shoe_size?: string | null
           tastes?: string | null
+          token_enc?: string | null
           token_hash?: string | null
-        }
-        Relationships: []
-      }
-      magic_accusations: {
-        Row: {
-          accuser: string
-          created_at: string
-          id: number
-          role: "pn" | "gr" | "inf"
-          santa_id: string
-          target: string
-        }
-        Insert: {
-          accuser: string
-          created_at?: string
-          id?: number
-          role: "pn" | "gr" | "inf"
-          santa_id: string
-          target: string
-        }
-        Update: {
-          accuser?: string
-          created_at?: string
-          id?: number
-          role?: "pn" | "gr" | "inf"
-          santa_id?: string
-          target?: string
         }
         Relationships: []
       }
       magic_games: {
         Row: {
           created_at: string
-          gauge: number
+          magic: number
           reveal: Json | null
+          reveal_mailed_at: string | null
           round: number
           round_days: number
           santa_id: string
-          start_gauge: number
+          start_magic: number
           starts_at: string
-          state: Json
-          status: "joining" | "playing" | "over" | "revealed"
+          status: "waiting" | "playing" | "over" | "revealed"
           version: number
           winner: "pn" | "gr" | null
         }
         Insert: {
           created_at?: string
-          gauge: number
+          magic: number
           reveal?: Json | null
+          reveal_mailed_at?: string | null
           round?: number
           round_days?: number
           santa_id: string
-          start_gauge: number
+          start_magic: number
           starts_at: string
-          state?: Json
-          status?: "joining" | "playing" | "over" | "revealed"
+          status?: "waiting" | "playing" | "over" | "revealed"
           version?: number
           winner?: "pn" | "gr" | null
         }
         Update: {
           created_at?: string
-          gauge?: number
+          magic?: number
           reveal?: Json | null
+          reveal_mailed_at?: string | null
           round?: number
           round_days?: number
           santa_id?: string
-          start_gauge?: number
+          start_magic?: number
           starts_at?: string
-          state?: Json
-          status?: "joining" | "playing" | "over" | "revealed"
+          status?: "waiting" | "playing" | "over" | "revealed"
           version?: number
           winner?: "pn" | "gr" | null
-        }
-        Relationships: []
-      }
-      magic_messages: {
-        Row: {
-          body: string
-          chat: "pn" | "gr"
-          created_at: string
-          id: number
-          kind: "chat" | "gazette" | "system"
-          pseudo: string | null
-          santa_id: string
-        }
-        Insert: {
-          body: string
-          chat: "pn" | "gr"
-          created_at?: string
-          id?: number
-          kind?: "chat" | "gazette" | "system"
-          pseudo?: string | null
-          santa_id: string
-        }
-        Update: {
-          body?: string
-          chat?: "pn" | "gr"
-          created_at?: string
-          id?: number
-          kind?: "chat" | "gazette" | "system"
-          pseudo?: string | null
-          santa_id?: string
         }
         Relationships: []
       }
       magic_players: {
         Row: {
+          out_role: "pn" | "gr" | null
+          out_round: number | null
           participant_id: string
           santa_id: string
-          secret: string | null
+          secret: string
         }
         Insert: {
+          out_role?: "pn" | "gr" | null
+          out_round?: number | null
           participant_id: string
           santa_id: string
-          secret?: string | null
+          secret: string
         }
         Update: {
+          out_role?: "pn" | "gr" | null
+          out_round?: number | null
           participant_id?: string
           santa_id?: string
-          secret?: string | null
+          secret?: string
         }
         Relationships: []
       }
       magic_rounds: {
         Row: {
           data: Json
-          gr_pseudo: string
-          pn_pseudo: string
+          mailed_at: string | null
           resolved_at: string
           round: number
           santa_id: string
         }
         Insert: {
           data: Json
-          gr_pseudo: string
-          pn_pseudo: string
+          mailed_at?: string | null
           resolved_at?: string
           round: number
           santa_id: string
         }
         Update: {
           data?: Json
-          gr_pseudo?: string
-          pn_pseudo?: string
+          mailed_at?: string | null
           resolved_at?: string
           round?: number
           santa_id?: string
         }
         Relationships: []
       }
-      magic_visits: {
-        Row: {
-          chat: "pn" | "gr"
-          from_message_id: number
-          id: number
-          pseudo: string
-          round: number
-          santa_id: string
-          to_message_id: number | null
-        }
-        Insert: {
-          chat: "pn" | "gr"
-          from_message_id: number
-          id?: number
-          pseudo: string
-          round: number
-          santa_id: string
-          to_message_id?: number | null
-        }
-        Update: {
-          chat?: "pn" | "gr"
-          from_message_id?: number
-          id?: number
-          pseudo?: string
-          round?: number
-          santa_id?: string
-          to_message_id?: number | null
-        }
-        Relationships: []
-      }
       magic_votes: {
         Row: {
-          chat: "pn" | "gr"
           round: number
           santa_id: string
           target: string
           voter: string
         }
         Insert: {
-          chat: "pn" | "gr"
           round: number
           santa_id: string
           target: string
           voter: string
         }
         Update: {
-          chat?: "pn" | "gr"
           round?: number
           santa_id?: string
           target?: string
@@ -805,9 +721,6 @@ export type Database = {
           p_game: Json
           p_players: Json
           p_round: Json
-          p_close_visits: boolean
-          p_messages: Json
-          p_visits: Json
         }
         Returns: boolean
       }

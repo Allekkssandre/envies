@@ -21,7 +21,7 @@ import { hashPassword, verifyPassword } from "@/server/auth/password";
 import { hitRateLimit, ipHash, unlockWindowSeconds } from "@/server/auth/rateLimit";
 import { setEditCookie, setReadCookie } from "@/server/auth/session";
 import { getServiceDb, type Db } from "@/server/db/client";
-import { encryptAssignment, hashToken, newToken } from "@/server/santa/crypto";
+import { encryptAssignment, encryptToken, hashToken, newToken } from "@/server/santa/crypto";
 import { loadLutinContext, type LutinContext } from "@/server/santa/db";
 import { inviteMail, mailConfigured, sendMail } from "@/server/santa/mail";
 import { hasOrganizerAccess, setOrganizerCookie } from "@/server/santa/session";
@@ -318,6 +318,7 @@ export async function launchSanta(santaId: string): Promise<Result<LaunchReport>
     const rows = draw.map((d) => ({
       id: d.giverId,
       token_hash: hashToken(tokens.get(d.giverId)!),
+      token_enc: encryptToken(santa.id, d.giverId, tokens.get(d.giverId)!),
       assignment: encryptAssignment(santa.id, d.giverId, { receiverId: d.receiverId, themeId: d.themeId }),
     }));
     const { error } = await db.rpc("santa_launch", { p_santa: santa.id, p_rows: rows });
@@ -361,7 +362,12 @@ export async function resendInvite(input: z.input<typeof resendInput>): Promise<
     const token = newToken();
     const { data: person, error } = await db
       .from("santa_participants")
-      .update({ token_hash: hashToken(token), opened_at: null, ...(email ? { email } : {}) })
+      .update({
+        token_hash: hashToken(token),
+        token_enc: encryptToken(santa.id, parsed.data.participantId, token),
+        opened_at: null,
+        ...(email ? { email } : {}),
+      })
       .eq("id", parsed.data.participantId)
       .eq("santa_id", santa.id)
       .not("assignment", "is", null)

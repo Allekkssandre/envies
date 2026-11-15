@@ -1,121 +1,88 @@
-import type { AccusedRole, Card, Chat, Nature, Role } from "./engine";
-import type { Gazette, SystemNote } from "./types";
+import { CATCH_GAIN, ROUNDS, SABOTAGE, WRONG_LOSS, type Clue, type Role } from "./engine";
+import type { Gazette } from "./types";
 
 // Textes du jeu (docs/14-magie-de-noel.md § Textes). Courts, sans effet de style.
 
-export const ROLE_LABEL: Record<Role, string> = {
-  pn: "Père Noël",
-  gr: "Grinch",
-  inf_gr: "Grinch infiltré",
-  inf_pn: "Père Noël infiltré",
+export const ROLE_LABEL: Record<Role, string> = { pn: "Père Noël", gr: "Grinch" };
+export const CAMP_LABEL: Record<Role, string> = { pn: "les Pères Noël", gr: "les Grinchs" };
+
+export const ROLE_MISSION: Record<Role, string> = {
+  pn: "Gardez la Magie de Noël allumée jusqu'au bout. Trouvez les Grinchs.",
+  gr: "Faites tomber la Magie de Noël à 0 sans vous faire démasquer.",
 };
 
-export const ROLE_TEXT: Record<Role, string> = {
-  pn: "Vous défendez la Magie de Noël. Elle ne doit pas tomber à 0.",
-  gr: "Vous voulez faire tomber la Magie de Noël à 0.",
-  inf_gr:
-    "Vous jouez pour les Grinchs, mais vous êtes dans le tchat des Pères Noël. Ils ne doivent pas le deviner.",
-  inf_pn:
-    "Vous jouez pour les Pères Noël, mais vous êtes dans le tchat des Grinchs. Ils ne doivent pas le deviner.",
+export const ROLE_HINT: Record<Role, string> = {
+  pn: "Chaque semaine, désignez la personne que vous soupçonnez.",
+  gr: `Vous n'avez rien à faire : chaque semaine, chaque Grinch caché retire ${SABOTAGE} de Magie. Désignez un Père Noël pour brouiller les pistes.`,
 };
 
-export const CHAT_LABEL: Record<Chat, string> = { pn: "Tchat des Pères Noël", gr: "Tchat des Grinchs" };
-export const CAMP_LABEL: Record<Chat, string> = { pn: "les Pères Noël", gr: "les Grinchs" };
-export const ACCUSED_LABEL: Record<AccusedRole, string> = { pn: "Père Noël", gr: "Grinch", inf: "Infiltré" };
-
-export const CARD_NAME: Record<Card, string> = {
-  facteur: "Facteur",
-  lanterne: "Lanterne",
-  parefeu: "Pare-feu",
-  bouclier: "Bouclier",
-  fee: "Fée du sapin",
-  cyber: "CyberGrinch",
-  brouilleur: "Brouilleur",
-  siphon: "Siphon",
-  corrupteur: "Corrupteur",
-  givre: "Givré",
-  espion: "Espion",
-};
-
-const VISIT = "Vous y lisez, vous y écrivez et vous votez avec eux au vote suivant.";
-
-/** Ce que fait le pouvoir du joueur quand son tchat le vote. */
-export function cardText(card: Card, role: Role): string {
-  switch (card) {
-    case "facteur":
-      return `La Magie gagne 1. Vous passez une manche dans le tchat des Grinchs. ${VISIT}`;
-    case "lanterne":
-      return "La Magie gagne 1. La gazette donne le nombre de lettres du prénom d'un Grinch, tiré au sort.";
-    case "parefeu":
-      return "Bloque l'attaque de la manche si elle est numérique. Sinon, sans effet.";
-    case "bouclier":
-      return "Bloque l'attaque de la manche si elle est magique. Sinon, sans effet.";
-    case "fee":
-      return "Rend à la Magie la plus grosse perte subie en une manche depuis le début. Au moins 1.";
-    case "cyber":
-      return `Attaque numérique : la Magie perd 1. Vous passez une manche dans le tchat des Pères Noël. ${VISIT}`;
-    case "brouilleur":
-      return "Attaque numérique : la Magie perd 1. Les Pères Noël ne sauront pas la nature de cette attaque.";
-    case "siphon":
-      return "Attaque magique : la Magie perd 2.";
-    case "corrupteur":
-      return "Attaque magique : la Magie perd 3. En échange, les Pères Noël apprennent le nombre de lettres de votre prénom.";
-    case "givre":
-      return "Attaque de glace : la Magie perd 1 et le prochain pouvoir des Pères Noël est annulé. À la dernière manche : la Magie perd 2. Rien ne bloque cette attaque.";
-    case "espion":
-      return role === "inf_gr"
-        ? "Si les Pères Noël votent pour vous : la Magie gagne 1 et vous passez une manche dans le tchat des Grinchs, votre vrai camp. Un Père Noël a le même pouvoir : vous pouvez l'annoncer sans vous trahir."
-        : "Si les Grinchs votent pour vous : attaque numérique, la Magie perd 1, et vous passez une manche dans le tchat des Pères Noël, votre vrai camp. Un Grinch a le même pouvoir : vous pouvez l'annoncer sans vous trahir.";
+export function clueText(clue: Clue): string {
+  switch (clue.t) {
+    case "letters":
+      return `Le prénom d'un Grinch compte ${clue.n} lettres.`;
+    case "range":
+      return `Le prénom d'un Grinch commence par une lettre entre ${clue.from} et ${clue.to}.`;
+    case "innocent":
+      return `Ni ${clue.names[0]} ni ${clue.names[1]} ne sont des Grinchs.`;
+    case "among":
+      return `Un Grinch se cache parmi ${clue.names[0]}, ${clue.names[1]} et ${clue.names[2]}.`;
   }
 }
 
-const NATURE: Record<Nature, string> = { num: "numérique", mag: "magique", glace: "de glace" };
+const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : "0");
 
-/** Lignes d'une gazette, dans l'ordre : pouvoir joué, attaque, défense, jauge, indices, fin. */
-export function gazetteLines(g: Gazette): string[] {
-  const lines = [`Pouvoir joué : celui de ${g.played}${g.drawn ? " (tiré au sort)" : ""}.`];
-  if (g.camp === "pn") {
-    if (g.frozen) lines.push("Il a été gelé par une attaque précédente : il est perdu, sans effet.");
-    if (g.blocked) lines.push("Attaque bloquée.");
-    else lines.push(`Attaque ${g.nature ? NATURE[g.nature] : "de nature inconnue"} : −${g.loss}.`);
-    lines.push(g.gain > 0 ? `Défense : +${g.gain}.` : "Défense : aucun point.");
-  } else {
-    lines.push(g.blocked ? "Votre attaque a été bloquée." : `Votre attaque : −${g.loss}.`);
-    lines.push(g.gain > 0 ? `Défense des Pères Noël : +${g.gain}.` : "Défense des Pères Noël : aucun point.");
+/** Lignes de la gazette, dans l'ordre de lecture. */
+export function gazetteLines(g: Gazette): { title: string; lines: string[] } {
+  if (g.round === 0) {
+    return {
+      title: "Ouverture",
+      lines: [`La Magie de Noël est à ${g.after}.`],
+    };
   }
-  lines.push(`Magie de Noël : ${g.before} → ${g.after}.`);
-  if (g.lanterne) lines.push(`Indice : le prénom d'un Grinch compte ${g.lanterne} lettres.`);
-  if (g.corrupteur) lines.push(`Indice : le prénom de l'attaquant compte ${g.corrupteur} lettres.`);
-  if (g.winner)
+  const lines: string[] = [];
+  if (g.unmasked) {
     lines.push(
-      g.winner === "gr"
-        ? "La Magie est tombée à 0. Les Grinchs ont gagné."
-        : "La Magie a tenu. Les Pères Noël ont gagné.",
+      g.unmasked.role === "gr"
+        ? `Le masque de ${g.unmasked.name} est tombé : c'était un Grinch. Magie ${signed(g.accusation)}.`
+        : `Le masque de ${g.unmasked.name} est tombé : c'était un Père Noël. Magie ${signed(g.accusation)}.`,
     );
-  return lines;
-}
-
-export function systemText(note: SystemNote): string {
-  switch (note.t) {
-    case "start":
-      return "La partie commence. Annoncez votre pouvoir si vous le souhaitez, puis votez.";
-    case "depart":
-      return `${note.pseudo} part en visite dans l'autre tchat. Retour après le prochain vote.`;
-    case "arrive":
-      return `${note.pseudo} est présent dans le tchat en raison de son pouvoir d'espionnage. Il peut être un infiltré de votre camp, ou un membre du camp adverse.`;
-    case "retour":
-      return `${note.pseudo} est de retour.`;
+  } else {
+    lines.push(
+      g.missed === "tie"
+        ? "Égalité : personne n'est démasqué."
+        : g.missed === "threshold"
+          ? "Pas assez de voix sur un même nom : personne n'est démasqué."
+          : "Personne n'a été désigné.",
+    );
   }
+  if (g.sabotage) {
+    lines.push(
+      g.sabotage === 1
+        ? `Le Grinch caché a frappé : Magie −${g.sabotage}.`
+        : `Les Grinchs cachés ont frappé : Magie −${g.sabotage}.`,
+    );
+  }
+  lines.push(`La Magie de Noël passe de ${g.before} à ${g.after}.`);
+  if (g.certs) lines.push("Les secrets personnels sont arrivés. Regardez votre carte.");
+  return { title: `Semaine ${g.round}`, lines };
 }
 
-export const RULES = [
-  "Deux camps de 5 : les Pères Noël et les Grinchs. Chaque tchat compte aussi un infiltré du camp adverse.",
-  "La Magie de Noël baisse avec les attaques des Grinchs. À 0, les Grinchs gagnent. Si elle tient 5 manches, les Pères Noël gagnent.",
-  "À chaque manche, votre tchat vote pour un pseudonyme. Son pouvoir est joué aussitôt le vote fini. Chaque pouvoir ne sert qu'une fois.",
-  "Vous ne connaissez que votre pouvoir. Vous pouvez l'annoncer ou vous taire. Seul l'infiltré a le droit de mentir.",
-  "Égalité ou aucun vote : le site tire au sort.",
-  "Identifications : deux par joueur, définitives. Juste : Père Noël +1, Grinch +2, infiltré +4. Faux : −1, −2, −1. Être identifié : −1.",
-  "Ne parlez pas du jeu en dehors des tchats, et ne dites à personne qui vous êtes.",
+export function endText(g: Pick<Gazette, "winner" | "end">): string | null {
+  if (g.end === "zero") return "La Magie est éteinte. Les Grinchs ont gagné.";
+  if (g.end === "all-caught") return "Tous les Grinchs sont démasqués. Les Pères Noël ont gagné.";
+  if (g.end === "last-round") return "La Magie a tenu jusqu'au bout. Les Pères Noël ont gagné.";
+  return null;
+}
+
+export const RULES: string[] = [
+  "Environ un joueur sur quatre est un Grinch, tiré au sort. Les autres sont Pères Noël. Les Grinchs se connaissent entre eux.",
+  `La partie dure ${ROUNDS} semaines. Chaque semaine, vous pouvez désigner une personne. C'est facultatif et modifiable jusqu'à la fin de la semaine.`,
+  `La personne la plus désignée est démasquée, s'il y a assez de voix et pas d'égalité. Un Grinch démasqué : Magie +${CATCH_GAIN}, et il ne nuit plus. Un Père Noël démasqué : Magie −${WRONG_LOSS}.`,
+  `Chaque Grinch encore caché retire ${SABOTAGE} de Magie à la fin de chaque semaine.`,
+  "Chaque semaine, la gazette donne un indice et montre qui a désigné qui.",
+  "À la fin de la semaine 2, chaque Père Noël reçoit en secret le nom d'un autre Père Noël. Les Grinchs ne reçoivent rien, mais peuvent faire semblant.",
+  "Les Grinchs gagnent si la Magie tombe à 0. Les Pères Noël gagnent si elle tient jusqu'au bout, ou s'ils démasquent tous les Grinchs.",
+  "Parlez-en entre vous si vous voulez : au repas, par message. Tout le monde peut mentir.",
 ];
 
 export function formatMoment(iso: string): string {

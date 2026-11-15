@@ -1,8 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { Suspense } from "react";
-import { MagicGame } from "@/components/santa/MagicGame";
-import { SantaShell } from "@/components/santa/SantaShell";
+import { Suspense, type ReactNode } from "react";
+import { MagicGame } from "@/components/magic/MagicGame";
+import "@/components/magic/magic.css";
 import { advanceMagic, buildMagicView } from "@/server/magic/game";
 import { loadLutinContext } from "@/server/santa/db";
 
@@ -12,13 +12,34 @@ export const metadata: Metadata = {
   referrer: "no-referrer",
 };
 
+export const viewport: Viewport = { themeColor: "#0b1322" };
+
+/** Univers propre au jeu : nuit d'hiver, neige, lumière dorée. */
+function MagicShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="mg relative isolate flex min-h-dvh flex-col overflow-clip">
+      <span aria-hidden="true" className="mg-sky" />
+      <span aria-hidden="true" className="mg-snow" />
+      <header className="relative mx-auto flex h-[68px] w-full max-w-[1120px] items-center justify-between px-4 sm:h-20 sm:px-8">
+        <Link href="/" className="font-display-72 text-[24px] text-[var(--mg-gold-hi)] italic no-underline">
+          Envies
+        </Link>
+        <span className="mg-kicker">Secret Santa</span>
+      </header>
+      <main className="relative mx-auto w-full max-w-[1120px] flex-1 px-4 pt-2 pb-20 sm:px-8">
+        {children}
+      </main>
+    </div>
+  );
+}
+
 export default function MagicRoute({ params }: PageProps<"/lutins/moi/[token]/jeu">) {
   return (
-    <SantaShell wide>
-      <Suspense fallback={<div className="relative h-80" aria-hidden="true" />}>
+    <MagicShell>
+      <Suspense fallback={<div className="h-96" aria-hidden="true" />}>
         <Game params={params} />
       </Suspense>
-    </SantaShell>
+    </MagicShell>
   );
 }
 
@@ -29,14 +50,12 @@ async function Game({ params }: Pick<PageProps<"/lutins/moi/[token]/jeu">, "para
   const view = ctx ? await buildMagicView(ctx.santa.id, ctx.santa.title, ctx.me.id) : null;
   if (!view) {
     return (
-      <div className="relative flex flex-col gap-3">
-        <h1 className="m-0 font-display-72 text-[34px] leading-tight font-normal">
-          Le jeu n&apos;est pas ouvert.
-        </h1>
-        <p className="m-0 text-[15px] leading-normal text-ink-soft">
+      <div className="flex flex-col gap-3 pt-10">
+        <h1 className="mg-title m-0 text-[38px] leading-tight font-normal">Le jeu n&apos;est pas ouvert.</h1>
+        <p className="m-0 text-[16px] leading-normal text-[var(--mg-soft)]">
           Ce lien ne vaut plus, ou l&apos;organisation n&apos;a pas lancé La Magie de Noël.
         </p>
-        <Link href="/" className="mt-2 text-[15px] font-semibold text-ink">
+        <Link href="/" className="mt-2 text-[15px] font-semibold text-[var(--mg-gold-hi)]">
           Retour à l&apos;accueil
         </Link>
       </div>

@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
-import { PLAYERS, ROUNDS } from "@/lib/magic/engine";
+import { MAX_PLAYERS, MIN_PLAYERS, ROUNDS, type Level } from "@/lib/magic/engine";
 import { CAMP_LABEL, formatMoment } from "@/lib/magic/texts";
 import type { MagicSummary } from "@/lib/magic/types";
 import type { Result } from "@/server/actions/result";
@@ -29,7 +29,7 @@ export function MagicOrganizer({
   const [pending, startTransition] = useTransition();
   const [startsAt, setStartsAt] = useState("");
   const [roundDays, setRoundDays] = useState("7");
-  const [startGauge, setStartGauge] = useState("4");
+  const [level, setLevel] = useState<Level>("balanced");
   const [stopping, setStopping] = useState(false);
 
   const act = (run: () => Promise<Result<null>>, done: string) =>
@@ -47,9 +47,9 @@ export function MagicOrganizer({
     return (
       <SantaSection
         title="La Magie de Noël"
-        hint={`Un jeu à rôles cachés en ${ROUNDS} manches, en parallèle des cadeaux. Il se joue à ${PLAYERS}.`}
+        hint={`Un jeu à rôles cachés en ${ROUNDS} semaines, en parallèle des cadeaux. Une désignation par semaine au plus, facultative.`}
       >
-        {players === PLAYERS ? (
+        {players >= MIN_PLAYERS && players <= MAX_PLAYERS ? (
           <form
             className="grid gap-4 sm:grid-cols-3"
             onSubmit={(e) => {
@@ -60,9 +60,9 @@ export function MagicOrganizer({
                   createMagicGame(santaId, {
                     startsAt: new Date(startsAt).toISOString(),
                     roundDays: Number(roundDays),
-                    startGauge: Number(startGauge),
+                    level,
                   }),
-                "Jeu ouvert. Chacun le trouve sur sa page.",
+                "Jeu ouvert. Chacun reçoit un mail et trouve son rôle sur sa page.",
               );
             }}
           >
@@ -71,7 +71,7 @@ export function MagicOrganizer({
               type="datetime-local"
               value={startsAt}
               onChange={(e) => setStartsAt(e.target.value)}
-              hint="Chacun choisit son camp avant cette date."
+              hint="Les rôles sont tirés tout de suite. La première semaine commence à cette date."
             />
             <Field
               label="Durée d'une manche (jours)"
@@ -80,17 +80,23 @@ export function MagicOrganizer({
               max={14}
               value={roundDays}
               onChange={(e) => setRoundDays(e.target.value)}
-              hint={`${ROUNDS} manches : ${ROUNDS * Number(roundDays || 0)} jours en tout.`}
+              hint={`${ROUNDS} semaines de jeu : ${ROUNDS * Number(roundDays || 0)} jours en tout.`}
             />
-            <Field
-              label="Magie au départ"
-              type="number"
-              min={3}
-              max={5}
-              value={startGauge}
-              onChange={(e) => setStartGauge(e.target.value)}
-              hint="4 : partie équilibrée. 3 aide les Grinchs, 5 les Pères Noël."
-            />
+            <label className="flex flex-col gap-1.5 text-[15px] font-semibold">
+              Équilibre
+              <select
+                value={level}
+                onChange={(e) => setLevel(e.target.value as Level)}
+                className="min-h-11 rounded-xl border border-ink/20 bg-linen px-3 text-[15px] font-normal"
+              >
+                <option value="balanced">Équilibré</option>
+                <option value="pn">Avantage Pères Noël</option>
+                <option value="gr">Avantage Grinchs</option>
+              </select>
+              <span className="text-[13px] font-normal text-ink-soft">
+                Règle la Magie de départ. Équilibré : une chance sur deux pour chaque camp.
+              </span>
+            </label>
             <div>
               <Button
                 type="submit"
@@ -104,7 +110,7 @@ export function MagicOrganizer({
           </form>
         ) : (
           <p className="m-0 text-[15px] text-ink-soft">
-            Ce Secret Santa compte {players} participants : le jeu n&apos;est pas disponible.
+            Le jeu se joue de {MIN_PLAYERS} à {MAX_PLAYERS} participants. Ce Secret Santa en compte {players}.
           </p>
         )}
       </SantaSection>
@@ -120,14 +126,18 @@ export function MagicOrganizer({
   return (
     <SantaSection
       title="La Magie de Noël"
-      hint="Vous ne voyez ici aucun rôle. Jouez depuis votre lien personnel."
+      hint="Vous ne voyez ici aucun rôle. Jouez depuis votre lien personnel, comme les autres."
     >
       <p className="m-0 text-[15px] leading-normal">
-        {magic.status === "joining"
-          ? `Choix des camps jusqu'au ${formatMoment(magic.startsAt)}. Dernier vote le ${formatMoment(end)}.`
+        {magic.status === "waiting"
+          ? `${magic.players} joueurs. Première semaine le ${formatMoment(magic.startsAt)}. Fin le ${formatMoment(end)}.`
           : magic.status === "playing"
-            ? `Manche ${magic.round + 1} sur ${ROUNDS}. Magie de Noël : ${magic.gauge}. Dernier vote le ${formatMoment(end)}.`
+            ? `Semaine ${magic.round + 1} sur ${ROUNDS}. Magie de Noël : ${magic.magic} sur ${magic.startMagic}. Fin le ${formatMoment(end)}.`
             : over}
+      </p>
+      <p className="m-0 text-sm text-ink-soft">
+        Une gazette part par mail à la fin de chaque semaine. Si les mails arrivent dans les indésirables,
+        demandez à chacun de marquer le premier comme « non spam ».
       </p>
       <div className="flex flex-wrap gap-2.5">
         {magic.status === "over" ? (

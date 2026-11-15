@@ -11,29 +11,29 @@ Jeu à rôles cachés, en parallèle d'un Secret Santa lancé. Version simple : 
 
 ## Règles
 
-1. **Rôles.** À l'ouverture du jeu, environ un joueur sur quatre est tiré au sort Grinch (`floor((n + 2) / 4)`, au moins 1). Les autres sont Pères Noël. Les Grinchs voient qui sont les autres Grinchs. De 5 à 30 joueurs.
+1. **Rôles.** À l'ouverture du jeu, environ un joueur sur quatre est tiré au sort Krampus (`floor((n + 2) / 4)`, au moins 1). Les autres sont Pères Noël. Les Krampus voient qui sont les autres Krampus. De 5 à 30 joueurs.
 2. **Cinq semaines.** La durée d'une « semaine » est réglable de 1 à 14 jours (7 par défaut).
-3. **Désignation.** Chaque semaine, chacun peut désigner une personne encore en jeu, sauf soi-même. Un Grinch démasqué ne désigne plus. Un Père Noël démasqué continue.
+3. **Désignation.** Chaque semaine, chacun peut désigner une personne encore en jeu, sauf soi-même. Un Krampus démasqué ne désigne plus. Un Père Noël démasqué continue.
 4. **Fin de semaine, dans l'ordre :**
-   - la personne la plus désignée est démasquée, si elle a au moins `max(2, nombre de Grinchs)` voix et qu'il n'y a pas d'égalité ;
-   - Grinch démasqué : Magie +2, sans dépasser le niveau de départ, et il ne nuit plus ;
+   - la personne la plus désignée est démasquée, si elle a au moins `max(2, nombre de Krampus)` voix et qu'il n'y a pas d'égalité ;
+   - Krampus démasqué : Magie +2, sans dépasser le niveau de départ, et il ne nuit plus ;
    - Père Noël démasqué : Magie −1 ;
-   - chaque Grinch encore caché retire 1 de Magie.
+   - chaque Krampus encore caché retire 1 de Magie.
 5. **Fin de partie.**
-   - Magie à 0 : les Grinchs gagnent.
-   - Tous les Grinchs démasqués : les Pères Noël gagnent, sans attendre.
+   - Magie à 0 : les Krampus gagnent.
+   - Tous les Krampus démasqués : les Pères Noël gagnent, sans attendre.
    - Magie au-dessus de 0 après la semaine 5 : les Pères Noël gagnent.
-6. **Révélation.** L'organisation révèle les rôles quand la partie est finie. Le tableau montre chaque rôle, la semaine où chaque masque est tombé, et le **flair** de chacun : le nombre de fois où il a désigné un Grinch encore caché. Le meilleur flair est signalé.
+6. **Révélation.** L'organisation révèle les rôles quand la partie est finie. Le tableau montre chaque rôle, la semaine où chaque masque est tombé, et le **flair** de chacun : le nombre de fois où il a désigné un Krampus encore caché. Le meilleur flair est signalé.
 
 ## Comment on déduit
 
-- **Les indices de la gazette**, sur un Grinch encore caché, de plus en plus précis :
+- **Les indices de la gazette**, sur un Krampus encore caché, de plus en plus précis :
   - semaine 1 : nombre de lettres du prénom ;
   - semaine 2 : première lettre entre A et L, ou entre M et Z ;
   - semaine 3 : deux innocents ;
-  - semaines 4 et 5 : un trio qui cache un Grinch.
+  - semaines 4 et 5 : un trio qui cache un Krampus.
 - **Qui a désigné qui** : publié dans la gazette après chaque semaine. On peut repérer ceux qui votent ensemble ou qui protègent quelqu'un.
-- **Le secret personnel.** À la fin de la semaine 2, chaque Père Noël reçoit en privé le nom d'un autre Père Noël, de préférence encore en jeu. Les Grinchs ne reçoivent rien, mais peuvent prétendre le contraire.
+- **Le secret personnel.** À la fin de la semaine 2, chaque Père Noël reçoit en privé le nom d'un autre Père Noël, de préférence encore en jeu. Les Krampus ne reçoivent rien, mais peuvent prétendre le contraire.
 - **Les masques tombés** : un Père Noël démasqué est innocenté pour de bon.
 
 Les joueurs peuvent en parler entre eux comme ils veulent. Tout le monde peut mentir.
@@ -42,12 +42,12 @@ Les joueurs peuvent en parler entre eux comme ils veulent. Tout le monde peut me
 
 Magie de départ par taille de groupe, dans `engine.ts` (`BALANCED`). Elle est calculée par simulation pour qu'à participation de 60 %, chaque camp gagne environ une fois sur deux. Le modèle de la simulation :
 - chaque joueur désigne avec une probabilité donnée ;
-- un Père Noël vise un Grinch dans 30 % des cas en semaine 1, puis de plus en plus souvent jusqu'à 65 % en semaine 5 ;
-- les Grinchs accusent ensemble un innocent.
+- un Père Noël vise un Krampus dans 30 % des cas en semaine 1, puis de plus en plus souvent jusqu'à 65 % en semaine 5 ;
+- les Krampus accusent ensemble un innocent.
 
-Elle ne dépasse jamais `Grinchs × 5`, pour que les Grinchs puissent toujours gagner par le seul sabotage. Si personne ne joue, les Grinchs gagnent : c'est voulu.
+Elle ne dépasse jamais `Krampus × 5`, pour que les Krampus puissent toujours gagner par le seul sabotage. Si personne ne joue, les Krampus gagnent : c'est voulu.
 
-| Joueurs | Grinchs | Seuil | Magie de départ |
+| Joueurs | Krampus | Seuil | Magie de départ |
 | ------- | ------- | ----- | --------------- |
 | 5       | 1       | 2     | 4               |
 | 8       | 2       | 2     | 8               |
@@ -55,7 +55,7 @@ Elle ne dépasse jamais `Grinchs × 5`, pour que les Grinchs puissent toujours g
 | 16      | 4       | 4     | 18              |
 | 20      | 5       | 5     | 23              |
 
-L'organisation peut choisir « Avantage Pères Noël » (×1,2) ou « Avantage Grinchs » (×0,8).
+L'organisation peut choisir « Avantage Pères Noël » (×1,2) ou « Avantage Krampus » (×0,8).
 
 ## Mails
 
@@ -82,19 +82,33 @@ Le lien personnel est gardé chiffré (`santa_participants.token_enc`, clé serv
 - La base ne contient aucun rôle en clair avant la révélation, sauf celui des masques tombés.
 - « Tout annuler » sur le Secret Santa efface aussi le jeu (`santa_cancel`).
 
+## Textes
+
+Les textes du jeu sont dans `src/lib/magic/texts.ts`. Ils doivent être chaleureux, précis et sans jargon :
+- on raconte une petite histoire de Noël (lutins, traces dans la neige, chalet) ;
+- on dit toujours de quoi il s'agit : « désigner la personne que vous soupçonnez d'être un Krampus », « son vrai rôle est révélé à tous », « il cesse de retirer de la Magie » ;
+- pas de point d'exclamation, pas de tiret long.
+
+Le camp adverse s'appelle **Krampus** partout (le Grinch est une marque). Dans le code, son identifiant reste `gr`.
+
 ## Design
 
 Les pages du jeu ont leur propre univers et n'utilisent pas le style de base d'Envies. Elles sont dans `src/components/magic/`, avec les classes `mg-` de `magic.css` :
 - nuit d'hiver bleu profond, ciel étoilé, neige légère ;
-- lumière dorée, papier crème pour la gazette.
+- lumière dorée.
 
-- **Compteur** (`MagicGlobe`) : une boule à neige.
-  - La lumière ambrée descend avec la Magie et le givre gagne le verre.
-  - Quatre états, écrits en toutes lettres : sereine (60 % et plus), fragile, critique (moins de 30 %, l'étoile vacille), éteinte (verre givré, sapin éteint).
+- **Compteur** (`MagicGlobe`) : une boule à neige à l'ancienne.
+  - Dedans : un chalet sous la neige et un sapin dont les 13 ampoules s'allument en proportion de la Magie.
+  - Socle en bois tourné avec un ruban de velours, un nœud et du houx.
+  - Quand la Magie baisse, les ampoules s'éteignent, les fenêtres faiblissent et le givre gagne le verre.
+  - Quatre états, écrits en toutes lettres : rayonnante (60 % et plus), vacillante, en danger (moins de 30 %, l'étoile vacille), éteinte (verre givré).
   - Le chiffre et une rangée d'étoiles doublent l'information.
   - `role="meter"`.
 - **Carte de rôle** (`RoleCard`) : face cachée à la première visite, retournée d'un geste. L'appareil s'en souvient.
   - Père Noël : bonnet sur fond rouge.
-  - Grinch : boule fêlée sur fond vert.
-- **Gazette** (`GazetteCard`) : bandeau de journal, bilan, indice encadré, « qui a désigné qui » dépliable.
-- **Mouvement.** La neige, les paillettes et la vague s'arrêtent avec `prefers-reduced-motion` (règle globale).
+  - Krampus : masque cornu à grelot sur fond brun sombre.
+- **Gazette** (`GazetteCard`) : un vieux journal de Noël.
+  - Papier vieilli, bandeau avec du houx, filets doubles et « Prix : un chocolat chaud ».
+  - Gros titre, lettrine, encart de la Magie.
+  - Encart « L'enquête » pour l'indice, et un « carnet des désignations » dépliable.
+- **Mouvement.** La neige, les étincelles et les ampoules s'arrêtent avec `prefers-reduced-motion` (règle globale).

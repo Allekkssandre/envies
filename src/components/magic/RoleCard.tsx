@@ -27,28 +27,44 @@ function SantaHat() {
   );
 }
 
-function CrackedBauble() {
+function KrampusMask() {
   return (
-    <svg viewBox="0 0 120 120" className="h-auto w-[52%]" aria-hidden="true">
+    <svg viewBox="0 0 120 120" className="h-auto w-[58%]" aria-hidden="true">
       <defs>
-        <radialGradient id="mg-bauble" cx="38%" cy="35%" r="70%">
-          <stop offset="0%" stopColor="#7FC59E" />
-          <stop offset="60%" stopColor="#2F6B4F" />
-          <stop offset="100%" stopColor="#0D2219" />
+        <linearGradient id="mg-horn" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0%" stopColor="#5A3B22" />
+          <stop offset="100%" stopColor="#E9D9B8" />
+        </linearGradient>
+        <radialGradient id="mg-face" cx="50%" cy="40%" r="60%">
+          <stop offset="0%" stopColor="#4B2A22" />
+          <stop offset="100%" stopColor="#1A0E0B" />
         </radialGradient>
       </defs>
-      <path d="M60 8 v12" stroke="#CFE3F5" strokeWidth="2" />
-      <rect x="50" y="18" width="20" height="12" rx="3" fill="#B9C6D6" />
-      <circle cx="60" cy="72" r="42" fill="url(#mg-bauble)" />
+      {/* Cornes */}
+      <path d="M40 44 C 30 30 26 14 34 4 C 36 16 42 26 50 34 Z" fill="url(#mg-horn)" />
+      <path d="M80 44 C 90 30 94 14 86 4 C 84 16 78 26 70 34 Z" fill="url(#mg-horn)" />
+      <path d="M33 10 L 37 12 M31 18 L 36 19 M32 26 L 38 26" stroke="#5A3B22" strokeWidth="1.2" />
+      <path d="M87 10 L 83 12 M89 18 L 84 19 M88 26 L 82 26" stroke="#5A3B22" strokeWidth="1.2" />
+      {/* Tête et fourrure */}
       <path
-        d="M44 34 L56 56 L46 70 L60 84 L52 104"
-        fill="none"
-        stroke="#E6F1FB"
-        strokeWidth="2.5"
-        strokeLinejoin="round"
+        d="M60 30 C 82 30 92 46 90 66 C 88 86 74 100 60 104 C 46 100 32 86 30 66 C 28 46 38 30 60 30 Z"
+        fill="url(#mg-face)"
       />
-      <path d="M56 56 L70 60" stroke="#E6F1FB" strokeWidth="1.6" />
-      <ellipse cx="44" cy="54" rx="9" ry="5" fill="#fff" opacity="0.35" transform="rotate(-35 44 54)" />
+      <path
+        d="M30 62 C 24 70 26 84 34 92 C 34 84 36 78 40 74 Z M90 62 C 96 70 94 84 86 92 C 86 84 84 78 80 74 Z"
+        fill="#2A1712"
+      />
+      {/* Yeux */}
+      <path d="M44 58 Q 50 54 56 60 Q 50 62 44 58 Z" fill="#F2C14E" />
+      <path d="M76 58 Q 70 54 64 60 Q 70 62 76 58 Z" fill="#F2C14E" />
+      <circle cx="50.5" cy="58.6" r="1.3" fill="#1A0E0B" />
+      <circle cx="69.5" cy="58.6" r="1.3" fill="#1A0E0B" />
+      {/* Sourire et langue */}
+      <path d="M46 78 Q 60 88 74 78" fill="none" stroke="#E9D9B8" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M57 82 Q 60 96 64 82 Z" fill="#B42A1F" />
+      {/* Grelot */}
+      <path d="M56 104 Q 60 100 64 104 L 66 112 H 54 Z" fill="#D9A441" />
+      <circle cx="60" cy="113" r="2" fill="#8C6424" />
     </svg>
   );
 }
@@ -111,7 +127,7 @@ export function RoleCard({ role, flipped, onFlip }: { role: Role; flipped: boole
         >
           <span className="mg-frame" aria-hidden="true" />
           <span className="mg-kicker relative mt-2 !text-[var(--mg-gold-hi)]">Vous êtes</span>
-          {role === "pn" ? <SantaHat /> : <CrackedBauble />}
+          {role === "pn" ? <SantaHat /> : <KrampusMask />}
           <div className="relative flex flex-col gap-2">
             <span className="mg-title text-[34px] leading-none !text-[#FFF6E0]">{ROLE_LABEL[role]}</span>
             <span className="text-[14px] leading-snug text-[#F7EEDD]">{ROLE_MISSION[role]}</span>

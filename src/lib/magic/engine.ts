@@ -1,10 +1,10 @@
 // La Magie de Noël, version simple (docs/14-magie-de-noel.md) : règles pures, sans base ni réseau.
 //
-// Environ un Grinch pour quatre joueurs, tirés au sort. Chaque semaine, chacun peut désigner un
-// suspect. Le plus désigné (seuil atteint, sans égalité) est démasqué : un Grinch fait remonter
-// la Magie, un Père Noël la fait baisser. Puis chaque Grinch encore caché retire 1 de Magie.
-// Les Grinchs gagnent si la Magie tombe à 0 ; les Pères Noël s'ils tiennent cinq semaines ou
-// démasquent tous les Grinchs.
+// Environ un Krampus pour quatre joueurs, tirés au sort. Chaque semaine, chacun peut désigner un
+// suspect. Le plus désigné (seuil atteint, sans égalité) est démasqué : un Krampus fait remonter
+// la Magie, un Père Noël la fait baisser. Puis chaque Krampus encore caché retire 1 de Magie.
+// Les Krampus gagnent si la Magie tombe à 0 ; les Pères Noël s'ils tiennent cinq semaines ou
+// démasquent tous les Krampus.
 
 export type Role = "pn" | "gr";
 export type Rng = (max: number) => number;
@@ -12,11 +12,11 @@ export type Rng = (max: number) => number;
 export const ROUNDS = 5;
 export const MIN_PLAYERS = 5;
 export const MAX_PLAYERS = 30;
-/** Démasquer un Grinch rend de la Magie, sans dépasser le niveau de départ. */
+/** Démasquer un Krampus rend de la Magie, sans dépasser le niveau de départ. */
 export const CATCH_GAIN = 2;
 /** Démasquer un Père Noël coûte de la Magie. */
 export const WRONG_LOSS = 1;
-/** Perte par Grinch encore caché, à la fin de chaque semaine. */
+/** Perte par Krampus encore caché, à la fin de chaque semaine. */
 export const SABOTAGE = 1;
 /** Les secrets personnels sont distribués à la fin de cette semaine. */
 export const CERT_ROUND = 2;
@@ -38,7 +38,7 @@ const BALANCED = [
 
 export type Level = "pn" | "balanced" | "gr";
 
-/** Magie au départ. `pn` avantage les Pères Noël, `gr` les Grinchs. */
+/** Magie au départ. `pn` avantage les Pères Noël, `gr` les Krampus. */
 export function startMagic(players: number, level: Level = "balanced"): number {
   const n = Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, players));
   const base = BALANCED[n - MIN_PLAYERS]!;
@@ -64,7 +64,7 @@ export function assignRoles(ids: readonly string[], rng: Rng): Map<string, Role>
 export type Player = { id: string; role: Role; out: boolean };
 export type Vote = { voter: string; target: string };
 
-/** Peut désigner : tout le monde, sauf un Grinch déjà démasqué. */
+/** Peut désigner : tout le monde, sauf un Krampus déjà démasqué. */
 export const canVote = (p: Player) => !(p.out && p.role === "gr");
 /** Peut être désigné : quiconque n'est pas encore démasqué. */
 export const canBeTargeted = (p: Player) => !p.out;
@@ -93,7 +93,7 @@ export type RoundResult = {
   unmaskedRole: Role | null;
   /** Effet du démasquage sur la Magie (+2, −1 ou 0), après plafond. */
   accusation: number;
-  /** Grinchs encore cachés après le démasquage : chacun retire 1. */
+  /** Krampus encore cachés après le démasquage : chacun retire 1. */
   sabotage: number;
   before: number;
   after: number;
@@ -161,8 +161,8 @@ export type Clue =
   | { t: "among"; names: string[] };
 
 /**
- * Indice de la semaine `week` (1 à 5), sur un Grinch encore caché. De plus en plus précis :
- * nombre de lettres, première lettre, deux innocents, puis un trio qui cache un Grinch.
+ * Indice de la semaine `week` (1 à 5), sur un Krampus encore caché. De plus en plus précis :
+ * nombre de lettres, première lettre, deux innocents, puis un trio qui cache un Krampus.
  */
 export function makeClue(week: number, people: readonly (Person & Player)[], rng: Rng): Clue | null {
   const grinchs = people.filter((p) => p.role === "gr" && !p.out);
@@ -194,7 +194,7 @@ export function makeClue(week: number, people: readonly (Person & Player)[], rng
 
 /**
  * Secrets personnels : chaque Père Noël reçoit le nom d'un autre Père Noël, de préférence
- * encore en jeu. Les Grinchs ne reçoivent rien.
+ * encore en jeu. Les Krampus ne reçoivent rien.
  */
 export function certificates(players: readonly Player[], rng: Rng): Map<string, string> {
   const out = new Map<string, string>();
@@ -208,14 +208,14 @@ export function certificates(players: readonly Player[], rng: Rng): Map<string, 
   return out;
 }
 
-/** Flair : désignations portées sur un Grinch encore caché au moment du vote. */
+/** Flair : désignations portées sur un Krampus encore caché au moment du vote. */
 export function flair(
-  rounds: readonly { votes: readonly Vote[]; hiddenGrinchs: readonly string[] }[],
+  rounds: readonly { votes: readonly Vote[]; hiddenKrampus: readonly string[] }[],
 ): Map<string, number> {
   const out = new Map<string, number>();
   for (const r of rounds) {
     for (const v of r.votes) {
-      if (r.hiddenGrinchs.includes(v.target)) out.set(v.voter, (out.get(v.voter) ?? 0) + 1);
+      if (r.hiddenKrampus.includes(v.target)) out.set(v.voter, (out.get(v.voter) ?? 0) + 1);
     }
   }
   return out;

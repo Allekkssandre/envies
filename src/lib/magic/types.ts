@@ -52,9 +52,9 @@ export type MagicView = {
   me: {
     role: Role;
     out: boolean;
-    /** Secret personnel : un joueur qui n'est pas un Grinch. */
+    /** Secret personnel : un joueur qui n'est pas un Krampus. */
     cert: string | null;
-    /** Grinchs seulement : les autres Grinchs. */
+    /** Krampus seulement : les autres Krampus. */
     accomplices: { name: string; out: boolean }[];
   };
   players: MagicPlayer[];

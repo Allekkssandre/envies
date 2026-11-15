@@ -88,6 +88,17 @@
   }
 }
 
+.mg-script {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-variation-settings:
+    "SOFT" 100,
+    "WONK" 1,
+    "opsz" 72;
+  color: var(--mg-gold);
+}
+
 .mg-title {
   font-family: var(--font-serif);
   font-variation-settings:
@@ -243,9 +254,9 @@
 }
 .mg-face-gr {
   background:
-    radial-gradient(circle at 50% 30%, rgba(207, 227, 245, 0.25), transparent 50%),
-    linear-gradient(165deg, #2f6b4f, var(--mg-gr-deep));
-  border: 1px solid rgba(207, 227, 245, 0.45);
+    radial-gradient(circle at 50% 34%, rgba(242, 193, 78, 0.22), transparent 48%),
+    linear-gradient(165deg, #3a2a20, #120b08);
+  border: 1px solid rgba(233, 217, 184, 0.45);
 }
 .mg-frame {
   position: absolute;
@@ -254,31 +265,85 @@
   border: 1px solid rgba(247, 231, 193, 0.4);
 }
 
-/* Gazette */
+/* Gazette : vieux journal de Noël, papier vieilli, encre brune, filets doubles */
 .mg-gazette {
   position: relative;
-  border-radius: 18px;
-  background: radial-gradient(120% 80% at 0% 0%, rgba(255, 255, 255, 0.5), transparent 60%), var(--mg-paper);
-  color: var(--mg-paper-ink);
-  box-shadow: 0 24px 50px -28px rgba(0, 0, 0, 0.9);
+  border-radius: 6px;
+  color: #2a1f12;
+  background:
+    radial-gradient(140% 90% at 50% 0%, transparent 55%, rgba(120, 82, 34, 0.18) 100%),
+    radial-gradient(60px 40px at 88% 12%, rgba(150, 105, 45, 0.12), transparent 70%),
+    radial-gradient(90px 60px at 10% 86%, rgba(150, 105, 45, 0.1), transparent 70%),
+    linear-gradient(90deg, transparent 49.8%, rgba(90, 60, 25, 0.035) 50%, transparent 50.2%),
+    linear-gradient(180deg, #f6ecd6, #efe1c2);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 30px 60px -30px rgba(0, 0, 0, 0.9),
+    0 2px 6px rgba(0, 0, 0, 0.25);
 }
-.mg-gazette-head {
+.mg-gazette::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(42, 31, 18, 0.35);
+  border-radius: 3px;
+  pointer-events: none;
+}
+.mg-gz-masthead {
   font-family: var(--font-serif);
+  font-weight: 700;
   font-variation-settings:
     "SOFT" 0,
-    "WONK" 0,
+    "WONK" 1,
     "opsz" 144;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
+  color: #1f160b;
 }
-.mg-rule {
-  border: 0;
-  border-top: 3px double rgba(43, 36, 22, 0.55);
-  margin: 0;
+.mg-gz-serif {
+  font-family: var(--font-serif);
+  font-variation-settings:
+    "SOFT" 30,
+    "WONK" 0,
+    "opsz" 72;
 }
-.mg-clue {
-  border-radius: 12px;
-  border: 1px dashed rgba(43, 36, 22, 0.45);
-  background: rgba(184, 134, 47, 0.12);
+.mg-gz-label {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #5c4a30;
+}
+.mg-gz-rule-thin {
+  border-bottom: 1px solid rgba(42, 31, 18, 0.55);
+}
+.mg-gz-rule-double {
+  border-top: 3px double rgba(42, 31, 18, 0.7);
+  border-bottom: 1px solid rgba(42, 31, 18, 0.55);
+}
+.mg-gz-body {
+  font-family: var(--font-serif);
+  font-variation-settings:
+    "SOFT" 50,
+    "opsz" 14;
+  font-size: 16.5px;
+  line-height: 1.55;
+}
+.mg-gz-dropcap::first-letter {
+  float: left;
+  margin: 4px 8px 0 0;
+  font-size: 3.1em;
+  line-height: 0.8;
+  font-weight: 700;
+  color: #9e2f22;
+}
+.mg-gz-box {
+  border-top: 1px solid rgba(42, 31, 18, 0.45);
+  border-bottom: 1px solid rgba(42, 31, 18, 0.45);
+  background: rgba(150, 105, 45, 0.08);
+}
+.mg-gz-clue {
+  border: 1.5px dashed rgba(158, 47, 34, 0.6);
+  border-radius: 4px;
+  background: rgba(255, 250, 238, 0.6);
 }
 
 /* Boule à neige */
@@ -297,22 +362,24 @@
     transform: translate(0, 230px);
   }
 }
-.mg-globe .mg-wave {
-  animation: mg-wave 7s ease-in-out infinite alternate;
-}
-@keyframes mg-wave {
-  from {
-    transform: translateX(-40px);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-.mg-globe .mg-liquid {
-  transition: transform 1.6s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
 .mg-globe .mg-spark {
-  animation: mg-twinkle 3.2s ease-in-out infinite;
+  animation: mg-rise 4.5s ease-in-out infinite;
+}
+@keyframes mg-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-26px);
+  }
+}
+.mg-globe .mg-bulb {
+  animation: mg-twinkle 3s ease-in-out infinite;
 }
 @keyframes mg-twinkle {
   0%,

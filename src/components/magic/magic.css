@@ -246,6 +246,11 @@
     linear-gradient(160deg, #1d2f52, #0b1322);
   border: 1px solid rgba(232, 193, 112, 0.45);
 }
+.mg-face-image {
+  border-radius: 16px;
+  background: transparent;
+  box-shadow: 0 30px 60px -28px rgba(0, 0, 0, 0.9);
+}
 .mg-face-pn {
   background:
     radial-gradient(circle at 50% 30%, rgba(247, 231, 193, 0.35), transparent 50%),

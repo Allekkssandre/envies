@@ -65,3 +65,34 @@ export function hashToken(token: string): string {
 export function looksLikeToken(token: string): boolean {
   return /^[A-Za-z0-9_-]{32}$/.test(token);
 }
+
+/**
+ * Chiffrement d'une valeur liée à un contexte (La Magie de Noël : rôle d'un joueur).
+ * Même clé et même algorithme que le tirage ; le contexte empêche de recopier une ligne ailleurs.
+ */
+export function encryptSecret(scope: string, value: unknown): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key(), iv);
+  cipher.setAAD(Buffer.from(scope));
+  const body = Buffer.concat([cipher.update(JSON.stringify(value), "utf8"), cipher.final()]);
+  return [
+    VERSION,
+    iv.toString("base64url"),
+    body.toString("base64url"),
+    cipher.getAuthTag().toString("base64url"),
+  ].join(".");
+}
+
+export function decryptSecret(scope: string, stored: string): unknown {
+  const [version, iv, body, tag] = stored.split(".");
+  if (version !== VERSION || !iv || !body || !tag) return null;
+  try {
+    const decipher = createDecipheriv("aes-256-gcm", key(), Buffer.from(iv, "base64url"));
+    decipher.setAAD(Buffer.from(scope));
+    decipher.setAuthTag(Buffer.from(tag, "base64url"));
+    const text = Buffer.concat([decipher.update(Buffer.from(body, "base64url")), decipher.final()]);
+    return JSON.parse(text.toString("utf8")) as unknown;
+  } catch {
+    return null;
+  }
+}

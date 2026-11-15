@@ -5,6 +5,7 @@ import type { DrawCheck, LutinProfile, LutinView, OrganizerView, SantaInfo } fro
 import { getServiceDb } from "@/server/db/client";
 import type { Tables } from "@/types/database";
 import { decryptAssignment, hashToken, looksLikeToken } from "./crypto";
+import { magicSummary } from "@/server/magic/game";
 import { mailConfigured } from "./mail";
 
 type SantaRow = Tables<"santas">;
@@ -91,6 +92,7 @@ export async function loadOrganizerView(santa: SantaInfo): Promise<OrganizerView
           )
         : null,
     mailReady: mailConfigured(),
+    magic: santa.status === "launched" ? await magicSummary(santa.id) : null,
   };
 }
 

@@ -1,6 +1,7 @@
 import "server-only";
 import type { Db } from "@/server/db/client";
 import { MAX_ATTEMPTS, runEnrichment } from "@/server/enrich/run";
+import { advanceMagic } from "@/server/magic/game";
 
 // Tâche quotidienne (docs/05-donnees.md § Suppression et purge, docs/10 § Sauvegardes).
 
@@ -231,6 +232,17 @@ export async function writeBackup(db: Db, now = Date.now()) {
   return { backup: name, lists: backup.lists.length, items: backup.items.length, removedBackups: old.length };
 }
 
+/** 5. La Magie de Noël : résout les échéances passées, même si personne n'a ouvert le jeu. */
+export async function advanceMagicGames(db: Db, now = Date.now()) {
+  const { data, error } = await db
+    .from("magic_games")
+    .select("santa_id")
+    .in("status", ["joining", "playing"]);
+  if (error) throw new Error(error.message);
+  for (const game of data ?? []) await advanceMagic(game.santa_id, now);
+  return { games: (data ?? []).length };
+}
+
 export type DailyReport = Record<string, unknown>;
 
 /**
@@ -244,6 +256,7 @@ export async function runDaily(db: Db, { now = Date.now(), backup = false } = {}
     ["pending", () => settleStalePending(db, now)],
     ["incomplete", () => retryIncomplete(db, now)],
     ["rateLimits", () => purgeRateLimits(db, now)],
+    ["magic", () => advanceMagicGames(db, now)],
   ];
   if (backup) steps.push(["backup", () => writeBackup(db, now)]);
   for (const [name, step] of steps) {

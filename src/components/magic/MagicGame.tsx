@@ -97,7 +97,7 @@ export function MagicGame({ token, initial }: { token: string; initial: MagicVie
               <GazetteCard gazette={latest} title={view.title} />
               {older.length ? (
                 <details className="flex flex-col gap-4">
-                  <summary className="mg-btn-ghost -ml-3">Gazettes précédentes ({older.length})</summary>
+                  <summary className="mg-btn-ghost -ml-3">Les numéros précédents ({older.length})</summary>
                   <div className="mt-3 flex flex-col gap-4">
                     {older.map((g) => (
                       <GazetteCard key={g.round} gazette={g} title={view.title} />
@@ -109,7 +109,7 @@ export function MagicGame({ token, initial }: { token: string; initial: MagicVie
           ) : null}
           <details className="mg-panel px-5 py-4 sm:px-7">
             <summary className="flex min-h-11 items-center justify-between gap-3 text-[17px] font-semibold">
-              Les règles en une minute
+              Comment ça se joue
               <span aria-hidden="true" className="text-[var(--mg-gold)]">
                 +
               </span>
@@ -127,11 +127,19 @@ export function MagicGame({ token, initial }: { token: string; initial: MagicVie
 }
 
 function StatusLine({ view }: { view: MagicView }) {
-  if (view.status === "waiting") return <>La partie commence le {formatMoment(view.startsAt)}.</>;
+  if (view.status === "waiting") {
+    return (
+      <>
+        La partie commence le {formatMoment(view.startsAt)}. En attendant, découvrez votre rôle et lisez le
+        premier indice.
+      </>
+    );
+  }
   if (view.status === "playing" && view.round && view.deadline) {
     return (
       <>
-        Semaine {view.round} sur {ROUNDS}. Désignation ouverte jusqu&apos;au {formatMoment(view.deadline)}.
+        Semaine {view.round} sur {ROUNDS}. Vous avez jusqu&apos;au {formatMoment(view.deadline)} pour désigner
+        votre suspect.
       </>
     );
   }
@@ -139,7 +147,9 @@ function StatusLine({ view }: { view: MagicView }) {
   return (
     <>
       Partie terminée. {end ?? (view.winner ? `Victoire pour ${CAMP_LABEL[view.winner]}.` : "")}{" "}
-      {view.status === "revealed" ? "Les rôles sont révélés." : "L'organisation révélera bientôt les rôles."}
+      {view.status === "revealed"
+        ? "Tous les rôles sont dévoilés."
+        : "Les rôles seront bientôt dévoilés par l'organisation."}
     </>
   );
 }
@@ -157,7 +167,13 @@ function RoleDetails({ view }: { view: MagicView }) {
   const certSoon = (view.status === "waiting" || (view.round ?? 0) <= CERT_ROUND) && !me.cert;
   return (
     <div className="flex flex-col gap-3">
-      {me.out ? <Note>Votre masque est tombé. Vous ne comptez plus dans le jeu.</Note> : null}
+      {me.out ? (
+        <Note>
+          {me.role === "gr"
+            ? "Votre rôle a été révélé à tous : vous ne retirez plus de Magie et ne pouvez plus désigner personne. Restez pour voir comment tout cela finit."
+            : "Votre rôle a été révélé à tous : chacun sait maintenant que vous êtes un Père Noël. Vous pouvez continuer à désigner les Krampus présumés."}
+        </Note>
+      ) : null}
       {!me.out || me.role === "pn" ? (
         <p className="m-0 text-[15px] leading-normal text-[var(--mg-soft)]">{ROLE_HINT[me.role]}</p>
       ) : null}
@@ -165,36 +181,36 @@ function RoleDetails({ view }: { view: MagicView }) {
         <Note>
           {me.accomplices.length ? (
             <>
-              Vos complices :{" "}
+              Les autres Krampus :{" "}
               {me.accomplices.map((a, i) => (
                 <span key={a.name}>
                   {i ? ", " : ""}
                   <strong>{a.name}</strong>
-                  {a.out ? " (masque tombé)" : ""}
+                  {a.out ? " (rôle révélé)" : ""}
                 </span>
               ))}
               .
             </>
           ) : (
-            "Aucun autre Grinch dans cette partie."
+            "Vous êtes le seul Krampus de la partie. À vous de jouer finement."
           )}
         </Note>
       ) : null}
       {me.cert ? (
         <Note>
           <span className="mg-kicker block">Votre secret</span>
-          <strong>{me.cert}</strong> n&apos;est pas un Grinch. Gardez-le pour vous, ou dites-le : à vous de
-          voir.
+          Les lutins vous le garantissent : <strong>{me.cert}</strong> n&apos;est pas un Krampus. Gardez-le
+          pour vous ou dites-le aux autres, à vous de voir.
         </Note>
       ) : me.role === "pn" && certSoon ? (
         <p className="m-0 text-[14px] text-[var(--mg-faint)]">
-          À la fin de la semaine {CERT_ROUND}, vous recevrez ici un secret : le nom d&apos;un joueur qui
-          n&apos;est pas un Grinch.
+          À la fin de la semaine {CERT_ROUND}, les lutins vous donneront ici le nom d&apos;un joueur qui
+          n&apos;est pas un Krampus.
         </p>
       ) : me.role === "gr" && certSoon ? (
         <p className="m-0 text-[14px] text-[var(--mg-faint)]">
-          À la fin de la semaine {CERT_ROUND}, chaque Père Noël recevra en secret le nom d&apos;un innocent.
-          Vous non, mais vous pouvez prétendre le contraire.
+          À la fin de la semaine {CERT_ROUND}, chaque Père Noël recevra en secret le nom d&apos;un joueur qui
+          n&apos;est pas un Krampus. Vous, rien. Mais vous pouvez prétendre en avoir reçu un.
         </p>
       ) : null}
     </div>
@@ -222,19 +238,23 @@ function SuspectPanel({
         </h2>
         {view.status === "waiting" ? (
           <p className="m-0 text-[15px] leading-normal text-[var(--mg-soft)]">
-            La désignation ouvre le {formatMoment(view.startsAt)}.
+            Vous pourrez désigner la personne que vous soupçonnez d&apos;être un Krampus à partir du{" "}
+            {formatMoment(view.startsAt)}.
           </p>
         ) : playing && !view.vote.open ? (
           <p className="m-0 text-[15px] leading-normal text-[var(--mg-soft)]">
-            Votre masque est tombé : vous ne désignez plus personne.
+            Votre rôle a été révélé à tous : vous ne pouvez plus désigner personne.
           </p>
         ) : playing ? (
           <p className="m-0 text-[15px] leading-normal text-[var(--mg-soft)]">
-            Facultatif, modifiable jusqu&apos;à la fin de la semaine. Il faut {view.threshold} voix sur un
-            même nom, sans égalité, pour faire tomber un masque.
+            Choisissez la personne que vous soupçonnez d&apos;être un Krampus. Rien d&apos;obligatoire, et
+            vous pouvez changer d&apos;avis jusqu&apos;à la fin de la semaine. Si au moins {view.threshold}{" "}
+            joueurs désignent la même personne, et plus que toute autre, son vrai rôle sera révélé à tous.
           </p>
         ) : (
-          <p className="m-0 text-[15px] leading-normal text-[var(--mg-soft)]">La désignation est close.</p>
+          <p className="m-0 text-[15px] leading-normal text-[var(--mg-soft)]">
+            Les désignations sont closes.
+          </p>
         )}
       </div>
 
@@ -285,7 +305,7 @@ function SuspectPanel({
       {playing ? (
         <p className="m-0 text-[14px] text-[var(--mg-faint)]">
           {view.vote.voters === 0
-            ? "Personne n'a encore désigné cette semaine."
+            ? "Personne n'a encore désigné de suspect cette semaine."
             : view.vote.voters === 1
               ? "1 personne a désigné cette semaine."
               : `${view.vote.voters} personnes ont désigné cette semaine.`}
@@ -294,13 +314,13 @@ function SuspectPanel({
 
       {fallen.length ? (
         <div className="flex flex-col gap-2 border-t border-[var(--mg-line)] pt-4">
-          <h3 className="mg-kicker m-0 font-normal">Masques tombés</h3>
+          <h3 className="mg-kicker m-0 font-normal">Rôles déjà révélés</h3>
           <ul className="m-0 flex list-none flex-col gap-1.5 p-0 text-[15px]">
             {fallen.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center gap-2">
                 <span>{p.name}</span>
                 <RoleBadge role={p.out!} />
-                <span className="text-[13px] text-[var(--mg-faint)]">semaine {p.outRound}</span>
+                <span className="text-[13px] text-[var(--mg-faint)]">en semaine {p.outRound}</span>
               </li>
             ))}
           </ul>
@@ -333,7 +353,8 @@ function Reveal({ view }: { view: MagicView }) {
         Les masques tombent
       </h2>
       <p className="m-0 text-[15px] text-[var(--mg-soft)]">
-        Flair : nombre de fois où chacun a désigné un Grinch encore caché.
+        Voici le vrai rôle de chacun. Le flair compte les fois où chacun a désigné un Krampus qui n&apos;avait
+        pas encore été démasqué.
       </p>
       <table className="w-full border-collapse text-left text-[15px]">
         <thead>
@@ -352,7 +373,7 @@ function Reveal({ view }: { view: MagicView }) {
                   <span className="text-[12px] font-semibold text-[var(--mg-gold)]">Meilleur flair</span>
                 ) : r.outRound ? (
                   <span className="text-[12px] text-[var(--mg-faint)]">
-                    masque tombé semaine {r.outRound}
+                    rôle révélé en semaine {r.outRound}
                   </span>
                 ) : null}
               </td>

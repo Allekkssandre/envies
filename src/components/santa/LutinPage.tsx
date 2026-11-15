@@ -108,7 +108,7 @@ export function LutinPage({
       {hasGame ? (
         <SantaSection
           title="La Magie de Noël"
-          hint="Un jeu à rôles cachés, en parallèle des cadeaux. Une désignation par semaine au plus, facultative."
+          hint="Pendant que les cadeaux se préparent, quelques Krampus se cachent parmi les participants. Chaque semaine, vous pouvez désigner la personne que vous soupçonnez d'en être un."
         >
           <div>
             <Link href={`/lutins/moi/${token}/jeu`} className={buttonClasses("ink", 52)}>

@@ -1,6 +1,6 @@
 import "server-only";
 import type { Role } from "@/lib/magic/engine";
-import { CAMP_LABEL, clueText, endText, formatMoment, gazetteLines } from "@/lib/magic/texts";
+import { clueText, endText, formatMoment, gazetteStory } from "@/lib/magic/texts";
 import type { Gazette } from "@/lib/magic/types";
 import type { Mail } from "@/server/santa/mail";
 
@@ -66,17 +66,21 @@ export function openingMail(
     toName: firstName,
     subject: "La Magie de Noël : votre rôle vous attend",
     kicker: c.title,
-    heading: "La Magie de Noël commence",
+    heading: "La Magie de Noël s'allume",
     blocks: [
       {
         kind: "p",
-        text: "Un jeu se joue en parallèle du Secret Santa. Environ un joueur sur quatre est un Grinch, tiré au sort. Les autres sont Pères Noël.",
+        text: `En marge du Secret Santa « ${c.title} », un petit jeu commence. Le sort a désigné en secret quelques Krampus parmi les participants, environ un sur quatre. Chaque semaine où ils restent cachés, ils éteignent un peu de la Magie de Noël. Tous les autres sont des Pères Noël : à eux de découvrir qui sont les Krampus.`,
       },
       {
         kind: "p",
         text: started
-          ? "Chaque semaine, vous pouvez désigner la personne que vous soupçonnez. Un clic, et c'est facultatif."
-          : `À partir du ${formatMoment(c.startsAt)}, vous pourrez chaque semaine désigner la personne que vous soupçonnez. Un clic, et c'est facultatif.`,
+          ? "Chaque semaine, vous pouvez désigner la personne que vous soupçonnez d'être un Krampus. Un clic suffit, et rien n'est obligatoire."
+          : `À partir du ${formatMoment(c.startsAt)}, vous pourrez chaque semaine désigner la personne que vous soupçonnez d'être un Krampus. Un clic suffit, et rien n'est obligatoire.`,
+      },
+      {
+        kind: "p",
+        text: "Votre rôle vous attend sur votre page, face cachée. Personne d'autre que vous ne peut le voir.",
       },
       ...(c.gazette.clue ? [{ kind: "clue" as const, text: clueText(c.gazette.clue) }] : []),
     ],
@@ -90,23 +94,34 @@ export function gazetteMail(
   firstName: string,
   c: { title: string; url: string | null; gazette: Gazette },
 ): Mail {
-  const { title, lines } = gazetteLines(c.gazette);
+  const story = gazetteStory(c.gazette);
   const end = endText(c.gazette);
   return layout({
     to,
     toName: firstName,
-    subject: end ? "La Magie de Noël : fin de partie" : `La Gazette du Pôle Nord, ${title.toLowerCase()}`,
-    kicker: `${c.title} · ${title}`,
-    heading: end ?? "La Gazette du Pôle Nord",
+    subject: end
+      ? "La Magie de Noël : fin de partie"
+      : `La Gazette du Pôle Nord, ${story.when.toLowerCase()}`,
+    kicker: `La Gazette du Pôle Nord · ${story.when}`,
+    heading: story.headline,
     blocks: [
-      ...lines.map((text) => ({ kind: "p" as const, text })),
+      ...story.paragraphs.map((text) => ({ kind: "p" as const, text })),
+      {
+        kind: "p" as const,
+        text: `La Magie de Noël passe de ${c.gazette.before} à ${c.gazette.after}.`,
+      },
       ...(c.gazette.clue ? [{ kind: "clue" as const, text: clueText(c.gazette.clue) }] : []),
       ...(c.gazette.votes.length
-        ? [{ kind: "small" as const, text: "Qui a désigné qui : à lire dans le jeu." }]
+        ? [
+            {
+              kind: "small" as const,
+              text: "Qui a désigné qui cette semaine : c'est dans le carnet de la gazette, sur votre page.",
+            },
+          ]
         : []),
     ],
     url: c.url,
-    cta: end ? "Voir la fin de partie" : "Désigner un suspect",
+    cta: end ? "Voir la fin de partie" : "Désigner un Krampus présumé",
   });
 }
 
@@ -124,9 +139,7 @@ export function revealMail(
     blocks: [
       {
         kind: "p",
-        text: c.winner
-          ? `Victoire pour ${CAMP_LABEL[c.winner]}. Découvrez qui était qui, et qui a eu le meilleur flair.`
-          : "Découvrez qui était qui, et qui a eu le meilleur flair.",
+        text: `${c.winner ? `La partie est terminée, et la victoire revient aux ${c.winner === "pn" ? "Pères Noël" : "Krampus"}. ` : "La partie est terminée. "}Tous les rôles sont maintenant dévoilés : venez découvrir qui était Krampus, et qui a eu le meilleur flair.`,
       },
     ],
     url: c.url,

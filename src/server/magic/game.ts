@@ -474,7 +474,7 @@ export async function revealMagic(santaId: string): Promise<boolean> {
       roster.filter((r) => r.role === "gr" && (r.outRound === null || r.outRound >= round)).map((r) => r.id);
     const rounds = Array.from({ length: game.round }, (_, i) => i + 1).map((round) => ({
       votes: (votes ?? []).filter((v) => v.round === round),
-      hiddenGrinchs: hiddenAt(round),
+      hiddenKrampus: hiddenAt(round),
     }));
     const points = flair(rounds);
     const rows: RevealRow[] = roster

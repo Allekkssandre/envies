@@ -47,7 +47,7 @@ export function MagicOrganizer({
     return (
       <SantaSection
         title="La Magie de Noël"
-        hint={`Un jeu à rôles cachés en ${ROUNDS} semaines, en parallèle des cadeaux. Une désignation par semaine au plus, facultative.`}
+        hint={`Un jeu de ${ROUNDS} semaines, en parallèle des cadeaux : quelques Krampus tirés au sort se cachent parmi les participants, et chacun peut désigner chaque semaine la personne qu'il soupçonne d'en être un.`}
       >
         {players >= MIN_PLAYERS && players <= MAX_PLAYERS ? (
           <form
@@ -91,7 +91,7 @@ export function MagicOrganizer({
               >
                 <option value="balanced">Équilibré</option>
                 <option value="pn">Avantage Pères Noël</option>
-                <option value="gr">Avantage Grinchs</option>
+                <option value="gr">Avantage Krampus</option>
               </select>
               <span className="text-[13px] font-normal text-ink-soft">
                 Règle la Magie de départ. Équilibré : une chance sur deux pour chaque camp.

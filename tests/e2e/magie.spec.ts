@@ -95,7 +95,7 @@ test("La Magie de Noël : rôle, désignations, masque qui tombe, gazette, rév�
   const paths = await links(emails, /\/jeu$/);
   const opening = (await mails()).filter((m) => emails.includes(m.to) && /rôle vous attend/.test(m.subject));
   expect(opening).toHaveLength(8);
-  for (const m of opening) expect(m.text).not.toMatch(/Vous êtes (un )?(Grinch|Père Noël)/);
+  for (const m of opening) expect(m.text).not.toMatch(/Vous êtes (un )?(Krampus|Père Noël)/);
 
   // La base ne contient aucun rôle en clair.
   const { data: stored } = await db.from("magic_players").select("secret, out_role").eq("santa_id", santaId);
@@ -109,10 +109,10 @@ test("La Magie de Noël : rôle, désignations, masque qui tombe, gazette, rév�
   await page.goto(paths[0]!);
   await expect(page.getByRole("heading", { level: 1, name: /La Magie de Noël/ })).toBeVisible();
   await expect(page.getByRole("meter", { name: "Magie de Noël" })).toBeVisible();
-  await expect(page.getByText(/^La désignation ouvre le/)).toBeVisible();
+  await expect(page.getByText(/^Vous pourrez désigner la personne/)).toBeVisible();
   await page.getByRole("button", { name: "Retourner la carte" }).click();
-  await expect(page.getByRole("region", { name: "Mon rôle" })).toContainText(/Père Noël|Grinch/);
-  await expect(page.getByRole("region", { name: "Gazette" })).toContainText("Indice pour la semaine 1");
+  await expect(page.getByRole("region", { name: "Mon rôle" })).toContainText(/Père Noël|Krampus/);
+  await expect(page.getByRole("region", { name: "Gazette" })).toContainText(/indice pour la semaine 1/i);
 
   // Semaine 1 : sept joueurs désignent JoueurH, qui désigne JoueurA.
   await rewind(santaId, 0);
@@ -136,8 +136,8 @@ test("La Magie de Noël : rôle, désignations, masque qui tombe, gazette, rév�
   await expect(page.getByText(/^(Semaine 2 sur 5|Partie terminée)/)).toBeVisible({ timeout: 15_000 });
   const gazette = page.getByRole("region", { name: "Gazette" });
   await expect(gazette).toContainText("Le masque de JoueurH est tombé");
-  await expect(gazette.getByText(/^Qui a désigné qui \(8\)$/)).toBeVisible();
-  await expect(page.getByRole("region", { name: "Votre suspect" })).toContainText("Masques tombés");
+  await expect(gazette.getByText(/^Le carnet des désignations \(8\)$/)).toBeVisible();
+  await expect(page.getByRole("region", { name: "Votre suspect" })).toContainText("Rôles déjà révélés");
   await expect
     .poll(
       async () => (await mails()).filter((m) => emails.includes(m.to) && /semaine 1$/.test(m.subject)).length,
@@ -164,6 +164,6 @@ test("La Magie de Noël : rôle, désignations, masque qui tombe, gazette, rév�
   await page.goto(paths[3]!);
   const table = page.getByRole("region", { name: "Rôles et flair" }).getByRole("table");
   await expect(table.getByRole("row")).toHaveCount(9);
-  await expect(table.getByText("Grinch", { exact: true })).toHaveCount(2);
+  await expect(table.getByText("Krampus", { exact: true })).toHaveCount(2);
   await expect(table.getByText("Père Noël", { exact: true })).toHaveCount(6);
 });

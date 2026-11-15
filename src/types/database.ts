@@ -116,6 +116,7 @@ export type Database = {
           price_cents: number | null
           price_checked_at: string | null
           price_source: Database["public"]["Enums"]["price_source"] | null
+          purchased_at: string | null
           ref: string
           sorted_at: string | null
           suggested_category_id: string | null
@@ -150,6 +151,7 @@ export type Database = {
           price_cents?: number | null
           price_checked_at?: string | null
           price_source?: Database["public"]["Enums"]["price_source"] | null
+          purchased_at?: string | null
           ref?: string
           sorted_at?: string | null
           suggested_category_id?: string | null
@@ -184,6 +186,7 @@ export type Database = {
           price_cents?: number | null
           price_checked_at?: string | null
           price_source?: Database["public"]["Enums"]["price_source"] | null
+          purchased_at?: string | null
           ref?: string
           sorted_at?: string | null
           suggested_category_id?: string | null

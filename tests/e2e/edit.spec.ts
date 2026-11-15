@@ -263,4 +263,36 @@ test.describe("édition", () => {
     await page.getByRole("button", { name: "Annuler" }).click();
     await expect(section(page, "Voyages")).toBeVisible();
   });
+
+  test("acheté : l'article reste dans la liste, le total dépensé s'affiche", async ({ page }, info) => {
+    test.setTimeout(60_000);
+    const slug = await createTestList(`achat-${info.project.name}`);
+    const { data: list } = await db.from("lists").select("id").eq("slug", slug).single();
+    await db
+      .from("items")
+      .update({ price_cents: 8900, currency: "EUR", price_source: "manual" })
+      .eq("list_id", list!.id)
+      .eq("title", "Lampe champignon");
+    await unlock(page, slug);
+
+    const card = section(page, "Maison & déco").locator("article", { hasText: "Lampe champignon" });
+    if (isDesktop(page)) {
+      await card.hover();
+      await card.getByRole("button", { name: "Marquer comme acheté : Lampe champignon" }).click();
+    } else {
+      await card.getByRole("button", { name: "Actions" }).click();
+      await page.getByRole("menuitem", { name: "Marquer comme acheté" }).click();
+    }
+    await expect(card.getByText("Acheté", { exact: true })).toBeVisible();
+
+    await reloadWhenSaved(page);
+    await expect(card.getByText("Acheté", { exact: true })).toBeVisible();
+
+    // Côté visiteur : toujours là, marqué, et compté dans le total dépensé.
+    await page.goto(`/l/${slug}`);
+    const visitorCard = section(page, "Maison & déco").getByRole("link", { name: /Lampe champignon/ });
+    await expect(visitorCard.getByText("Acheté", { exact: true })).toBeVisible();
+    await expect(page.getByText(/dépensés/).locator("visible=true")).toBeVisible();
+    await expect(page.getByRole("banner")).toContainText("89 €");
+  });
 });

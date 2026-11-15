@@ -30,6 +30,7 @@ function item(partial: Partial<ItemInfo> & { title: string | null; position: str
     imageHeight: null,
     lightBackground: false,
     isFavorite: false,
+    purchasedAt: null,
     createdAt: `2026-10-${String(10 + seq).padStart(2, "0")}T10:00:00Z`,
     categoryId: null,
     tagIds: [],
@@ -152,12 +153,38 @@ describe("chiffres", () => {
       favorites: 3,
       totalCents: 75700,
       approximate: true,
+      purchased: 0,
+      spentCents: 0,
+      spentApproximate: false,
     });
   });
 
   it("ignore les autres devises dans le total", () => {
     const usd = item({ title: "Import", position: "b0", priceCents: 1000, currency: "USD" });
-    expect(listStats([usd], "EUR")).toEqual({ count: 1, favorites: 0, totalCents: 0, approximate: true });
+    expect(listStats([usd], "EUR")).toMatchObject({
+      count: 1,
+      favorites: 0,
+      totalCents: 0,
+      approximate: true,
+    });
+  });
+
+  it("total dépensé : prix des articles achetés, approximatif s'il en manque un", () => {
+    const at = "2026-11-15T10:00:00Z";
+    const bought = item({ title: "Vase", position: "c0", priceCents: 4500, purchasedAt: at });
+    const noPrice = item({ title: "Bon", position: "c1", purchasedAt: at });
+    const wanted = item({ title: "Lampe", position: "c2", priceCents: 8900 });
+    expect(listStats([bought, wanted], "EUR")).toMatchObject({
+      totalCents: 13400,
+      purchased: 1,
+      spentCents: 4500,
+      spentApproximate: false,
+    });
+    expect(listStats([bought, noPrice, wanted], "EUR")).toMatchObject({
+      purchased: 2,
+      spentCents: 4500,
+      spentApproximate: true,
+    });
   });
 });
 

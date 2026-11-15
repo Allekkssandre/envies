@@ -5,6 +5,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import Link from "next/link";
 import {
   Camera,
+  Check,
   CircleAlert,
   FileImage,
   Heart,
@@ -61,6 +62,7 @@ type Draft = {
   categoryId: string | null;
   tagIds: string[];
   isFavorite: boolean;
+  isPurchased: boolean;
 };
 
 type FieldName = "title" | "price" | "url" | "note";
@@ -77,6 +79,7 @@ const toDraft = (item: ItemInfo): Draft => ({
   categoryId: item.categoryId,
   tagIds: item.tagIds,
   isFavorite: item.isFavorite,
+  isPurchased: Boolean(item.purchasedAt),
 });
 
 const currencySymbol = (currency: string) =>
@@ -98,6 +101,7 @@ function diff(item: ItemInfo, draft: Draft): ItemPatch | null {
   if (draft.note.trim() !== (item.note ?? "")) patch.note = draft.note;
   if (draft.categoryId !== item.categoryId) patch.categoryId = draft.categoryId;
   if (draft.isFavorite !== item.isFavorite) patch.isFavorite = draft.isFavorite;
+  if (draft.isPurchased !== Boolean(item.purchasedAt)) patch.isPurchased = draft.isPurchased;
   const tagsChanged =
     draft.tagIds.length !== item.tagIds.length || draft.tagIds.some((t) => !item.tagIds.includes(t));
   if (tagsChanged) patch.tagIds = draft.tagIds;
@@ -217,6 +221,7 @@ export function ItemEditor({
         ...(patch.categoryId !== undefined ? { categoryId: patch.categoryId } : {}),
         ...(patch.tagIds !== undefined ? { tagIds: patch.tagIds } : {}),
         ...(patch.isFavorite !== undefined ? { isFavorite: patch.isFavorite } : {}),
+        ...(patch.isPurchased !== undefined ? { isPurchased: patch.isPurchased } : {}),
       });
     }
   };
@@ -858,6 +863,22 @@ function EditorFields(props: FieldsProps) {
           tone="rust"
           checked={draft.isFavorite}
           onCheckedChange={(isFavorite) => props.onInstant({ isFavorite })}
+        />
+      </div>
+
+      <div className="flex min-h-16 items-center gap-3 rounded-[18px] border border-ink/14 bg-ink/5 py-2 pr-3 pl-4">
+        <Check aria-hidden="true" size={18} strokeWidth={2.2} className="text-ink" />
+        <span className="flex flex-1 flex-col">
+          <span className="text-base font-semibold">Acheté</span>
+          <span className="text-[13px] text-ink-soft">
+            L&apos;article reste dans la liste et compte dans le total dépensé.
+          </span>
+        </span>
+        <Toggle
+          label="Acheté"
+          hideLabel
+          checked={draft.isPurchased}
+          onCheckedChange={(isPurchased) => props.onInstant({ isPurchased })}
         />
       </div>
 

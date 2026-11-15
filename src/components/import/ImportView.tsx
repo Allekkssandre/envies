@@ -465,6 +465,7 @@ function FileStep({ onFile, error }: { onFile: (f: File) => void; error: string 
 
 const HELP: Partial<Record<Target, string>> = {
   favorite: "oui, x, 1, ✓ comptent comme oui",
+  purchased: "oui, x, 1, ✓ comptent comme acheté",
   tags: "séparés par des virgules",
 };
 

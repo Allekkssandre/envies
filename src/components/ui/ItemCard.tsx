@@ -1,10 +1,25 @@
-import { Heart } from "lucide-react";
+import { Check, Heart } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { formatPrice } from "@/lib/format";
 import { ItemPhoto } from "./ItemPhoto";
 
 export type ItemCardTag = { name: string; color: string };
+
+/** Pastille « Acheté », posée sur la photo (carte, fiche, édition). */
+export function PurchasedPill({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "absolute inline-flex h-8 items-center gap-1.5 rounded-full bg-ink/85 pr-3 pl-2.5 text-[13px] font-semibold text-linen shadow-[0_8px_18px_-8px_rgb(43_36_22/0.5)] backdrop-blur-[10px]",
+        className,
+      )}
+    >
+      <Check aria-hidden="true" size={14} strokeWidth={2.4} />
+      Acheté
+    </span>
+  );
+}
 
 type ItemCardProps = {
   title: string;
@@ -13,6 +28,8 @@ type ItemCardProps = {
   domain?: string | null;
   tag?: ItemCardTag | null;
   isFavorite?: boolean;
+  /** Article acheté : pastille « Acheté », photo adoucie. */
+  isPurchased?: boolean;
   photo?: { src480: string; src1200?: string; lightBackground?: boolean } | null;
   /** Lien vers la fiche. Sans lien, la carte est statique (planche /design). */
   href?: string;
@@ -32,6 +49,7 @@ export function ItemCard({
   domain,
   tag,
   isFavorite = false,
+  isPurchased = false,
   photo,
   href,
   headingLevel: Heading = "h3",
@@ -49,6 +67,7 @@ export function ItemCard({
         priority={priority}
         className={cn(
           photoClassName,
+          isPurchased && "[&>img]:opacity-70 [&>img]:saturate-[0.6]",
           href && "transition-transform duration-180 ease-out group-hover:-translate-y-0.5",
         )}
       >
@@ -61,6 +80,7 @@ export function ItemCard({
             <Heart aria-hidden="true" size={18} className="fill-rust text-rust" strokeWidth={1.6} />
           </span>
         ) : null}
+        {isPurchased ? <PurchasedPill className="bottom-3 left-3 sm:bottom-3.5 sm:left-3.5" /> : null}
       </ItemPhoto>
       <span className="flex flex-col gap-1.5 px-0.5">
         <span className="flex items-baseline justify-between gap-3">

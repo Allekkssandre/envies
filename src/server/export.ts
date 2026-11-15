@@ -16,12 +16,13 @@ export const EXPORT_HEADERS = [
   "Catégorie",
   "Tags",
   "Coup de cœur",
+  "Acheté",
   "Note",
   "Photo",
   "Ajouté le",
 ] as const;
 
-const WIDTHS = [40, 50, 10, 8, 22, 28, 13, 40, 60, 12];
+const WIDTHS = [40, 50, 10, 8, 22, 28, 13, 9, 40, 60, 12];
 
 /** Nom du fichier : `envies-<slug>-<AAAA-MM-JJ>.xlsx`. */
 export function exportFileName(slug: string, now = new Date()): string {
@@ -51,6 +52,7 @@ export function buildWorkbook(list: ListInfo, content: ListContent): Buffer {
         .filter(Boolean)
         .join(", "),
       i.isFavorite ? "oui" : "",
+      i.purchasedAt ? "oui" : "",
       i.note ?? "",
       i.imagePath ? imageUrl(i.imagePath, 1200) : "",
       new Date(i.createdAt),
@@ -61,7 +63,7 @@ export function buildWorkbook(list: ListInfo, content: ListContent): Buffer {
   for (let r = 1; r < rows.length; r++) {
     const price = ws[XLSX.utils.encode_cell({ r, c: 2 })] as XLSX.CellObject | undefined;
     if (price && price.t === "n") price.z = "#,##0.00";
-    const date = ws[XLSX.utils.encode_cell({ r, c: 9 })] as XLSX.CellObject | undefined;
+    const date = ws[XLSX.utils.encode_cell({ r, c: 10 })] as XLSX.CellObject | undefined;
     if (date) date.z = "dd/mm/yyyy";
   }
   ws["!cols"] = WIDTHS.map((wch) => ({ wch }));

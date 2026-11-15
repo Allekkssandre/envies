@@ -29,6 +29,8 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | error.locked | La modification s'est verrouillée. Saisissez le mot de passe pour continuer. |
 | count.items | {n} article · {n} articles |
 | count.favorites | {n} coup de cœur · {n} coups de cœur |
+| count.spent | {montant} dépensés (ligne mobile) · dépensés (bloc « En bref ») |
+| count.purchased | {n} acheté · {n} achetés (quand aucun article acheté n'a de prix) |
 | price.total | {montant} au total · ≈ {montant} (s'il manque des prix) |
 | list.byline | La liste de {prénom} |
 
@@ -90,6 +92,7 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | item.prev / item.next | Article précédent / Article suivant |
 | item.copyLink | Copier le lien de l'article |
 | item.favorite | Coup de cœur |
+| item.purchased | Acheté |
 | item.priceChecked | relevé sur {domaine} le {date} |
 | item.priceManual | prix indiqué par {prénom} |
 | item.note | Note de {prénom} |
@@ -219,10 +222,12 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | card.select | Sélectionner |
 | card.actions | Actions |
 | card.favorite.add / remove | Ajouter aux coups de cœur / Retirer des coups de cœur |
+| card.purchased.add / remove | Marquer comme acheté / Marquer comme non acheté |
 | selection.count | {n} sélectionnés · 1 sélectionné |
 | selection.category | Catégorie |
 | selection.tags | Tags |
 | selection.favorite | Coup de cœur |
+| selection.purchased | Acheté |
 | selection.clear | Annuler la sélection |
 | toast.deleted | Article supprimé · {n} articles supprimés |
 | toast.sorted | {n} articles rangés |
@@ -251,6 +256,8 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | itemEdit.tags | Tags |
 | itemEdit.tags.new | Nouveau tag |
 | itemEdit.favorite | Coup de cœur |
+| itemEdit.purchased | Acheté |
+| itemEdit.purchased.help | L'article reste dans la liste et compte dans le total dépensé. |
 | itemEdit.note | Note pour les visiteurs |
 | itemEdit.delete | Supprimer l'article |
 | itemEdit.discard.title | Abandonner les modifications ? |
@@ -290,7 +297,7 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | import.columns.title | Les colonnes |
 | import.columns.text | Les correspondances sont devinées d'après les titres. Changez celles qui ne vont pas. |
 | import.columns.head.source / samples / target | Colonne du fichier / Exemples / Devient |
-| import.target.* | Nom · Lien · Prix · Catégorie · Tags · Coup de cœur · Note · Photo (lien d'image) · Ne pas importer |
+| import.target.* | Nom · Lien · Prix · Catégorie · Tags · Coup de cœur · Acheté · Note · Photo (lien d'image) · Ne pas importer |
 | import.guessed | deviné |
 | import.help.newCategories | {n} nouvelles : {noms} |
 | import.help.favorite | oui, x, 1, ✓ comptent comme oui |

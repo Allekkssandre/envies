@@ -44,6 +44,8 @@ export type ItemInfo = {
   imageHeight: number | null;
   lightBackground: boolean;
   isFavorite: boolean;
+  /** Date à laquelle l'article a été marqué « Acheté » ; null = pas encore acheté. */
+  purchasedAt: string | null;
   position: string;
   createdAt: string;
   categoryId: string | null;

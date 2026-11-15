@@ -8,6 +8,7 @@ import { copyLink } from "@/components/list/ShareButton";
 import { buttonClasses } from "@/components/ui/Button";
 import { Caps } from "@/components/ui/Chip";
 import { IconButton } from "@/components/ui/IconButton";
+import { PurchasedPill } from "@/components/ui/ItemCard";
 import { ItemPhoto } from "@/components/ui/ItemPhoto";
 import { DESKTOP_QUERY, useMediaQuery } from "@/hooks/useMediaQuery";
 import { useUrlFilters } from "@/hooks/useListFilters";
@@ -337,6 +338,7 @@ function DesktopBody({ list, content, item, position, onPrev, onNext, onCopy, on
           className="h-[420px] rounded-[22px] shadow-[inset_0_1px_0_rgb(255_255_255/0.7),0_2px_4px_rgb(43_36_22/0.1),0_30px_50px_-24px_rgb(60_40_10/0.5)]"
         >
           {item.isFavorite ? <FavoritePill /> : null}
+          {item.purchasedAt ? <PurchasedPill className="bottom-4 left-4" /> : null}
         </ItemPhoto>
         <Heading list={list} content={content} item={item} />
         {item.description ? <Description text={item.description} /> : null}
@@ -447,6 +449,7 @@ function MobileBody({ list, content, item, position, onPrev, onNext, onCopy, onC
               className="h-[330px] rounded-[20px] shadow-[inset_0_1px_0_rgb(255_255_255/0.7),0_24px_40px_-22px_rgb(60_40_10/0.5)]"
             >
               {item.isFavorite ? <FavoritePill small /> : null}
+              {item.purchasedAt ? <PurchasedPill className="bottom-3 left-3" /> : null}
               <span className="absolute top-2 right-2 flex gap-1.5">
                 <IconButton
                   variant="linen"

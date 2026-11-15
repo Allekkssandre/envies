@@ -7,6 +7,7 @@ import { Check, Ellipsis, Folder, GripVertical, Heart, Pencil, Trash2 } from "lu
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type MouseEvent, type PointerEvent } from "react";
+import { PurchasedPill } from "@/components/ui/ItemCard";
 import { ItemPhoto } from "@/components/ui/ItemPhoto";
 import { cn } from "@/lib/cn";
 import { formatPrice } from "@/lib/format";
@@ -31,6 +32,8 @@ export function EditCard({ item, overlay = false }: EditCardProps) {
   const selected = board.selection.has(item.id);
   const name = itemName(item);
   const tag = firstTag(item, board.tags);
+  const purchased = Boolean(item.purchasedAt);
+  const togglePurchased = () => void board.update(item, { isPurchased: !purchased });
   const [moving, setMoving] = useState(false);
   const longPress = useRef<{ timer: ReturnType<typeof setTimeout> | null; fired: boolean }>({
     timer: null,
@@ -121,11 +124,13 @@ export function EditCard({ item, overlay = false }: EditCardProps) {
             lightBackground={item.lightBackground}
             className={cn(
               "h-[210px] sm:h-[340px]",
+              purchased && "[&>img]:opacity-70 [&>img]:saturate-[0.6]",
               selected && "outline-3 outline-offset-4 outline-ink",
               board.highlight === item.ref && item.ref && "outline-3 outline-offset-4 outline-ochre",
             )}
           />
         </Link>
+        {purchased ? <PurchasedPill className="pointer-events-none bottom-3 left-3" /> : null}
 
         {/* Cœur : toujours visible, cliquable */}
         <button
@@ -143,6 +148,23 @@ export function EditCard({ item, overlay = false }: EditCardProps) {
             className={item.isFavorite ? "fill-rust text-rust" : "text-ink"}
           />
         </button>
+
+        {/* Acheté : sous le cœur, au survol ou au focus (desktop) ; dans le menu ⋯ sur mobile */}
+        {!temp ? (
+          <button
+            type="button"
+            aria-pressed={purchased}
+            aria-label={purchased ? `Marquer comme non acheté : ${name}` : `Marquer comme acheté : ${name}`}
+            title={purchased ? "Marquer comme non acheté" : "Marquer comme acheté"}
+            onClick={togglePurchased}
+            className={cn(
+              "absolute top-[68px] right-3 hidden size-11 items-center justify-center rounded-full opacity-0 shadow-[0_6px_14px_-6px_rgb(43_36_22/0.4)] backdrop-blur-[10px] transition-opacity duration-180 group-hover/card:opacity-100 focus-visible:opacity-100 lg:flex",
+              purchased ? "bg-ink text-linen" : "bg-linen/75 text-ink",
+            )}
+          >
+            <Check aria-hidden="true" size={18} strokeWidth={2.2} />
+          </button>
+        ) : null}
 
         {/* Case de sélection : au survol, au focus, ou toujours en mode sélection */}
         {!temp ? (
@@ -246,6 +268,9 @@ export function EditCard({ item, overlay = false }: EditCardProps) {
                   onSelect={() => void board.update(item, { isFavorite: !item.isFavorite })}
                 >
                   {item.isFavorite ? "Retirer des coups de cœur" : "Coup de cœur"}
+                </DropdownMenu.Item>
+                <DropdownMenu.Item className={menuItem} onSelect={togglePurchased}>
+                  {purchased ? "Marquer comme non acheté" : "Marquer comme acheté"}
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
                   className={cn(menuItem, "text-rust")}

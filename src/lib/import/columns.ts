@@ -3,7 +3,8 @@
 import { looksLikeUrl } from "@/lib/normalizeUrl";
 import { parsePrice } from "@/lib/parsePrice";
 
-export type Target = "title" | "url" | "price" | "category" | "tags" | "favorite" | "note" | "image" | "skip";
+export type Target =
+  "title" | "url" | "price" | "category" | "tags" | "favorite" | "purchased" | "note" | "image" | "skip";
 
 export const TARGETS: { value: Target; label: string }[] = [
   { value: "title", label: "Nom" },
@@ -12,6 +13,7 @@ export const TARGETS: { value: Target; label: string }[] = [
   { value: "category", label: "Catégorie" },
   { value: "tags", label: "Tags" },
   { value: "favorite", label: "Coup de cœur" },
+  { value: "purchased", label: "Acheté" },
   { value: "note", label: "Note" },
   { value: "image", label: "Photo (lien d'image)" },
   { value: "skip", label: "Ne pas importer" },
@@ -52,6 +54,7 @@ const HEADERS: Record<Exclude<Target, "skip">, string[]> = {
   category: ["categorie", "rayon", "rubrique", "type", "famille", "section", "category", "piece", "theme"],
   tags: ["tags", "tag", "etiquettes", "mots cles", "labels", "motscles"],
   favorite: ["coup de coeur", "favori", "fav", "top", "prefere", "coeur", "♥", "❤", "envie forte", "star"],
+  purchased: ["achete", "achat", "achetee", "deja achete", "bought", "purchased"],
   note: [
     "note",
     "notes",
@@ -67,19 +70,7 @@ const HEADERS: Record<Exclude<Target, "skip">, string[]> = {
   image: ["photo", "image", "img", "visuel", "picture"],
 };
 /** Titres à ne pas importer (« Ajouté le », « Devise » : colonnes de l'export). */
-const SKIP = [
-  "achete",
-  "offert",
-  "recu",
-  "statut",
-  "date",
-  "id",
-  "#",
-  "ajoute le",
-  "ajoute",
-  "devise",
-  "currency",
-];
+const SKIP = ["offert", "recu", "statut", "date", "id", "#", "ajoute le", "ajoute", "devise", "currency"];
 /** Colonne de devise : sert à lire le prix, n'est pas importée. */
 export const CURRENCY_HEADERS = ["devise", "currency", "monnaie"];
 

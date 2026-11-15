@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowRight, Check, Gift, ListPlus } from "lucide-react";
+import { ArrowRight, Check, Gift, ListPlus, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClasses } from "@/components/ui/Button";
 import { Field, TextArea } from "@/components/ui/Field";
 import { SANTA_LIMITS as L, type LutinProfile, type LutinView } from "@/lib/santa/types";
 import { confirmLutin, openMyList, openTargetList, saveLutinProfile } from "@/server/actions/santa";
@@ -22,7 +23,15 @@ function formatDay(iso: string) {
 }
 
 /** Page d'un lutin, ouverte par son lien personnel : son tirage, sa fiche, sa liste d'idées. */
-export function LutinPage({ token, view }: { token: string; view: LutinView }) {
+export function LutinPage({
+  token,
+  view,
+  hasGame = false,
+}: {
+  token: string;
+  view: LutinView;
+  hasGame?: boolean;
+}) {
   const router = useRouter();
   const { santa, me, target } = view;
   const [confirmed, setConfirmed] = useState(Boolean(me.confirmedAt));
@@ -95,6 +104,20 @@ export function LutinPage({ token, view }: { token: string; view: LutinView }) {
           </Button>
         )}
       </div>
+
+      {hasGame ? (
+        <SantaSection
+          title="La Magie de Noël"
+          hint="Un jeu à rôles cachés, en parallèle des cadeaux. Cinq manches, deux camps, un tchat anonyme."
+        >
+          <div>
+            <Link href={`/lutins/moi/${token}/jeu`} className={buttonClasses("ink", 52)}>
+              <Sparkles aria-hidden="true" />
+              Entrer dans le jeu
+            </Link>
+          </div>
+        </SantaSection>
+      ) : null}
 
       <SantaSection title={`Ce que ${target.firstName} a indiqué`}>
         <ProfileView profile={target.profile} name={target.firstName} />

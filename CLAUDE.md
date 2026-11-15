@@ -19,6 +19,7 @@ Tu pars de ce dossier pour coder l'application de bout en bout. Le design est fi
 11. `docs/11-plan-de-livraison.md` : jalons et critères d'acceptation. **Suis cet ordre.**
 12. `docs/12-textes.md` : tous les textes de l'interface. Ne réécris pas les textes, prends-les ici.
 13. `docs/13-secret-santa.md` : la sous-section Secret Santa (`/lutins`), tirage, secret, mails, textes.
+14. `docs/14-magie-de-noel.md` : le jeu à rôles cachés du Secret Santa (règles, scénarios, technique). Prompts de design dans `docs/15-magie-prompts-design.md`.
 
 Maquettes :
 

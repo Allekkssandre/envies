@@ -1,3 +1,5 @@
+import type { MagicSummary } from "@/lib/magic/types";
+
 // Données du Secret Santa envoyées au navigateur. Aucune ne contient le tirage,
 // sauf `LutinView.target` et `LutinView.theme`, qui ne vont qu'au lutin concerné.
 
@@ -36,6 +38,8 @@ export type OrganizerView = {
   participants: OrganizerParticipant[];
   check: DrawCheck;
   mailReady: boolean;
+  /** La Magie de Noël, si elle est ouverte. Rien sur les rôles. */
+  magic: MagicSummary | null;
 };
 
 export type LutinProfile = {

@@ -32,6 +32,7 @@ import {
   saveSantaDraft,
   saveSantaSettings,
 } from "@/server/actions/santa";
+import { MagicOrganizer } from "./MagicOrganizer";
 import { SantaSection } from "./SantaShell";
 
 type Row = { key: string; id?: string; firstName: string; lastName: string; email: string };
@@ -429,6 +430,8 @@ function Launched({ view }: { view: OrganizerView }) {
           ))}
         </ul>
       </SantaSection>
+
+      <MagicOrganizer santaId={santa.id} magic={view.magic} players={participants.length} />
 
       <LaunchedSettings view={view} />
     </>

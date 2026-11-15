@@ -52,5 +52,10 @@ async function Lutin({ params }: Pick<PageProps<"/lutins/moi/[token]">, "params"
         .is("opened_at", null);
     });
   }
-  return <LutinPage token={token} view={toLutinView(ctx)} />;
+  const { data: game } = await getServiceDb()
+    .from("magic_games")
+    .select("santa_id")
+    .eq("santa_id", ctx.santa.id)
+    .maybeSingle();
+  return <LutinPage token={token} view={toLutinView(ctx)} hasGame={Boolean(game)} />;
 }

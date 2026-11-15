@@ -35,9 +35,9 @@ async function lastMails(emails: string[]): Promise<Map<string, Mail>> {
 const linkOf = (mail: Mail) => new URL(/https?:\/\/\S+\/lutins\/moi\/\S+/.exec(mail.text)![0]).pathname;
 
 async function fillParticipant(page: Page, n: number, first: string, last: string, email: string) {
-  await page.getByLabel(`Prénom du participant ${n}`).fill(first);
-  await page.getByLabel(`Nom du participant ${n}`).fill(last);
-  await page.getByLabel(`Adresse mail du participant ${n}`).fill(email);
+  await page.getByLabel(`Prénom du participant ${n}`, { exact: true }).fill(first);
+  await page.getByLabel(`Nom du participant ${n}`, { exact: true }).fill(last);
+  await page.getByLabel(`Adresse mail du participant ${n}`, { exact: true }).fill(email);
 }
 
 test("Secret Santa : tirage unique, secret pour l'organisation, fiche et liste d'idées", async ({

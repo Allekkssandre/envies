@@ -1,4 +1,13 @@
-import { CATCH_GAIN, CERT_ROUND, ROUNDS, SABOTAGE, WRONG_LOSS, type Clue, type Role } from "./engine";
+import {
+  CATCH_GAIN,
+  CERT_ROUND,
+  ROUNDS,
+  SABOTAGE,
+  WRONG_LOSS,
+  type AtoutKind,
+  type Clue,
+  type Role,
+} from "./engine";
 import type { Gazette } from "./types";
 
 // Textes du jeu (docs/14-magie-de-noel.md § Textes). Chaleureux, simples, sans point
@@ -50,6 +59,7 @@ export function gazetteStory(g: Gazette): Story {
       paragraphs: [
         "Cette année encore, des Krampus se sont glissés parmi les joueurs. Chaque semaine où ils restent cachés, ils éteignent un peu de Magie. Personne ne sait qui ils sont, sauf eux.",
         `La Magie de Noël brille à ${g.after}. Aux Pères Noël de la protéger en démasquant les Krampus.`,
+        "Un conseil des lutins : ne croyez pas tout ce que vous lisez. Une fois dans la partie, chaque Krampus peut glisser un faux indice dans ces colonnes.",
       ],
     };
   }
@@ -110,6 +120,8 @@ export const RULES: string[] = [
   "À la fin de chaque semaine, la Gazette du Pôle Nord raconte ce qui s'est passé, donne un indice sur l'identité d'un Krampus et montre qui a désigné qui.",
   `À la fin de la semaine ${CERT_ROUND}, chaque Père Noël reçoit en secret le nom d'un joueur qui n'est pas un Krampus. Les Krampus ne reçoivent rien, mais ils peuvent prétendre le contraire.`,
   "Si la Magie tombe à zéro, les Krampus ont gagné. Si elle tient jusqu'à la fin de la dernière semaine, ou si tous les Krampus sont démasqués avant, les Pères Noël ont sauvé Noël.",
+  "Chaque joueur a aussi un atout, à jouer une seule fois s'il le souhaite. Les Pères Noël ont la Loupe : ils choisissent deux joueurs et apprennent en secret si au moins l'un des deux est un Krampus. Les Krampus choisissent entre la Fausse piste, qui remplace l'indice d'une gazette par un faux, et l'Alibi, qui fait qu'une Loupe ne trouve plus rien de suspect chez eux. Les indices ne sont donc pas toujours vrais.",
+  "Chaque semaine, vous pouvez écrire une courte lettre sans votre nom. Elle paraîtra dans le courrier des lecteurs de la gazette suivante.",
   "Parlez-en autour de vous, au dîner ou par message. Chacun a le droit de bluffer.",
 ];
 
@@ -122,4 +134,38 @@ export function formatMoment(iso: string): string {
     minute: "2-digit",
     timeZone: "Europe/Paris",
   });
+}
+
+export const ATOUT_NAME: Record<AtoutKind, string> = {
+  loupe: "La Loupe",
+  fausse_piste: "La Fausse piste",
+  alibi: "L'Alibi",
+};
+
+export const ATOUT_TEXT: Record<AtoutKind, string> = {
+  loupe:
+    "Choisissez deux joueurs. Les lutins vous diront en secret si au moins l'un des deux est un Krampus. Une seule fois dans la partie, alors choisissez bien.",
+  fausse_piste:
+    "Remplacez l'indice de la prochaine gazette par un faux, choisi parmi ceux que les lutins vous proposent. Tout le monde le lira comme un vrai.",
+  alibi:
+    "À partir de maintenant et jusqu'à la fin de la partie, si un Père Noël utilise sa Loupe sur vous, les lutins ne trouveront rien de suspect.",
+};
+
+/** Ce que le joueur lit une fois son atout joué. */
+export function atoutResultText(a: {
+  kind: AtoutKind;
+  round: number;
+  loupe?: { names: [string, string]; found: boolean };
+  clue?: Clue;
+}): string {
+  if (a.kind === "loupe" && a.loupe) {
+    const [x, y] = a.loupe.names;
+    return a.loupe.found
+      ? `Semaine ${a.round}, les lutins ont regardé de près ${x} et ${y} : au moins l'un des deux est un Krampus.`
+      : `Semaine ${a.round}, les lutins ont regardé de près ${x} et ${y} : ils n'ont rien trouvé de suspect.`;
+  }
+  if (a.kind === "fausse_piste" && a.clue) {
+    return `Votre fausse piste paraît dans la gazette de fin de semaine ${a.round} : « ${clueText(a.clue)} »`;
+  }
+  return `Votre alibi est en place depuis la semaine ${a.round}. Aucune Loupe ne trouvera rien de suspect chez vous.`;
 }

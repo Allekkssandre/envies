@@ -220,3 +220,115 @@ export function flair(
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Atouts (facultatifs, un par joueur et par partie, sans effet sur le score)
+// ---------------------------------------------------------------------------
+
+export type AtoutKind = "loupe" | "fausse_piste" | "alibi";
+
+/** Les atouts qu'un rôle peut jouer. */
+export const ATOUTS: Record<Role, AtoutKind[]> = { pn: ["loupe"], gr: ["fausse_piste", "alibi"] };
+
+/**
+ * Loupe : au moins un des deux joueurs est-il un Krampus ? Un Krampus qui a déjà joué son
+ * Alibi passe inaperçu.
+ */
+export function loupeResult(
+  players: readonly Player[],
+  targets: readonly [string, string],
+  alibis: ReadonlySet<string>,
+): boolean {
+  return targets.some((id) => {
+    const p = players.find((x) => x.id === id);
+    return p?.role === "gr" && !alibis.has(id);
+  });
+}
+
+/** Vrai si l'indice est exact au regard des rôles. */
+export function clueIsTrue(
+  clue: Clue,
+  people: readonly (Person & Player)[],
+  names: Map<string, string>,
+): boolean {
+  const hidden = people.filter((p) => p.role === "gr" && !p.out);
+  const roleOf = (name: string) => people.find((p) => names.get(p.id) === name)?.role;
+  switch (clue.t) {
+    case "letters":
+      return hidden.some((p) => letterCount(p.firstName) === clue.n);
+    case "range":
+      return hidden.some((p) => {
+        const first =
+          fold(p.firstName)
+            .replace(/[^A-Z]/g, "")
+            .charAt(0) || "A";
+        return first >= clue.from && first <= clue.to;
+      });
+    case "innocent":
+      return clue.names.every((n) => roleOf(n) === "pn");
+    case "among":
+      return clue.names.some((n) => roleOf(n) === "gr");
+  }
+}
+
+/**
+ * Fausse piste : jusqu'à trois faux indices crédibles, du même genre que le vrai indice de la
+ * semaine `week` quand c'est possible. Chacun est faux au regard des rôles.
+ */
+export function fakeClueOptions(week: number, people: readonly (Person & Player)[], rng: Rng): Clue[] {
+  const names = displayNames(people);
+  const inGame = people.filter((p) => !p.out);
+  const hiddenK = inGame.filter((p) => p.role === "gr");
+  const innocents = inGame.filter((p) => p.role === "pn");
+  const out: Clue[] = [];
+  const push = (c: Clue) => {
+    if (
+      out.length < 3 &&
+      !out.some((o) => JSON.stringify(o) === JSON.stringify(c)) &&
+      !clueIsTrue(c, people, names)
+    ) {
+      out.push(c);
+    }
+  };
+  const tries = (make: () => Clue | null) => {
+    for (let i = 0; i < 12 && out.length < 3; i++) {
+      const c = make();
+      if (c) push(c);
+    }
+  };
+  const pick = <T>(list: readonly T[]) => list[rng(list.length)]!;
+  const letters = () => {
+    const lengths = [...new Set(innocents.map((p) => letterCount(p.firstName)))];
+    return lengths.length ? ({ t: "letters", n: pick(lengths) } as Clue) : null;
+  };
+  const range = (): Clue =>
+    rng(2) ? { t: "range", from: "A", to: "L" } : { t: "range", from: "M", to: "Z" };
+  // Un Krampus et un innocent présentés comme deux innocents.
+  const innocent = () =>
+    hiddenK.length && innocents.length
+      ? ({
+          t: "innocent",
+          names: shuffle([pick(hiddenK), pick(innocents)], rng).map((p) => names.get(p.id)!),
+        } as Clue)
+      : null;
+  // Trois innocents présentés comme cachant un Krampus.
+  const among = () =>
+    innocents.length >= 3
+      ? ({
+          t: "among",
+          names: shuffle(innocents, rng)
+            .slice(0, 3)
+            .map((p) => names.get(p.id)!),
+        } as Clue)
+      : null;
+  const order =
+    week >= 4
+      ? [among, innocent, letters]
+      : week === 3
+        ? [innocent, among, letters]
+        : week === 2
+          ? [range, letters, innocent]
+          : [letters, range, innocent];
+  for (const make of order) tries(make);
+  return out;
+}

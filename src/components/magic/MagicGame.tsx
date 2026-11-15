@@ -8,6 +8,7 @@ import { CERT_ROUND, ROUNDS } from "@/lib/magic/engine";
 import { CAMP_LABEL, RULES, ROLE_HINT, ROLE_LABEL, endText, formatMoment } from "@/lib/magic/texts";
 import type { MagicView } from "@/lib/magic/types";
 import { getMagicView, voteMagic } from "@/server/actions/magic";
+import { AtoutPanel, LetterPanel, NotebookPanel } from "./Extras";
 import { GazetteCard } from "./GazetteCard";
 import { MagicGlobe } from "./MagicGlobe";
 import { RoleCard, useFlipped } from "./RoleCard";
@@ -92,6 +93,7 @@ export function MagicGame({ token, initial }: { token: string; initial: MagicVie
         <div className="flex flex-col gap-10">
           {view.reveal ? <Reveal view={view} /> : null}
           <SuspectPanel view={view} pending={pending} onVote={vote} />
+          <AtoutPanel view={view} token={token} refresh={refresh} />
           {latest ? (
             <section aria-label="Gazette" className="flex flex-col gap-4">
               <GazetteCard gazette={latest} title={view.title} />
@@ -107,6 +109,13 @@ export function MagicGame({ token, initial }: { token: string; initial: MagicVie
               ) : null}
             </section>
           ) : null}
+          <LetterPanel
+            key={`${view.round}-${view.letter.mine ?? ""}`}
+            view={view}
+            token={token}
+            refresh={refresh}
+          />
+          <NotebookPanel view={view} token={token} onChange={(notes) => setView((v) => ({ ...v, notes }))} />
           <details className="mg-panel px-5 py-4 sm:px-7">
             <summary className="flex min-h-11 items-center justify-between gap-3 text-[17px] font-semibold">
               Comment ça se joue
@@ -285,6 +294,11 @@ function SuspectPanel({
                       {p.name.charAt(0)}
                     </span>
                     <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                    {view.notes[p.id] ? (
+                      <span className="mg-note-tag" data-mark={view.notes[p.id]}>
+                        {view.notes[p.id] === "suspect" ? "suspect" : "innocent"}
+                      </span>
+                    ) : null}
                     {selected ? (
                       <Check aria-hidden="true" size={18} className="text-[var(--mg-gold)]" />
                     ) : null}

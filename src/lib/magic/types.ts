@@ -1,4 +1,4 @@
-import type { Clue, Role, RoundResult } from "./engine";
+import type { AtoutKind, Clue, Role, RoundResult } from "./engine";
 
 // Ce que le navigateur reçoit du jeu. Le rôle des autres n'y figure qu'une fois démasqués,
 // ou à la révélation finale.
@@ -19,6 +19,8 @@ export type Gazette = {
   clue: Clue | null;
   /** Les secrets personnels viennent d'être distribués. */
   certs: boolean;
+  /** Courrier des lecteurs de la semaine, sans nom, dans un ordre tiré au sort. */
+  letters?: string[];
   winner: Role | null;
   end: RoundResult["end"];
 };
@@ -33,6 +35,26 @@ export type MagicPlayer = {
 };
 
 export type RevealRow = { name: string; role: Role; outRound: number | null; flair: number };
+
+export type NoteMark = "suspect" | "innocent";
+
+/** L'atout du joueur, vu par lui seul. */
+export type AtoutView =
+  | { state: "locked" }
+  | {
+      state: "ready";
+      /** Krampus : faux indices proposés pour la gazette de cette semaine ; vide si impossible. */
+      options: Clue[];
+      /** Krampus : un autre Krampus a déjà préparé une fausse piste cette semaine. */
+      fakeTaken: boolean;
+    }
+  | {
+      state: "used";
+      kind: AtoutKind;
+      round: number;
+      loupe?: { names: [string, string]; found: boolean };
+      clue?: Clue;
+    };
 
 export type MagicStatus = "waiting" | "playing" | "over" | "revealed";
 
@@ -59,6 +81,11 @@ export type MagicView = {
   };
   players: MagicPlayer[];
   vote: { mine: string | null; voters: number; open: boolean };
+  atout: AtoutView;
+  /** Lettre de la semaine en cours ; `open` : la boîte aux lettres est ouverte. */
+  letter: { mine: string | null; open: boolean };
+  /** Carnet d'enquête : notes du joueur, par identifiant. */
+  notes: Record<string, NoteMark>;
   gazettes: Gazette[];
   reveal: RevealRow[] | null;
 };

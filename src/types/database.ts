@@ -318,6 +318,7 @@ export type Database = {
           currency: string
           deleted_at: string | null
           description: string | null
+          hidden: boolean
           id: string
           is_private: boolean
           owner_name: string
@@ -333,6 +334,7 @@ export type Database = {
           currency?: string
           deleted_at?: string | null
           description?: string | null
+          hidden?: boolean
           id?: string
           is_private?: boolean
           owner_name: string
@@ -348,6 +350,7 @@ export type Database = {
           currency?: string
           deleted_at?: string | null
           description?: string | null
+          hidden?: boolean
           id?: string
           is_private?: boolean
           owner_name?: string
@@ -355,6 +358,150 @@ export type Database = {
           slug?: string
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      santas: {
+        Row: {
+          budget: string | null
+          created_at: string
+          exchange_date: string | null
+          id: string
+          launched_at: string | null
+          message: string | null
+          slug: string
+          status: "draft" | "launched"
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          budget?: string | null
+          created_at?: string
+          exchange_date?: string | null
+          id?: string
+          launched_at?: string | null
+          message?: string | null
+          slug: string
+          status?: "draft" | "launched"
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          budget?: string | null
+          created_at?: string
+          exchange_date?: string | null
+          id?: string
+          launched_at?: string | null
+          message?: string | null
+          slug?: string
+          status?: "draft" | "launched"
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      santa_secrets: {
+        Row: {
+          auth_version: number
+          edit_key: string
+          password_hash: string
+          santa_id: string
+        }
+        Insert: {
+          auth_version?: number
+          edit_key: string
+          password_hash: string
+          santa_id: string
+        }
+        Update: {
+          auth_version?: number
+          edit_key?: string
+          password_hash?: string
+          santa_id?: string
+        }
+        Relationships: []
+      }
+      santa_themes: {
+        Row: {
+          id: string
+          label: string
+          position: number
+          santa_id: string
+        }
+        Insert: {
+          id?: string
+          label: string
+          position: number
+          santa_id: string
+        }
+        Update: {
+          id?: string
+          label?: string
+          position?: number
+          santa_id?: string
+        }
+        Relationships: []
+      }
+      santa_participants: {
+        Row: {
+          age: string | null
+          assignment: string | null
+          clothing_size: string | null
+          confirmed_at: string | null
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          list_id: string | null
+          mail_error: string | null
+          mailed_at: string | null
+          opened_at: string | null
+          position: number
+          santa_id: string
+          shoe_size: string | null
+          tastes: string | null
+          token_hash: string | null
+        }
+        Insert: {
+          age?: string | null
+          assignment?: string | null
+          clothing_size?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          email: string
+          first_name: string
+          id?: string
+          last_name: string
+          list_id?: string | null
+          mail_error?: string | null
+          mailed_at?: string | null
+          opened_at?: string | null
+          position: number
+          santa_id: string
+          shoe_size?: string | null
+          tastes?: string | null
+          token_hash?: string | null
+        }
+        Update: {
+          age?: string | null
+          assignment?: string | null
+          clothing_size?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          list_id?: string | null
+          mail_error?: string | null
+          mailed_at?: string | null
+          opened_at?: string | null
+          position?: number
+          santa_id?: string
+          shoe_size?: string | null
+          tastes?: string | null
+          token_hash?: string | null
         }
         Relationships: []
       }
@@ -451,6 +598,8 @@ export type Database = {
         Returns: boolean
       }
       normalize_key: { Args: { p: string }; Returns: string }
+      santa_cancel: { Args: { p_santa: string }; Returns: undefined }
+      santa_launch: { Args: { p_santa: string; p_rows: Json }; Returns: undefined }
       short_ref: { Args: never; Returns: string }
     }
     Enums: {

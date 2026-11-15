@@ -71,8 +71,9 @@ test("Secret Santa : tirage unique, secret pour l'organisation, fiche et liste d
   await page.getByRole("button", { name: "Lancer le tirage" }).click();
   await page.getByRole("button", { name: "Lancer et envoyer les mails" }).click();
   await expect(page.getByText("Tirage vérifié")).toBeVisible({ timeout: 20_000 });
-  // L'organisation ne voit aucun thème associé à une personne, ni aucun « offre à ».
-  await expect(page.getByText(/offre à/)).toHaveCount(0);
+  // L'organisation ne voit aucun tirage : ni « Votre thème », ni « vous offrez un cadeau à ».
+  await expect(page.getByText("Votre thème")).toHaveCount(0);
+  await expect(page.getByText(/vous offrez un cadeau à/i)).toHaveCount(0);
 
   // Chaque lutin ouvre son lien
   const mails = await lastMails(people.map((p) => p.email));

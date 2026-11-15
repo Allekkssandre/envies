@@ -58,6 +58,7 @@ describe("import-45.xlsx (maquette ImportV4)", () => {
       tags: ["petit prix"],
       isFavorite: true,
       isPurchased: false,
+      quantity: 1,
       note: "vert sauge",
       imageUrl: null,
     });
@@ -159,6 +160,7 @@ describe("devinette des colonnes", () => {
       "Lien",
       "Prix",
       "Devise",
+      "Quantité",
       "Catégorie",
       "Tags",
       "Coup de cœur",
@@ -172,6 +174,7 @@ describe("devinette des colonnes", () => {
       "url",
       "price",
       "skip",
+      "quantity",
       "category",
       "tags",
       "favorite",

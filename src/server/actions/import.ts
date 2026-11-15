@@ -36,6 +36,7 @@ const rowSchema = z.object({
   tags: z.array(text(30)).max(20),
   isFavorite: z.boolean(),
   isPurchased: z.boolean().optional(),
+  quantity: z.number().int().min(1).max(99).optional(),
   note: z
     .string()
     .max(500)
@@ -182,6 +183,7 @@ export async function importItems(input: z.input<typeof importInput>): Promise<R
         sorted_at: sorted && categoryId ? now : null,
         is_favorite: r.isFavorite,
         purchased_at: r.isPurchased ? now : null,
+        quantity: r.quantity ?? 1,
         note: r.note?.trim() || null,
         position: positions[i]!,
         fetch_status: r.link && enrich ? "pending" : "none",

@@ -293,8 +293,9 @@ export function EditCard({ item, overlay = false }: EditCardProps) {
             </b>
           ) : null}
         </span>
-        {item.domain || tag ? (
+        {item.domain || tag || item.quantity > 1 ? (
           <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-muted">
+            {item.quantity > 1 ? <span className="font-semibold text-ink">× {item.quantity}</span> : null}
             {item.domain}
             {tag ? (
               <span className="inline-flex items-center gap-[5px]">

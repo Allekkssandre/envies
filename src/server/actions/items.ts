@@ -428,6 +428,7 @@ const patchSchema = z
     categoryId: uuid.nullable(),
     isFavorite: z.boolean(),
     isPurchased: z.boolean(),
+    quantity: z.number().int().min(1).max(99),
     tagIds: z.array(uuid).max(50),
   })
   .partial();
@@ -469,6 +470,7 @@ export async function updateItem(input: z.input<typeof updateInput>): Promise<Re
       update.note = patch.note.trim() || null;
     }
     if (patch.isFavorite !== undefined) update.is_favorite = patch.isFavorite;
+    if (patch.quantity !== undefined) update.quantity = patch.quantity;
     // Acheté : la date du premier marquage est gardée ; « plus acheté » l'efface.
     if (patch.isPurchased !== undefined && patch.isPurchased !== Boolean(current.purchasedAt))
       update.purchased_at = patch.isPurchased ? new Date().toISOString() : null;

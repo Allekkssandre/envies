@@ -270,7 +270,7 @@ test.describe("édition", () => {
     const { data: list } = await db.from("lists").select("id").eq("slug", slug).single();
     await db
       .from("items")
-      .update({ price_cents: 8900, currency: "EUR", price_source: "manual" })
+      .update({ price_cents: 8900, currency: "EUR", price_source: "manual", quantity: 2 })
       .eq("list_id", list!.id)
       .eq("title", "Lampe champignon");
     await unlock(page, slug);
@@ -293,6 +293,8 @@ test.describe("édition", () => {
     const visitorCard = section(page, "Maison & déco").getByRole("link", { name: /Lampe champignon/ });
     await expect(visitorCard.getByText("Acheté", { exact: true })).toBeVisible();
     await expect(page.getByText(/dépensés/).locator("visible=true")).toBeVisible();
-    await expect(page.getByRole("banner")).toContainText("89 €");
+    // Deux exemplaires à 89 € : 178 € au total et dépensés.
+    await expect(visitorCard).toContainText("× 2");
+    await expect(page.getByRole("banner")).toContainText("178 €");
   });
 });

@@ -235,6 +235,14 @@ function Heading({
           ) : null}
         </div>
       ) : null}
+      {item.quantity > 1 ? (
+        <p className="m-0 text-sm text-ink-soft">
+          Quantité : {item.quantity}
+          {item.priceCents != null
+            ? ` · ${formatPrice(item.priceCents * item.quantity, currency)} en tout`
+            : null}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -93,6 +93,7 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | item.copyLink | Copier le lien de l'article |
 | item.favorite | Coup de cœur |
 | item.purchased | Acheté |
+| item.quantity | × {n} (carte) · Quantité : {n} · {montant} en tout (fiche) |
 | item.priceChecked | relevé sur {domaine} le {date} |
 | item.priceManual | prix indiqué par {prénom} |
 | item.note | Note de {prénom} |
@@ -256,6 +257,9 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | itemEdit.tags | Tags |
 | itemEdit.tags.new | Nouveau tag |
 | itemEdit.favorite | Coup de cœur |
+| itemEdit.quantity | Quantité |
+| itemEdit.quantity.help | Le prix est celui d'une unité. |
+| itemEdit.quantity.less / more | Diminuer la quantité / Augmenter la quantité |
 | itemEdit.purchased | Acheté |
 | itemEdit.purchased.help | L'article reste dans la liste et compte dans le total dépensé. |
 | itemEdit.note | Note pour les visiteurs |
@@ -297,7 +301,7 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | import.columns.title | Les colonnes |
 | import.columns.text | Les correspondances sont devinées d'après les titres. Changez celles qui ne vont pas. |
 | import.columns.head.source / samples / target | Colonne du fichier / Exemples / Devient |
-| import.target.* | Nom · Lien · Prix · Catégorie · Tags · Coup de cœur · Acheté · Note · Photo (lien d'image) · Ne pas importer |
+| import.target.* | Nom · Lien · Prix · Catégorie · Tags · Coup de cœur · Acheté · Quantité · Note · Photo (lien d'image) · Ne pas importer |
 | import.guessed | deviné |
 | import.help.newCategories | {n} nouvelles : {noms} |
 | import.help.favorite | oui, x, 1, ✓ comptent comme oui |

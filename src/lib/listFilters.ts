@@ -198,10 +198,11 @@ export function listStats(items: ItemInfo[], currency: string): ListStats {
   let spentApproximate = false;
   for (const item of items) {
     const known = item.priceCents != null && (item.currency ?? currency) === currency;
-    if (known) totalCents += item.priceCents!;
+    const amount = known ? item.priceCents! * Math.max(1, item.quantity) : 0;
+    if (known) totalCents += amount;
     else approximate = true;
     if (item.purchasedAt) {
-      if (known) spentCents += item.priceCents!;
+      if (known) spentCents += amount;
       else spentApproximate = true;
     }
   }

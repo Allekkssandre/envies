@@ -64,6 +64,7 @@ C'est un site personnel, pas un produit. Volume attendu : quelques dizaines de l
 | Catégorie | Un rangement exclusif (un article a 0 ou 1 catégorie). Ordonnées à la main. Sans catégorie = « Non classé ». |
 | Tag | Une étiquette libre et multiple (priorité, avis, taille…), avec une couleur parmi 8. |
 | Coup de cœur | Un marqueur booléen, mis en avant (cœur rouille). |
+| Quantité | Nombre d'exemplaires voulus (1 à 99), affiché « × 2 » à partir de deux. Le prix reste celui d'une unité ; les totaux le multiplient. |
 | Acheté | Un article marqué « Acheté » en mode édition. Il reste dans la liste, avec une pastille, et son prix compte dans le total dépensé (affiché à côté du total dès qu'un article est acheté). |
 | À trier | Articles ajoutés mais pas encore validés par le propriétaire (`sorted_at` vide). Visibles des visiteurs comme les autres. |
 | Ambiance | Le décor de la liste : `feuillage` (défaut), `ciel` (ciel doré), `ambre`. |

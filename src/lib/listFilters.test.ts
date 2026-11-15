@@ -31,6 +31,7 @@ function item(partial: Partial<ItemInfo> & { title: string | null; position: str
     lightBackground: false,
     isFavorite: false,
     purchasedAt: null,
+    quantity: 1,
     createdAt: `2026-10-${String(10 + seq).padStart(2, "0")}T10:00:00Z`,
     categoryId: null,
     tagIds: [],
@@ -180,6 +181,9 @@ describe("chiffres", () => {
       spentCents: 4500,
       spentApproximate: false,
     });
+    // Quantité : le prix d'une unité, multiplié.
+    const pair = item({ title: "Verres", position: "c3", priceCents: 1000, quantity: 3, purchasedAt: at });
+    expect(listStats([pair, wanted], "EUR")).toMatchObject({ count: 2, totalCents: 11900, spentCents: 3000 });
     expect(listStats([bought, noPrice, wanted], "EUR")).toMatchObject({
       purchased: 2,
       spentCents: 4500,

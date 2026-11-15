@@ -117,6 +117,7 @@ function tempItem(fields: Partial<ItemInfo> & { position: string }, n: number): 
     lightBackground: false,
     isFavorite: false,
     purchasedAt: null,
+    quantity: 1,
     createdAt: new Date(Date.now() + n).toISOString(),
     categoryId: null,
     tagIds: [],
@@ -417,6 +418,7 @@ export function BoardProvider({ list, content, children }: Props) {
             ? {
                 ...i,
                 ...(patch.isFavorite !== undefined ? { isFavorite: patch.isFavorite } : {}),
+                ...(patch.quantity !== undefined ? { quantity: patch.quantity } : {}),
                 ...(patch.isPurchased !== undefined
                   ? { purchasedAt: patch.isPurchased ? (i.purchasedAt ?? new Date().toISOString()) : null }
                   : {}),

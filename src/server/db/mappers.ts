@@ -3,7 +3,7 @@ import type { ItemInfo } from "@/types/models";
 
 /** Colonnes lues pour un article (visiteur et édition). */
 export const ITEM_COLUMNS =
-  "id, ref, title, url, domain, description, note, price_cents, currency, price_source, price_checked_at, image_path, image_width, image_height, image_source_url, image_candidates, meta, is_favorite, purchased_at, position, created_at, category_id, fetch_status, sorted_at, suggested_category_id, item_tags(tag_id)";
+  "id, ref, title, url, domain, description, note, price_cents, currency, price_source, price_checked_at, image_path, image_width, image_height, image_source_url, image_candidates, meta, is_favorite, purchased_at, quantity, position, created_at, category_id, fetch_status, sorted_at, suggested_category_id, item_tags(tag_id)";
 
 type ItemRow = Pick<
   Tables<"items">,
@@ -26,6 +26,7 @@ type ItemRow = Pick<
   | "meta"
   | "is_favorite"
   | "purchased_at"
+  | "quantity"
   | "position"
   | "created_at"
   | "category_id"
@@ -61,6 +62,7 @@ export function toItemInfo(r: ItemRow): ItemInfo {
     lightBackground: metaObject(r.meta).lightBackground === true,
     isFavorite: r.is_favorite,
     purchasedAt: r.purchased_at,
+    quantity: r.quantity,
     position: r.position,
     createdAt: r.created_at,
     categoryId: r.category_id,

@@ -13,6 +13,7 @@ export const EXPORT_HEADERS = [
   "Lien",
   "Prix",
   "Devise",
+  "Quantité",
   "Catégorie",
   "Tags",
   "Coup de cœur",
@@ -22,7 +23,7 @@ export const EXPORT_HEADERS = [
   "Ajouté le",
 ] as const;
 
-const WIDTHS = [40, 50, 10, 8, 22, 28, 13, 9, 40, 60, 12];
+const WIDTHS = [40, 50, 10, 8, 9, 22, 28, 13, 9, 40, 60, 12];
 
 /** Nom du fichier : `envies-<slug>-<AAAA-MM-JJ>.xlsx`. */
 export function exportFileName(slug: string, now = new Date()): string {
@@ -46,6 +47,7 @@ export function buildWorkbook(list: ListInfo, content: ListContent): Buffer {
       i.url ?? "",
       i.priceCents != null ? i.priceCents / 100 : null,
       i.priceCents != null ? (i.currency ?? list.currency) : "",
+      i.quantity,
       i.categoryId ? (byCategory.get(i.categoryId) ?? "") : "",
       i.tagIds
         .map((id) => tagNames.get(id))
@@ -63,7 +65,7 @@ export function buildWorkbook(list: ListInfo, content: ListContent): Buffer {
   for (let r = 1; r < rows.length; r++) {
     const price = ws[XLSX.utils.encode_cell({ r, c: 2 })] as XLSX.CellObject | undefined;
     if (price && price.t === "n") price.z = "#,##0.00";
-    const date = ws[XLSX.utils.encode_cell({ r, c: 10 })] as XLSX.CellObject | undefined;
+    const date = ws[XLSX.utils.encode_cell({ r, c: 11 })] as XLSX.CellObject | undefined;
     if (date) date.z = "dd/mm/yyyy";
   }
   ws["!cols"] = WIDTHS.map((wch) => ({ wch }));

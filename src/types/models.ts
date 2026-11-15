@@ -46,6 +46,8 @@ export type ItemInfo = {
   isFavorite: boolean;
   /** Date à laquelle l'article a été marqué « Acheté » ; null = pas encore acheté. */
   purchasedAt: string | null;
+  /** Quantité voulue (1 à 99) ; le prix est celui d'une unité. */
+  quantity: number;
   position: string;
   createdAt: string;
   categoryId: string | null;

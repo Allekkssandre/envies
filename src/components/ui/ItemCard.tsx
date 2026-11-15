@@ -30,6 +30,8 @@ type ItemCardProps = {
   isFavorite?: boolean;
   /** Article acheté : pastille « Acheté », photo adoucie. */
   isPurchased?: boolean;
+  /** Quantité voulue : « × 2 » quand il en faut plusieurs. */
+  quantity?: number;
   photo?: { src480: string; src1200?: string; lightBackground?: boolean } | null;
   /** Lien vers la fiche. Sans lien, la carte est statique (planche /design). */
   href?: string;
@@ -50,6 +52,7 @@ export function ItemCard({
   tag,
   isFavorite = false,
   isPurchased = false,
+  quantity = 1,
   photo,
   href,
   headingLevel: Heading = "h3",
@@ -93,8 +96,9 @@ export function ItemCard({
             </b>
           ) : null}
         </span>
-        {domain || tag ? (
+        {domain || tag || quantity > 1 ? (
           <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-muted">
+            {quantity > 1 ? <span className="font-semibold text-ink">× {quantity}</span> : null}
             {domain}
             {tag ? (
               <span className="inline-flex items-center gap-[5px]">

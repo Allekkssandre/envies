@@ -207,6 +207,13 @@ Les nombres : `Intl.NumberFormat('fr-FR')`. Pluriels gérés (`1 article`, `2 ar
 | inbox.live.found | {nom} trouvé |
 | section.rename | Renommer la catégorie |
 | section.addHere | Ajouter ici |
+| section.delete | Supprimer la catégorie {nom} (catégorie vide) |
+| section.deleted | Catégorie supprimée · Annuler |
+| section.new | Nouvelle catégorie |
+| section.new.placeholder | Nom de la catégorie |
+| section.new.submit | Créer |
+| section.new.exists | Ce nom existe déjà. |
+| section.empty.visitor | Rien ici pour l'instant. |
 | card.edit | Modifier |
 | card.move | Déplacer |
 | card.select | Sélectionner |

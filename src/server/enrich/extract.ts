@@ -3,7 +3,7 @@
 
 import * as cheerio from "cheerio";
 import type { CheerioAPI } from "cheerio";
-import { parsePrice, type ParsedPrice } from "./parsePrice";
+import { currencyFromText, parsePrice, type ParsedPrice } from "./parsePrice";
 import type { Extracted } from "./types";
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
@@ -216,6 +216,110 @@ function largeImages($: CheerioAPI): string[] {
     .get();
 }
 
+/** Plus grande image d'un `srcset` (« a.jpg 480w, b.jpg 1200w »). */
+export function largestFromSrcset(srcset: string | undefined): string | null {
+  if (!srcset) return null;
+  let best: { url: string; size: number } | null = null;
+  for (const part of srcset.split(/,\s+(?=\S)/)) {
+    const [url, descriptor] = part.trim().split(/\s+/);
+    if (!url) continue;
+    const size = Number.parseFloat(descriptor ?? "1") || 1;
+    if (!best || size > best.size) best = { url, size };
+  }
+  return best?.url ?? null;
+}
+
+/** Images annoncées en préchargement (souvent la photo principale du produit). */
+function preloadedImages($: CheerioAPI): string[] {
+  return $('link[rel="preload"][as="image"]')
+    .map((_, el) => largestFromSrcset($(el).attr("imagesrcset")) ?? $(el).attr("href") ?? "")
+    .get()
+    .filter(Boolean);
+}
+
+const NOT_PRODUCT = /logo|icon|sprite|avatar|badge|flag|payment|rating|star|banner|placeholder|pixel/i;
+
+/** Bloc produit : le plus petit ancêtre du titre `h1` qui contient aussi des images ou un prix. */
+function productBlock($: CheerioAPI) {
+  const h1 = $("h1").first();
+  if (!h1.length) return null;
+  let node = h1.parent();
+  for (let depth = 0; depth < 6 && node.length; depth++) {
+    if (node.is("body, html")) break;
+    if (node.find("img").length || node.find('[class*="price" i], [itemprop="price"]').length) return node;
+    node = node.parent();
+  }
+  return null;
+}
+
+/** Photos du bloc produit (sans dimensions dans le HTML : `srcset`, `data-src`, zoom). */
+function productBlockImages($: CheerioAPI): string[] {
+  const block = productBlock($);
+  if (!block) return [];
+  return block
+    .find("img")
+    .map((_, el) => {
+      const img = $(el);
+      const width = Number(img.attr("width"));
+      if (width && width < 200) return "";
+      const src =
+        img.attr("data-zoom-image") ??
+        img.attr("data-large") ??
+        img.attr("data-large-src") ??
+        largestFromSrcset(img.attr("srcset") ?? img.attr("data-srcset")) ??
+        img.attr("data-src") ??
+        img.attr("src") ??
+        "";
+      const label = `${src} ${img.attr("class") ?? ""} ${img.attr("alt") ?? ""}`;
+      return NOT_PRODUCT.test(label) ? "" : src;
+    })
+    .get()
+    .filter(Boolean)
+    .slice(0, 6);
+}
+
+/** Classes d'un ancien prix, d'un prix unitaire ou de frais : jamais le prix de l'article. */
+const NOT_THE_PRICE =
+  /old|was|before|strike|barre|crossed|regular|compare|original|list-?price|unit|per-|shipping|livraison|delivery|discount|saving|economi|reduc|promo-?code|installment|mensual|month|range|from/i;
+
+/**
+ * Prix affiché dans le bloc produit (dernier recours, docs/07 § 5) : un élément « prix »
+ * proche du titre, au texte court et avec une devise. Ancien prix barré écarté.
+ */
+export function visiblePrice($: CheerioAPI): ParsedPrice | null {
+  const block = productBlock($);
+  if (!block) return null;
+  const candidates = block.find(
+    '[itemprop="price"], [data-price], [class*="price" i], [id*="price" i], [data-testid*="price" i]',
+  );
+  for (const el of candidates.toArray().slice(0, 60)) {
+    const node = $(el);
+    const marks = `${node.attr("class") ?? ""} ${node.attr("id") ?? ""} ${node.attr("data-testid") ?? ""}`;
+    if (NOT_THE_PRICE.test(marks)) continue;
+    if (node.closest("del, s, strike").length || node.find("del, s, strike").length) continue;
+    const text = plainText(node.attr("content") ?? node.text());
+    if (!text || text.length > 40) continue;
+    const currency = currencyFromText(text);
+    if (!currency) continue;
+    const price = parsePrice(text, currency);
+    if (price) return price;
+  }
+  return null;
+}
+
+/** Twitter Cards « label1 = Prix / data1 = 49,90 € » (Shopify, Squarespace…). */
+function twitterPrice($: CheerioAPI): ParsedPrice | null {
+  for (const n of [1, 2]) {
+    const label = meta($, `twitter:label${n}`);
+    const data = meta($, `twitter:data${n}`);
+    if (label && data && /prix|price|tarif/i.test(label)) {
+      const price = parsePrice(data);
+      if (price) return price;
+    }
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Nettoyage
 // ---------------------------------------------------------------------------
@@ -352,7 +456,9 @@ export function extractFrom($: CheerioAPI, baseUrl: string): Extracted {
       ...metaAll($, "twitter:image:src"),
       $('link[rel="image_src"]').attr("href"),
       itemprop($, "image"),
+      ...preloadedImages($),
       ...largeImages($),
+      ...productBlockImages($),
     ],
     baseUrl,
   );
@@ -368,6 +474,7 @@ export function extractFrom($: CheerioAPI, baseUrl: string): Extracted {
     const amount = itemprop($, "price");
     price = amount ? parsePrice(amount, itemprop($, "priceCurrency")) : null;
   }
+  price ??= twitterPrice($) ?? visiblePrice($);
 
   const breadcrumb = breadcrumbFromJsonLd(nodes);
   const canonicalHref = $('link[rel="canonical"]').attr("href");

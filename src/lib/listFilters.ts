@@ -132,15 +132,33 @@ export function sortCategories(categories: CategoryInfo[]): CategoryInfo[] {
   return [...categories].sort((a, b) => comparePosition(a.position, b.position));
 }
 
-/** Regroupe par catégorie, dans l'ordre des catégories ; « Non classé » en dernier, s'il n'est pas vide. */
-export function groupIntoSections(items: ItemInfo[], categories: CategoryInfo[]): Section[] {
+/**
+ * Regroupe par catégorie, dans l'ordre des catégories ; « Non classé » en dernier, s'il n'est pas vide.
+ * `keepEmpty` : catégories vides gardées (créées d'avance, sans article encore).
+ */
+export function groupIntoSections(
+  items: ItemInfo[],
+  categories: CategoryInfo[],
+  keepEmpty: (category: CategoryInfo) => boolean = () => false,
+): Section[] {
   const sections: Section[] = sortCategories(categories).map((category) => ({
     category,
     items: items.filter((i) => i.categoryId === category.id),
   }));
   const known = new Set(categories.map((c) => c.id));
   sections.push({ category: null, items: items.filter((i) => !i.categoryId || !known.has(i.categoryId)) });
-  return sections.filter((s) => s.items.length > 0);
+  return sections.filter((s) => s.items.length > 0 || (s.category && keepEmpty(s.category)));
+}
+
+/**
+ * Catégories vides à montrer au visiteur : toutes sans filtre, ou celle de l'onglet choisi
+ * quand c'est le seul filtre.
+ */
+export function emptyCategoryFilter(filters: Filters): (category: CategoryInfo) => boolean {
+  const onlyCategory = !filters.tags.length && !filters.favorites && !filters.query.trim();
+  if (!onlyCategory) return () => false;
+  if (!filters.category) return () => true;
+  return (category) => category.ref === filters.category;
 }
 
 /** Ordre affiché, à plat (sert au précédent / suivant de la fiche). */

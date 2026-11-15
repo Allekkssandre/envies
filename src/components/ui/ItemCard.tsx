@@ -20,6 +20,8 @@ type ItemCardProps = {
   headingLevel?: "h2" | "h3";
   className?: string;
   photoClassName?: string;
+  /** Carte du haut de page : photo chargée en priorité. */
+  priority?: boolean;
 };
 
 /** Carte d'article, version visiteur : photo + cœur + nom/prix + domaine/tag. */
@@ -35,6 +37,7 @@ export function ItemCard({
   headingLevel: Heading = "h3",
   className,
   photoClassName = "h-[260px]",
+  priority = false,
 }: ItemCardProps) {
   const body = (
     <>
@@ -43,6 +46,7 @@ export function ItemCard({
         src480={photo?.src480}
         src1200={photo?.src1200}
         lightBackground={photo?.lightBackground}
+        priority={priority}
         className={cn(
           photoClassName,
           href && "transition-transform duration-180 ease-out group-hover:-translate-y-0.5",

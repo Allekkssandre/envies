@@ -32,6 +32,7 @@ import {
   updateItem,
   type ItemPatch,
 } from "@/server/actions/items";
+import { deleteCategory, restoreCategory } from "@/server/actions/settings";
 import { createCategory, createTag, moveCategory, renameCategory } from "@/server/actions/taxonomy";
 import type { Tables } from "@/types/database";
 import type { CategoryInfo, ItemInfo, ListContent, ListInfo, TagInfo } from "@/types/models";
@@ -74,6 +75,8 @@ type Board = {
   bulk: (ids: string[], patch: BulkPatch) => void;
   sortAll: (categoryId: string) => void;
   createCategory: (name: string) => Promise<CategoryInfo | null>;
+  /** Supprime une catégorie (ses articles passent dans « Non classé ») ; « Annuler » pendant 8 s. */
+  deleteCategory: (id: string) => void;
   createTag: (name: string) => Promise<TagInfo | null>;
   renameCategory: (id: string, name: string) => Promise<boolean>;
   moveCategory: (id: string, beforeId: string | null, afterId: string | null) => void;
@@ -543,6 +546,51 @@ export function BoardProvider({ list, content, children }: Props) {
     [call, list.id],
   );
 
+  const deleteCategoryFn = useCallback(
+    (id: string) => {
+      const previousCategories = categories;
+      const previousItems = snapshot();
+      setCategories((cur) => cur.filter((c) => c.id !== id));
+      setItems((cur) => cur.map((i) => (i.categoryId === id ? { ...i, categoryId: null } : i)));
+      void call(
+        () => deleteCategory({ listId: list.id, categoryId: id }),
+        () => {
+          setCategories(previousCategories);
+          setItems(previousItems);
+        },
+      ).then((deleted) => {
+        if (!deleted) return;
+        toast("Catégorie supprimée", {
+          duration: 8000,
+          action: {
+            label: "Annuler",
+            onClick: () => {
+              void call(
+                async () => {
+                  const r = await restoreCategory({ listId: list.id, ...deleted });
+                  return r.ok ? { ...r, data: true } : r;
+                },
+                () => undefined,
+              ).then((restored) => {
+                if (!restored) return;
+                setCategories((cur) => [
+                  ...cur.filter((c) => c.id !== deleted.category.id),
+                  deleted.category,
+                ]);
+                setItems((cur) =>
+                  cur.map((i) =>
+                    deleted.itemIds.includes(i.id) ? { ...i, categoryId: deleted.category.id } : i,
+                  ),
+                );
+              });
+            },
+          },
+        });
+      });
+    },
+    [call, categories, list.id],
+  );
+
   const createTagFn = useCallback(
     async (name: string) => {
       const result = await call(
@@ -633,6 +681,7 @@ export function BoardProvider({ list, content, children }: Props) {
       bulk,
       sortAll,
       createCategory: createCategoryFn,
+      deleteCategory: deleteCategoryFn,
       createTag: createTagFn,
       renameCategory: renameCategoryFn,
       moveCategory: moveCategoryFn,
@@ -660,6 +709,7 @@ export function BoardProvider({ list, content, children }: Props) {
       bulk,
       sortAll,
       createCategoryFn,
+      deleteCategoryFn,
       createTagFn,
       renameCategoryFn,
       moveCategoryFn,

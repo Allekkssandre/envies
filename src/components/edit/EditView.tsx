@@ -9,7 +9,7 @@ import type { ListContent, ListInfo } from "@/types/models";
 import { AddBar, DropImages } from "./AddBar";
 import { MobileAddBar } from "./AddSheet";
 import { BoardProvider, useBoard } from "./board";
-import { EditSections } from "./EditSections";
+import { EditSections, NewCategory } from "./EditSections";
 import { Inbox } from "./Inbox";
 import { SelectionBar } from "./SelectionBar";
 
@@ -56,6 +56,7 @@ function EmptyOrSections() {
           <FileSpreadsheet aria-hidden="true" />
           Importer un fichier Excel
         </Link>
+        <NewCategory className="flex justify-center px-0! pt-1!" />
       </div>
     );
   }

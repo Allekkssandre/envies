@@ -1,4 +1,29 @@
-import { parsePrice } from "../parsePrice";
+import type { CheerioAPI } from "cheerio";
+import { parsePrice, type ParsedPrice } from "../parsePrice";
+
+/** Prix de l'offre principale (encadré d'achat), puis format choisi (livres), puis le premier affiché. */
+const PRICE_SELECTORS = [
+  "#corePriceDisplay_desktop_feature_div .priceToPay .a-offscreen",
+  "#corePriceDisplay_desktop_feature_div .a-price .a-offscreen",
+  "#corePrice_feature_div .a-price .a-offscreen",
+  "#corePrice_desktop .a-price .a-offscreen",
+  "#apex_desktop .a-price .a-offscreen",
+  "#price_inside_buybox",
+  "#newBuyBoxPrice",
+  "#kindle-price",
+  "#price",
+  "#tmmSwatches .a-button-selected .slot-price",
+  "#tmmSwatches .a-button-selected .a-color-price",
+  ".a-price .a-offscreen",
+];
+
+function amazonPrice($: CheerioAPI): ParsedPrice | null {
+  for (const selector of PRICE_SELECTORS) {
+    const price = parsePrice($(selector).first().text());
+    if (price) return price;
+  }
+  return null;
+}
 import type { Adapter } from "../types";
 
 /**
@@ -10,7 +35,7 @@ export const amazon: Adapter = {
   match: (domain) => /(^|\.)amazon\.[a-z.]+$/.test(domain),
   extract: ($) => {
     const title = $("#productTitle").text().replace(/\s+/g, " ").trim();
-    const img = $("#landingImage");
+    const img = $("#landingImage, #imgBlkFront, #ebooksImgBlkFront, #main-image").first();
     let image = img.attr("data-old-hires") || undefined;
     if (!image) {
       try {
@@ -30,7 +55,7 @@ export const amazon: Adapter = {
     return {
       title: title || undefined,
       images: image ? [image] : undefined,
-      price: parsePrice($(".a-price .a-offscreen").first().text()) ?? undefined,
+      price: amazonPrice($) ?? undefined,
       breadcrumb: breadcrumb.length ? breadcrumb : undefined,
     };
   },

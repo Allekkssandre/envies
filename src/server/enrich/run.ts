@@ -5,9 +5,16 @@ import { getServiceDb, type Db } from "@/server/db/client";
 import { removeItemImage } from "@/server/images";
 import type { Json, TablesUpdate } from "@/types/database";
 import { applyAdapters } from "./adapters";
+import { bookFromOpenLibrary, isbnFromUrl } from "./books";
 import { extractFrom, loadHtml, mergeImages } from "./extract";
 import { storeFirstImage } from "./image";
-import { safeFetch, safeFetchJson, type FetchError, type SafeFetchOptions } from "./safeFetch";
+import {
+  safeFetch,
+  safeFetchJson,
+  type FetchError,
+  type HtmlResult,
+  type SafeFetchOptions,
+} from "./safeFetch";
 import { suggestCategory } from "./suggestCategory";
 import type { Extracted } from "./types";
 
@@ -106,6 +113,25 @@ export function amazonImageCandidates(...urls: string[]): string[] {
   return [];
 }
 
+/** Échecs souvent passagers (réseau, serveur, vérification ponctuelle) : un second essai, une seconde plus tard. */
+const RETRYABLE = new Set<FetchError>(["network", "http_5xx", "blocked"]);
+const RETRY_DELAY_MS = 1200;
+
+async function fetchPage(url: string, options?: SafeFetchOptions): Promise<HtmlResult> {
+  const first = await safeFetch(url, options);
+  if (first.ok || !RETRYABLE.has(first.error) || options?.transport) return first;
+  await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+  const second = await safeFetch(url, options);
+  return second.ok ? second : first;
+}
+
+/** Livre reconnu à son ISBN dans l'adresse : titre et couverture d'Open Library, sinon rien. */
+async function bookFallback(urls: string[], deps: Deps): Promise<{ title: string | null; images: string[] }> {
+  const isbn = urls.map(isbnFromUrl).find(Boolean);
+  if (!isbn) return { title: null, images: [] };
+  return bookFromOpenLibrary(isbn, (u) => safeFetchJson(u, deps.fetchOptions));
+}
+
 /** Nom provisoire (tiré de l'adresse ou du texte partagé), remplaçable par celui de la page. */
 function provisionalTitleOf(meta: Json | null): string | null {
   const value = asObject(meta).provisionalTitle;
@@ -132,7 +158,7 @@ export async function enrichItem(itemId: string, mode: EnrichMode, deps: Deps = 
       .update({ fetch_started_at: new Date().toISOString(), fetch_attempts: item.fetch_attempts + 1 })
       .eq("id", itemId);
 
-    const page = await safeFetch(url, deps.fetchOptions);
+    const page = await fetchPage(url, deps.fetchOptions);
     if (!page.ok) {
       const update: TablesUpdate<"items"> = { fetched_at: new Date().toISOString(), fetch_error: page.error };
       // Une relecture qui échoue ne fait pas perdre ce qui avait été trouvé.
@@ -140,15 +166,18 @@ export async function enrichItem(itemId: string, mode: EnrichMode, deps: Deps = 
       // Page illisible (boutique qui bloque les robots) : le nom vient de l'adresse, après
       // redirections (lien court amzn.eu → page produit).
       const reached = page.finalUrl ?? url;
-      const fallbackTitle = titleFromUrl(reached) ?? titleFromUrl(url);
-      if (!item.title?.trim() && fallbackTitle) {
+      const book = await bookFallback([reached, url], deps);
+      const provisional = provisionalTitleOf(item.meta);
+      const fallbackTitle = book.title ?? titleFromUrl(reached) ?? titleFromUrl(url);
+      const replaceable = !item.title?.trim() || (book.title && item.title === provisional);
+      if (replaceable && fallbackTitle) {
         update.title = fallbackTitle;
         update.meta = { ...asObject(item.meta), provisionalTitle: fallbackTitle } as Json;
       }
       await db.from("items").update(update).eq("id", itemId).eq("url", url);
       const fallbackImages = mergeImages(
         importImage ? [importImage] : [],
-        amazonImageCandidates(reached, url),
+        mergeImages(amazonImageCandidates(reached, url), book.images),
       );
       if (!item.image_path && fallbackImages.length) {
         await storeImageWithoutPage(
@@ -166,6 +195,13 @@ export async function enrichItem(itemId: string, mode: EnrichMode, deps: Deps = 
     const extracted: Extracted = await applyAdapters($, finalUrl, extractFrom($, page.finalUrl), (u) =>
       safeFetchJson(u, deps.fetchOptions),
     );
+    // Page lue mais sans nom ou sans photo (vérification déguisée, page de livre) : l'ISBN de l'adresse.
+    if (!extracted.title || !extracted.images.length) {
+      const book = await bookFallback([page.finalUrl, url], deps);
+      extracted.title ??= book.title;
+      if (!extracted.images.length)
+        extracted.images = mergeImages(amazonImageCandidates(page.finalUrl, url), book.images);
+    }
 
     const { data: categories } = await db.from("categories").select("id, name").eq("list_id", item.list_id);
 

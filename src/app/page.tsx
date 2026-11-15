@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Gift, Plus } from "lucide-react";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -20,8 +20,12 @@ export default function HomePage() {
         <span aria-hidden="true" className="absolute inset-0 grain-overlay opacity-60" />
         <Foliage className="top-[30px] left-[4%] hidden h-[640px] w-[380px] -scale-x-100 opacity-50 lg:block" />
         <div className="relative mx-auto flex h-full max-w-[1320px] flex-col px-4 sm:px-12">
-          <div className="hidden h-24 items-center justify-end sm:flex">
-            <Link href="/nouvelle" className={buttonClasses("linen", 46)}>
+          <div className="flex h-[60px] items-center justify-end gap-2.5 sm:h-24">
+            <Link href="/lutins" className={buttonClasses("glass", 46, "max-sm:h-11 max-sm:px-4")}>
+              <Gift aria-hidden="true" />
+              Secret Santa
+            </Link>
+            <Link href="/nouvelle" className={buttonClasses("linen", 46, "max-sm:hidden")}>
               <Plus aria-hidden="true" />
               Nouvelle liste
             </Link>

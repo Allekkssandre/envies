@@ -86,6 +86,10 @@ Images : pas d'optimisation `next/image` pour les photos d'articles (elles sont 
 | `SUPABASE_URL` | serveur | même URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | serveur | clé service role (ou clé « secret » `sb_secret_…`). **Jamais** préfixée `NEXT_PUBLIC_` |
 | `EDIT_TOKEN_SECRET` | serveur | 32 octets aléatoires (base64), signe les cookies d'édition |
+| `SANTA_SECRET_KEY` | serveur | 32 octets aléatoires, chiffre les tirages du Secret Santa. Ne jamais le changer pendant un tirage lancé |
+| `BREVO_API_KEY` | serveur | clé API Brevo, envoi des mails du Secret Santa |
+| `SANTA_MAIL_FROM` | serveur | adresse d'expéditeur validée chez Brevo |
+| `SANTA_MAIL_DIR` | local, tests | mails du Secret Santa écrits en fichiers au lieu d'être envoyés (ignoré sur Vercel) |
 | `RATE_LIMIT_SALT` | serveur | sel du hachage des IP |
 | `CRON_SECRET` | serveur | protège `/api/cron/daily` (Vercel l'envoie en `Authorization: Bearer`) |
 

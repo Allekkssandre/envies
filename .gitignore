@@ -17,3 +17,6 @@ build/
 next-env.d.ts
 .pnpm-debug.log*
 playwright/.cache/
+
+# Mails du Secret Santa écrits en local
+.santa-mails/

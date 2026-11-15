@@ -23,8 +23,9 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Check, GripVertical, Pencil, Plus, X } from "lucide-react";
+import { Check, FolderPlus, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { toast } from "sonner";
 import { SplitTitle } from "@/components/ui/SplitTitle";
 import { cn } from "@/lib/cn";
 import { sortCategories } from "@/lib/listFilters";
@@ -187,6 +188,7 @@ export function EditSections() {
               <UncategorizedSection key="none" group={group} light={index % 2 === 1} />
             ),
           )}
+          <NewCategory />
         </div>
       </SortableContext>
       <DragOverlay dropAnimation={null}>
@@ -265,6 +267,16 @@ function SectionShell({
             <span className="sm:hidden">{group.items.length}</span>
             <span className="hidden sm:inline">{plural(group.items.length, "article", "articles")}</span>
           </span>
+          {category && group.items.length === 0 && !renaming ? (
+            <button
+              type="button"
+              aria-label={`Supprimer la catégorie ${category.name}`}
+              onClick={() => board.deleteCategory(category.id)}
+              className="flex size-11 shrink-0 items-center justify-center rounded-full text-ink-soft hover:bg-ink/6 hover:text-rust"
+            >
+              <Trash2 aria-hidden="true" size={18} strokeWidth={1.6} />
+            </button>
+          ) : null}
           {category ? (
             <button
               type="button"
@@ -379,5 +391,90 @@ function RenameForm({ category, onDone }: { category: CategoryInfo; onDone: () =
         <X aria-hidden="true" size={18} strokeWidth={1.8} />
       </button>
     </form>
+  );
+}
+
+/** Catégorie créée d'avance, sans article : elle reste visible, vide, jusqu'à ce qu'on la remplisse. */
+export function NewCategory({ className }: { className?: string }) {
+  const board = useBoard();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const value = name.trim().replace(/\s+/g, " ");
+    if (!value || busy) return;
+    const existed = board.categories.find(
+      (c) => c.name.toLocaleLowerCase("fr") === value.toLocaleLowerCase("fr"),
+    );
+    if (existed) {
+      toast("Ce nom existe déjà.", { duration: 4000 });
+      return;
+    }
+    setBusy(true);
+    const created = await board.createCategory(value);
+    setBusy(false);
+    if (!created) return;
+    setName("");
+    setOpen(false);
+    requestAnimationFrame(() =>
+      document.getElementById(`h-${created.ref}`)?.scrollIntoView({ behavior: "smooth", block: "center" }),
+    );
+  };
+
+  return (
+    <div className={cn("mx-auto max-w-[1320px] px-4 pt-8 sm:px-12 sm:pt-12", className)}>
+      {open ? (
+        <form onSubmit={submit} className="flex max-w-[560px] items-center gap-2">
+          <label htmlFor="new-category" className="sr-only">
+            Nom de la catégorie
+          </label>
+          <input
+            id="new-category"
+            autoFocus
+            value={name}
+            maxLength={40}
+            placeholder="Nom de la catégorie"
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setOpen(false);
+                setName("");
+              }
+            }}
+            className="h-12 min-w-0 flex-1 rounded-field border border-ink bg-white/70 px-4 text-[16px] text-ink outline-none placeholder:text-placeholder focus:shadow-[0_0_0_4px_rgb(167_106_25/0.2)]"
+          />
+          <button
+            type="submit"
+            disabled={busy || !name.trim()}
+            className="inline-flex h-12 shrink-0 items-center gap-2 rounded-full bg-ink px-5 text-sm font-semibold text-linen disabled:opacity-50"
+          >
+            <Check aria-hidden="true" size={18} strokeWidth={2} />
+            Créer
+          </button>
+          <button
+            type="button"
+            aria-label="Annuler"
+            onClick={() => {
+              setOpen(false);
+              setName("");
+            }}
+            className="flex size-11 shrink-0 items-center justify-center rounded-full text-ink-soft hover:bg-ink/6"
+          >
+            <X aria-hidden="true" size={18} strokeWidth={1.8} />
+          </button>
+        </form>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex h-12 items-center gap-2.5 rounded-full border border-dashed border-ink/30 bg-white/40 px-5 text-sm font-semibold text-ink hover:border-solid hover:border-ink hover:bg-white/60"
+        >
+          <FolderPlus aria-hidden="true" size={18} strokeWidth={1.7} />
+          Nouvelle catégorie
+        </button>
+      )}
+    </div>
   );
 }

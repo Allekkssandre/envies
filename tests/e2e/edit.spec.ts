@@ -237,4 +237,30 @@ test.describe("édition", () => {
       await check("feuille d'ajout");
     }
   });
+
+  test("catégorie vide : créée sans article, visible par les visiteurs, supprimée puis rétablie", async ({
+    page,
+  }, info) => {
+    test.setTimeout(60_000);
+    const slug = await createTestList(`vide-${info.project.name}`);
+    await unlock(page, slug);
+
+    await page.getByRole("button", { name: "Nouvelle catégorie" }).click();
+    await page.getByLabel("Nom de la catégorie").fill("Voyages");
+    await page.getByRole("button", { name: "Créer" }).click();
+    await expect(section(page, "Voyages")).toBeVisible();
+    await expect(section(page, "Voyages")).toContainText("Glissez des articles ici");
+
+    await reloadWhenSaved(page);
+    await expect(section(page, "Voyages")).toBeVisible();
+
+    await page.goto(`/l/${slug}`);
+    await expect(section(page, "Voyages")).toContainText("Rien ici pour l'instant.");
+
+    await page.goto(`/l/${slug}/edition`);
+    await page.getByRole("button", { name: "Supprimer la catégorie Voyages" }).click();
+    await expect(section(page, "Voyages")).toHaveCount(0);
+    await page.getByRole("button", { name: "Annuler" }).click();
+    await expect(section(page, "Voyages")).toBeVisible();
+  });
 });

@@ -15,6 +15,8 @@ type ItemPhotoProps = {
   /** Taille de l'initiale, en px. */
   initialSize?: number;
   children?: React.ReactNode;
+  /** Photo visible dès l'ouverture : chargée tout de suite, en priorité. */
+  priority?: boolean;
 };
 
 /** Photo d'article sur fond studio, avec repli sur l'initiale. */
@@ -29,6 +31,7 @@ export function ItemPhoto({
   className,
   initialSize = 90,
   children,
+  priority = false,
 }: ItemPhotoProps) {
   if (!src480) {
     const initial = name.trim().charAt(0).toLocaleUpperCase("fr-FR") || "?";
@@ -62,7 +65,8 @@ export function ItemPhoto({
         alt={name}
         width={width ?? undefined}
         height={height ?? undefined}
-        loading="lazy"
+        loading={priority ? "eager" : "lazy"}
+        fetchPriority={priority ? "high" : "auto"}
         decoding="async"
         className={cn(
           "absolute inset-0 size-full",

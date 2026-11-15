@@ -16,6 +16,7 @@ import {
   UNCATEGORIZED,
   applyFilters,
   categoryCounts,
+  emptyCategoryFilter,
   filtersQueryString,
   firstTag,
   groupIntoSections,
@@ -32,7 +33,7 @@ type ListBrowserProps = { list: ListInfo; content: ListContent };
 
 export type CategoryTab = { key: string | null; label: string; count: number };
 
-/** Onglets de catégories non vides, avec « Tout » et « Non classé ». */
+/** Onglets de catégories, avec « Tout » et « Non classé ». */
 function useCategoryTabs(content: ListContent): CategoryTab[] {
   return useMemo(() => {
     const counts = categoryCounts(content.items);
@@ -40,9 +41,12 @@ function useCategoryTabs(content: ListContent): CategoryTab[] {
     const uncategorized = content.items.filter((i) => !i.categoryId || !known.has(i.categoryId)).length;
     return [
       { key: null, label: "Tout", count: content.items.length },
-      ...sortCategories(content.categories)
-        .map((c) => ({ key: c.ref, label: c.name, count: counts.get(c.id) ?? 0 }))
-        .filter((t) => t.count > 0),
+      // Catégories vides comprises : elles ont été créées pour être remplies.
+      ...sortCategories(content.categories).map((c) => ({
+        key: c.ref,
+        label: c.name,
+        count: counts.get(c.id) ?? 0,
+      })),
       ...(uncategorized > 0 ? [{ key: UNCATEGORIZED, label: "Non classé", count: uncategorized }] : []),
     ];
   }, [content]);
@@ -54,8 +58,8 @@ export function ListBrowser({ list, content }: ListBrowserProps) {
   const tabs = useCategoryTabs(content);
   const visible = useMemo(() => applyFilters(content, filters), [content, filters]);
   const sections = useMemo(
-    () => groupIntoSections(visible, content.categories),
-    [visible, content.categories],
+    () => groupIntoSections(visible, content.categories, emptyCategoryFilter(filters)),
+    [visible, content.categories, filters],
   );
   const query = filtersQueryString(filters);
   const update = (patch: Partial<Filters>) => setFilters({ ...filters, ...patch });
@@ -83,7 +87,7 @@ export function ListBrowser({ list, content }: ListBrowserProps) {
         {hasActiveFilters(filters) ? plural(visible.length, "article", "articles") : ""}
       </div>
 
-      {content.items.length === 0 ? (
+      {content.items.length === 0 && content.categories.length === 0 ? (
         <p className="m-0 px-4 py-24 text-center font-note text-[26px] text-ink sm:py-32">
           Cette liste est encore vide.
         </p>
@@ -92,6 +96,8 @@ export function ListBrowser({ list, content }: ListBrowserProps) {
       ) : (
         <div className="relative pt-6 pb-16 sm:pt-[84px] sm:pb-[110px]">
           {sections.map((section, index) => {
+            // Photos du haut de page (les 4 premières) : chargées en priorité.
+            const before = sections.slice(0, index).reduce((n, s) => n + s.items.length, 0);
             const title = section.category?.name ?? "Non classé";
             const light = index % 2 === 1;
             return (
@@ -126,11 +132,17 @@ export function ListBrowser({ list, content }: ListBrowserProps) {
                       </span>
                     </span>
                   </div>
+                  {section.items.length === 0 ? (
+                    <p className="m-0 py-6 font-note text-xl text-ink-soft sm:py-10">
+                      Rien ici pour l&apos;instant.
+                    </p>
+                  ) : null}
                   <ul
+                    hidden={section.items.length === 0}
                     role="list"
                     className="m-0 grid list-none grid-cols-2 gap-x-3.5 gap-y-[22px] p-0 sm:grid-cols-[repeat(auto-fill,minmax(min(260px,100%),1fr))] sm:gap-x-8 sm:gap-y-12"
                   >
-                    {section.items.map((item) => {
+                    {section.items.map((item, i) => {
                       const tag = firstTag(item, content.tags);
                       return (
                         <li key={item.id} className="min-w-0">
@@ -152,6 +164,7 @@ export function ListBrowser({ list, content }: ListBrowserProps) {
                                 : null
                             }
                             photoClassName="h-[210px] sm:h-[340px]"
+                            priority={before + i < 4}
                           />
                         </li>
                       );

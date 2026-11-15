@@ -293,3 +293,34 @@ describe("titres parasites", () => {
     ).toBe("Error 404 T-shirt noir");
   });
 });
+
+describe("prix et photos sans métadonnées", () => {
+  const page = (body: string) => `<html><head><title>x</title></head><body>${body}</body></html>`;
+
+  it("lit le prix affiché près du titre, pas l'ancien prix barré", () => {
+    const html = page(`<main><div class="product">
+      <h1>Lampe champignon</h1>
+      <img src="/a.jpg" srcset="/a-480.jpg 480w, /a-1200.jpg 1200w" alt="Lampe">
+      <div class="price-old">59,90 €</div>
+      <div class="product-price">49,90 €</div>
+    </div></main>`);
+    const out = extract(html, "https://boutique.fr/p/lampe");
+    expect(out.price).toEqual({ cents: 4990, currency: "EUR" });
+    expect(out.images).toContain("https://boutique.fr/a-1200.jpg");
+  });
+
+  it("ignore un prix sans devise", () => {
+    const html = page(`<div><h1>Objet</h1><span class="price">12</span></div>`);
+    expect(extract(html, "https://boutique.fr/p").price).toBeNull();
+  });
+
+  it("lit le prix des Twitter Cards et l'image préchargée", () => {
+    const html = `<html><head>
+      <meta name="twitter:label1" content="Prix"><meta name="twitter:data1" content="24,00 €">
+      <link rel="preload" as="image" href="/hero.jpg">
+    </head><body><h1>Tasse</h1></body></html>`;
+    const out = extract(html, "https://boutique.fr/p/tasse");
+    expect(out.price).toEqual({ cents: 2400, currency: "EUR" });
+    expect(out.images[0]).toBe("https://boutique.fr/hero.jpg");
+  });
+});

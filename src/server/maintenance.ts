@@ -115,6 +115,42 @@ export async function settleStalePending(db: Db, now = Date.now(), retry = true)
   return { failed: exhausted.length, retried: retried.length };
 }
 
+/** Relecture des liens incomplets : 30 jours au plus, une fois par jour, 10 essais en tout. */
+const INCOMPLETE_PER_RUN = 6;
+const INCOMPLETE_MAX_AGE_DAYS = 30;
+const INCOMPLETE_MAX_ATTEMPTS = 10;
+const PERMANENT_ERRORS = new Set(["ssrf", "http_4xx", "not_html", "too_large", "redirects", "dns"]);
+
+/**
+ * 3 bis. Liens dont la page n'a pas donné de prix ou de photo (boutique qui bloquait ce jour-là,
+ * serveur en panne) : relus, sans rien remplacer de ce qui est déjà là.
+ */
+export async function retryIncomplete(db: Db, now = Date.now()) {
+  const { data, error } = await db
+    .from("items")
+    .select("id, fetch_error")
+    .not("url", "is", null)
+    .is("deleted_at", null)
+    .in("fetch_status", ["failed", "partial"])
+    .or("price_cents.is.null,image_path.is.null")
+    .gt("created_at", iso(now - INCOMPLETE_MAX_AGE_DAYS * DAY_MS))
+    .lt("fetched_at", iso(now - 20 * 60 * 60 * 1000))
+    .lt("fetch_attempts", INCOMPLETE_MAX_ATTEMPTS)
+    .order("created_at", { ascending: false })
+    .limit(40);
+  if (error) throw new Error(error.message);
+  // Pages qui ne se liront jamais (adresse refusée, introuvable, pas une page) : laissées.
+  const ids = (data ?? [])
+    .filter((r) => !PERMANENT_ERRORS.has(r.fetch_error ?? ""))
+    .slice(0, INCOMPLETE_PER_RUN)
+    .map((r) => r.id);
+  const results = ids.length ? await runEnrichment(ids, { db }) : [];
+  return {
+    retried: results.length,
+    completed: results.filter((r) => r.status === "ok").length,
+  };
+}
+
 /** 4. Compteurs de limites expirés. */
 export async function purgeRateLimits(db: Db, now = Date.now()) {
   const { data, error } = await db.from("rate_limits").delete().lt("reset_at", iso(now)).select("bucket");
@@ -206,6 +242,7 @@ export async function runDaily(db: Db, { now = Date.now(), backup = false } = {}
     ["items", () => purgeDeletedItems(db, now)],
     ["lists", () => purgeDeletedLists(db, now)],
     ["pending", () => settleStalePending(db, now)],
+    ["incomplete", () => retryIncomplete(db, now)],
     ["rateLimits", () => purgeRateLimits(db, now)],
   ];
   if (backup) steps.push(["backup", () => writeBackup(db, now)]);

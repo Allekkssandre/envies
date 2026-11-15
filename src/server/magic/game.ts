@@ -1,89 +1,93 @@
 import "server-only";
 import { randomInt } from "node:crypto";
+import { after } from "next/server";
 import {
-  ACCUSATIONS,
-  PLAYERS,
-  ROUNDS,
-  assignJoin,
-  campOf,
-  chatOf,
-  checkRoster,
-  joinOption,
-  letterCount,
+  CERT_ROUND,
+  MAX_PLAYERS,
+  MIN_PLAYERS,
+  assignRoles,
+  canBeTargeted,
+  canVote,
+  certificates,
+  displayNames,
+  flair,
+  makeClue,
   resolveRound,
-  scores,
+  startMagic,
   tally,
-  type AccusedRole,
-  type Chat,
-  type GrCard,
-  type PlayerSecret,
-  type PnCard,
+  threshold,
+  validVotes,
+  type Level,
+  type Person,
+  type Player,
   type Role,
+  type Vote,
 } from "@/lib/magic/engine";
-import type {
-  Gazette,
-  MagicMember,
-  MagicMessage,
-  MagicSummary,
-  MagicView,
-  RevealRow,
-  SystemNote,
-} from "@/lib/magic/types";
+import type { Gazette, MagicSummary, MagicView, RevealRow } from "@/lib/magic/types";
+import { siteUrl } from "@/lib/siteUrl";
 import { getServiceDb, type Db } from "@/server/db/client";
-import { decryptSecret, encryptSecret } from "@/server/santa/crypto";
+import { decryptSecret, decryptToken, encryptSecret } from "@/server/santa/crypto";
+import { sendMail } from "@/server/santa/mail";
 import type { Json, Tables } from "@/types/database";
+import { gazetteMail, openingMail, revealMail } from "./mail";
 
 // La Magie de Noël côté serveur (docs/14-magie-de-noel.md).
-// L'état avance « à la demande » : chaque lecture résout d'abord ce qui est échu (fin du choix
-// des camps, fin d'un vote). Chaque changement est écrit d'un bloc par `magic_commit`, qui
+// L'état avance « à la demande » : chaque lecture résout d'abord ce qui est échu (début de la
+// partie, fin d'une semaine), et le cron quotidien fait de même pour que les mails partent
+// même si personne ne passe. Chaque changement est écrit d'un bloc par `magic_commit`, qui
 // refuse si un autre appel a écrit entre-temps ; on relit alors et on recommence.
 
 type Game = Tables<"magic_games">;
 const DAY = 24 * 60 * 60 * 1000;
-const other = (chat: Chat): Chat => (chat === "pn" ? "gr" : "pn");
 
 const scope = (santaId: string, participantId: string) => `${santaId}:${participantId}:magic`;
 
-function parseSecret(value: unknown): PlayerSecret | null {
+type Secret = { role: Role; cert?: string };
+
+function parseSecret(value: unknown): Secret | null {
   if (typeof value !== "object" || value === null) return null;
-  const { role, pseudo, card } = value as Record<string, unknown>;
-  return typeof role === "string" && typeof pseudo === "string" && typeof card === "string"
-    ? ({ role, pseudo, card } as PlayerSecret)
-    : null;
+  const { role, cert } = value as Record<string, unknown>;
+  if (role !== "pn" && role !== "gr") return null;
+  return typeof cert === "string" ? { role, cert } : { role };
 }
 
-export type RosterEntry = { id: string; firstName: string; lastName: string; secret: PlayerSecret | null };
+export type Entry = Person &
+  Player & { email: string; tokenEnc: string | null; cert: string | null; outRound: number | null };
 
-async function loadRoster(db: Db, santaId: string): Promise<RosterEntry[]> {
+async function loadRoster(db: Db, santaId: string): Promise<Entry[]> {
   const [{ data: players }, { data: people }] = await Promise.all([
-    db.from("magic_players").select("participant_id, secret").eq("santa_id", santaId),
+    db.from("magic_players").select("participant_id, secret, out_round, out_role").eq("santa_id", santaId),
     db
       .from("santa_participants")
-      .select("id, first_name, last_name")
+      .select("id, first_name, last_name, email, token_enc")
       .eq("santa_id", santaId)
       .order("position"),
   ]);
-  const secrets = new Map((players ?? []).map((p) => [p.participant_id, p.secret]));
-  return (people ?? [])
-    .filter((p) => secrets.has(p.id))
-    .map((p) => {
-      const stored = secrets.get(p.id);
-      return {
+  const rows = new Map((players ?? []).map((p) => [p.participant_id, p]));
+  return (people ?? []).flatMap((p) => {
+    const row = rows.get(p.id);
+    const secret = row ? parseSecret(decryptSecret(scope(santaId, p.id), row.secret)) : null;
+    if (!row || !secret) return [];
+    return [
+      {
         id: p.id,
         firstName: p.first_name,
         lastName: p.last_name,
-        secret: stored ? parseSecret(decryptSecret(scope(santaId, p.id), stored)) : null,
-      };
-    });
+        email: p.email,
+        tokenEnc: p.token_enc,
+        role: secret.role,
+        cert: secret.cert ?? null,
+        out: row.out_round !== null,
+        outRound: row.out_round,
+      },
+    ];
+  });
 }
 
 type Commit = {
   game?: Record<string, Json>;
-  players?: { id: string; secret: string }[];
-  round?: { round: number; pn_pseudo: string; gr_pseudo: string; data: Json };
-  closeVisits?: boolean;
-  messages?: { chat: Chat; pseudo: string | null; kind: "chat" | "gazette" | "system"; body: string }[];
-  visits?: { round: number; pseudo: string; chat: Chat }[];
+  players?: { id: string; secret?: string; out_round?: number; out_role?: Role }[];
+  round?: { round: number; data: Json };
 };
 
 async function commit(db: Db, game: Game, c: Commit): Promise<boolean> {
@@ -91,288 +95,179 @@ async function commit(db: Db, game: Game, c: Commit): Promise<boolean> {
     p_santa: game.santa_id,
     p_version: game.version,
     p_game: c.game ?? {},
-    p_players: c.players ?? [],
-    p_round: c.round ?? null,
-    p_close_visits: c.closeVisits ?? false,
-    p_messages: c.messages ?? [],
-    p_visits: c.visits ?? [],
+    p_players: (c.players ?? []) as unknown as Json,
+    p_round: (c.round ?? null) as unknown as Json,
   });
   if (error) throw new Error(`magic_commit : ${error.message}`);
   return data === true;
 }
-
-const system = (chat: Chat, note: SystemNote) => ({
-  chat,
-  pseudo: null,
-  kind: "system" as const,
-  body: JSON.stringify(note),
-});
 
 async function loadGame(db: Db, santaId: string): Promise<Game | null> {
   const { data } = await db.from("magic_games").select("*").eq("santa_id", santaId).maybeSingle();
   return data;
 }
 
-type GameState = { frozenNext: boolean; maxLoss: number };
-function stateOf(game: Game): GameState {
-  const s =
-    typeof game.state === "object" && game.state !== null && !Array.isArray(game.state) ? game.state : {};
-  return { frozenNext: s.frozenNext === true, maxLoss: typeof s.maxLoss === "number" ? s.maxLoss : 0 };
-}
+const roundEnd = (game: Pick<Game, "starts_at" | "round_days">, round: number) =>
+  new Date(game.starts_at).getTime() + round * game.round_days * DAY;
 
 // ---------------------------------------------------------------------------
 // Déroulé automatique
 // ---------------------------------------------------------------------------
 
-/** Fin du choix des camps : les retardataires sont placés au hasard, dans un ordre tiré au sort. */
-async function startGame(db: Db, game: Game): Promise<void> {
-  const roster = await loadRoster(db, game.santa_id);
-  if (roster.length !== PLAYERS) throw new Error("La Magie de Noël se joue à 12.");
-  const joined = roster.flatMap((r) => (r.secret ? [r.secret] : []));
-  const late = roster.filter((r) => !r.secret);
-  for (let i = late.length - 1; i > 0; i--) {
-    const j = randomInt(i + 1);
-    [late[i], late[j]] = [late[j]!, late[i]!];
-  }
-  const players = late.map((r) => {
-    const secret = assignJoin(joined, null, randomInt);
-    joined.push(secret);
-    return { id: r.id, secret: encryptSecret(scope(game.santa_id, r.id), secret) };
-  });
-  checkRoster(joined);
-  await commit(db, game, {
-    game: { status: "playing" },
-    players,
-    messages: [system("pn", { t: "start" }), system("gr", { t: "start" })],
-  });
-}
-
-type Situation = {
-  home: Record<Chat, string[]>;
-  /** Pseudonymes présents dans chaque tchat : membres non partis, et visiteurs. */
-  present: Record<Chat, string[]>;
-  eligible: Record<Chat, string[]>;
-  visitors: Record<Chat, string[]>;
-  away: Set<string>;
-  played: Set<string>;
-};
-
-async function situation(db: Db, santaId: string, roster: RosterEntry[]): Promise<Situation> {
-  const [{ data: rounds }, { data: visits }] = await Promise.all([
-    db.from("magic_rounds").select("pn_pseudo, gr_pseudo").eq("santa_id", santaId),
-    db.from("magic_visits").select("pseudo, chat").eq("santa_id", santaId).is("to_message_id", null),
-  ]);
-  const played = new Set((rounds ?? []).flatMap((r) => [r.pn_pseudo, r.gr_pseudo]));
-  const away = new Set((visits ?? []).map((v) => v.pseudo));
-  const build = (chat: Chat) => {
-    const home = roster.flatMap((r) => (r.secret && chatOf(r.secret.role) === chat ? [r.secret.pseudo] : []));
-    const visitors = (visits ?? []).filter((v) => v.chat === chat).map((v) => v.pseudo);
-    return {
-      home,
-      visitors,
-      present: [...home.filter((p) => !away.has(p)), ...visitors],
-      eligible: home.filter((p) => !played.has(p)),
-    };
-  };
-  const pn = build("pn");
-  const gr = build("gr");
-  return {
-    home: { pn: pn.home, gr: gr.home },
-    present: { pn: pn.present, gr: gr.present },
-    eligible: { pn: pn.eligible, gr: gr.eligible },
-    visitors: { pn: pn.visitors, gr: gr.visitors },
-    away,
-    played,
-  };
-}
-
-/** Fin d'un vote : un pouvoir par tchat, la jauge bouge, les gazettes partent, les visites tournent. */
+/** Fin d'une semaine : démasquage, sabotage, gazette, indice suivant, secrets personnels. */
 async function resolveNext(db: Db, game: Game): Promise<void> {
   const round = game.round + 1;
   const roster = await loadRoster(db, game.santa_id);
-  const sit = await situation(db, game.santa_id, roster);
-  const { data: votes } = await db
+  const { data: rows } = await db
     .from("magic_votes")
-    .select("chat, voter, target")
+    .select("voter, target")
     .eq("santa_id", game.santa_id)
     .eq("round", round);
-  const pick = (chat: Chat) =>
-    tally(
-      (votes ?? []).filter((v) => v.chat === chat),
-      sit.present[chat],
-      sit.eligible[chat],
-      randomInt,
-    );
-  const pn = pick("pn");
-  const gr = pick("gr");
-  const byPseudo = new Map(roster.flatMap((r) => (r.secret ? [[r.secret.pseudo, r] as const] : [])));
-  const pnPlayer = byPseudo.get(pn.winner)!;
-  const grPlayer = byPseudo.get(gr.winner)!;
-  const state = stateOf(game);
+  const votes = validVotes(roster, rows ?? []);
   const res = resolveRound({
     round,
-    gauge: game.gauge,
-    frozen: state.frozenNext,
-    maxLoss: state.maxLoss,
-    pnCard: pnPlayer.secret!.card as PnCard | "espion",
-    grCard: grPlayer.secret!.card as GrCard | "espion",
+    magic: game.magic,
+    startMagic: game.start_magic,
+    players: roster,
+    votes,
   });
-  const over = res.grinchsWin || round >= ROUNDS;
-  const winner: Chat | undefined = res.grinchsWin ? "gr" : round >= ROUNDS ? "pn" : undefined;
+  const { top, leaders } = tally(roster, votes);
+  const names = displayNames(roster);
+  const after = roster.map((p) => (p.id === res.unmasked ? { ...p, out: true, outRound: round } : p));
 
-  const grinchs = roster.filter((r) => r.secret && campOf(r.secret.role) === "gr");
-  const shared = {
+  const players: NonNullable<Commit["players"]> = [];
+  if (res.unmasked) players.push({ id: res.unmasked, out_round: round, out_role: res.unmaskedRole! });
+  const certs = round === CERT_ROUND && !res.end ? certificates(after, randomInt) : null;
+  for (const [id, cert] of certs ?? []) {
+    const p = after.find((x) => x.id === id)!;
+    players.push({ id, secret: encryptSecret(scope(game.santa_id, id), { role: p.role, cert }) });
+  }
+
+  const gazette: Gazette = {
     round,
-    blocked: res.blocked,
-    loss: res.loss,
-    gain: res.gain,
-    before: game.gauge,
-    after: res.gaugeAfter,
+    before: res.before,
+    after: res.after,
+    accusation: res.accusation,
+    sabotage: res.sabotage,
+    unmasked: res.unmasked ? { name: names.get(res.unmasked)!, role: res.unmaskedRole! } : null,
+    missed: res.unmasked ? null : top === 0 ? "none" : leaders.length > 1 ? "tie" : "threshold",
+    votes: votes.map((v) => ({ voter: names.get(v.voter)!, target: names.get(v.target)! })),
+    clue: res.end ? null : makeClue(round + 1, after, randomInt),
+    certs: Boolean(certs?.size),
+    winner: res.winner,
+    end: res.end,
   };
-  const gazettePn: Gazette = {
-    ...shared,
-    camp: "pn",
-    played: pn.winner,
-    drawn: pn.tie || pn.noVote,
-    frozen: state.frozenNext,
-    nature: res.blocked ? res.nature : res.natureShown,
-    ...(res.lanterne ? { lanterne: letterCount(grinchs[randomInt(grinchs.length)]!.firstName) } : {}),
-    ...(res.corrupteur ? { corrupteur: letterCount(grPlayer.firstName) } : {}),
-    ...(winner ? { winner } : {}),
-  };
-  const gazetteGr: Gazette = {
-    ...shared,
-    camp: "gr",
-    played: gr.winner,
-    drawn: gr.tie || gr.noVote,
-    ...(winner ? { winner } : {}),
-  };
-
-  const messages: NonNullable<Commit["messages"]> = [];
-  // Retour des visiteurs de la manche précédente, annoncé dans leur tchat.
-  for (const chat of ["pn", "gr"] as const) {
-    for (const pseudo of sit.visitors[chat]) messages.push(system(other(chat), { t: "retour", pseudo }));
-  }
-  messages.push({ chat: "pn", pseudo: null, kind: "gazette", body: JSON.stringify(gazettePn) });
-  messages.push({ chat: "gr", pseudo: null, kind: "gazette", body: JSON.stringify(gazetteGr) });
-  const visits: NonNullable<Commit["visits"]> = [];
-  if (res.pnVisit) {
-    messages.push(
-      system("pn", { t: "depart", pseudo: pn.winner }),
-      system("gr", { t: "arrive", pseudo: pn.winner }),
-    );
-    visits.push({ round, pseudo: pn.winner, chat: "gr" });
-  }
-  if (res.grVisit) {
-    messages.push(
-      system("gr", { t: "depart", pseudo: gr.winner }),
-      system("pn", { t: "arrive", pseudo: gr.winner }),
-    );
-    visits.push({ round, pseudo: gr.winner, chat: "pn" });
-  }
-
   await commit(db, game, {
-    game: {
-      gauge: res.gaugeAfter,
-      round,
-      state: { frozenNext: res.frozenNext, maxLoss: res.maxLossAfter },
-      ...(over ? { status: "over", winner: winner ?? "pn" } : {}),
-    },
-    round: {
-      round,
-      pn_pseudo: pn.winner,
-      gr_pseudo: gr.winner,
-      data: { pnCard: pnPlayer.secret!.card, grCard: grPlayer.secret!.card, ...res } as Json,
-    },
-    closeVisits: true,
-    messages,
-    visits,
+    game: { magic: res.after, round, ...(res.end ? { status: "over", winner: res.winner! } : {}) },
+    players,
+    round: { round, data: gazette as unknown as Json },
   });
 }
 
-/** Résout tout ce qui est échu. Sans effet s'il n'y a rien à faire. Ne lève pas. */
+/**
+ * Résout tout ce qui est échu ; si une gazette est sortie, envoie ses mails après la réponse.
+ * Sans effet s'il n'y a rien à faire. Ne lève pas.
+ */
 export async function advanceMagic(santaId: string, now = Date.now()): Promise<void> {
   const db = getServiceDb();
   try {
-    for (let step = 0; step < 10; step++) {
+    let changed = false;
+    for (let step = 0; step < 12; step++) {
       const game = await loadGame(db, santaId);
       if (!game) return;
-      const start = new Date(game.starts_at).getTime();
-      if (game.status === "joining" && now >= start) await startGame(db, game);
-      else if (game.status === "playing" && now >= start + (game.round + 1) * game.round_days * DAY) {
+      if (game.status === "waiting" && now >= new Date(game.starts_at).getTime()) {
+        await commit(db, game, { game: { status: "playing" } });
+      } else if (game.status === "playing" && now >= roundEnd(game, game.round + 1)) {
         await resolveNext(db, game);
-      } else return;
+        changed = true;
+      } else break;
     }
+    if (changed) schedule(() => sendPendingMails(santaId));
   } catch (error) {
     console.error("advanceMagic", error instanceof Error ? error.message : error);
+  }
+}
+
+/** Après la réponse quand c'est possible (page, action), tout de suite sinon (cron, tests). */
+function schedule(task: () => Promise<void>) {
+  const run = () =>
+    task().catch((error) => console.error("magic mail", error instanceof Error ? error.message : error));
+  try {
+    after(run);
+  } catch {
+    void run();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Mails
+// ---------------------------------------------------------------------------
+
+function personalUrl(santaId: string, p: Entry): string | null {
+  if (!p.tokenEnc) return null;
+  const token = decryptToken(santaId, p.id, p.tokenEnc);
+  return token ? `${siteUrl()}/lutins/moi/${token}/jeu` : null;
+}
+
+async function mailEveryone(
+  db: Db,
+  santaId: string,
+  build: (p: Entry, url: string | null, title: string) => Parameters<typeof sendMail>[0],
+) {
+  const [{ data: santa }, roster] = await Promise.all([
+    db.from("santas").select("title").eq("id", santaId).maybeSingle(),
+    loadRoster(db, santaId),
+  ]);
+  if (!santa) return;
+  for (const p of roster) {
+    const result = await sendMail(build(p, personalUrl(santaId, p), santa.title));
+    if (!result.ok) console.error("magic mail", p.id, result.error);
+  }
+}
+
+/**
+ * Mails en attente : la dernière gazette non envoyée (les plus anciennes, rattrapées d'un coup,
+ * sont marquées sans envoi), puis la révélation. Chaque envoi est réservé en base avant de partir.
+ */
+export async function sendPendingMails(santaId: string): Promise<void> {
+  const db = getServiceDb();
+  const now = new Date().toISOString();
+  const { data: claimed } = await db
+    .from("magic_rounds")
+    .update({ mailed_at: now })
+    .eq("santa_id", santaId)
+    .is("mailed_at", null)
+    .select("round, data");
+  const latest = (claimed ?? []).sort((a, b) => b.round - a.round)[0];
+  if (latest) {
+    const gazette = latest.data as unknown as Gazette;
+    const game = await loadGame(db, santaId);
+    if (game) {
+      await mailEveryone(db, santaId, (p, url, title) =>
+        gazette.round === 0
+          ? openingMail(p.email, p.firstName, { title, url, startsAt: game.starts_at, gazette })
+          : gazetteMail(p.email, p.firstName, { title, url, gazette }),
+      );
+    }
+  }
+  const { data: reveal } = await db
+    .from("magic_games")
+    .update({ reveal_mailed_at: now })
+    .eq("santa_id", santaId)
+    .eq("status", "revealed")
+    .is("reveal_mailed_at", null)
+    .select("winner")
+    .maybeSingle();
+  if (reveal) {
+    await mailEveryone(db, santaId, (p, url, title) =>
+      revealMail(p.email, p.firstName, { title, url, winner: reveal.winner as Role | null }),
+    );
   }
 }
 
 // ---------------------------------------------------------------------------
 // Joueur
 // ---------------------------------------------------------------------------
-
-export type JoinResult = "joined" | "closed" | "missing";
-
-/** Rejoindre le jeu : l'ordre d'arrivée est l'ordre des écritures réussies. */
-export async function joinMagic(
-  santaId: string,
-  participantId: string,
-  choice: Role | null,
-): Promise<JoinResult> {
-  const db = getServiceDb();
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const game = await loadGame(db, santaId);
-    if (!game) return "missing";
-    if (game.status !== "joining") return "closed";
-    const roster = await loadRoster(db, santaId);
-    const me = roster.find((r) => r.id === participantId);
-    if (!me) return "missing";
-    if (me.secret) return "joined";
-    const joined = roster.flatMap((r) => (r.secret ? [r.secret] : []));
-    const secret = assignJoin(joined, choice, randomInt);
-    const done = await commit(db, game, {
-      players: [{ id: participantId, secret: encryptSecret(scope(santaId, participantId), secret) }],
-    });
-    if (done) return "joined";
-  }
-  throw new Error("joinMagic : trop de tentatives");
-}
-
-function toMessage(row: Tables<"magic_messages">, myPseudo: string): MagicMessage | null {
-  if (row.kind === "chat") {
-    return {
-      id: row.id,
-      kind: "chat",
-      pseudo: row.pseudo ?? "",
-      text: row.body,
-      mine: row.pseudo === myPseudo,
-    };
-  }
-  try {
-    const data = JSON.parse(row.body) as unknown;
-    return row.kind === "gazette"
-      ? { id: row.id, kind: "gazette", gazette: data as Gazette }
-      : { id: row.id, kind: "system", note: data as SystemNote };
-  } catch {
-    return null;
-  }
-}
-
-export type Seat = { game: Game; secret: PlayerSecret; chat: Chat; visiting: boolean; sit: Situation };
-
-/** Où le joueur se trouve en ce moment : son tchat, ou celui qu'il visite. */
-export async function seatOf(santaId: string, participantId: string): Promise<Seat | null> {
-  const db = getServiceDb();
-  const game = await loadGame(db, santaId);
-  if (!game || game.status === "joining") return null;
-  const roster = await loadRoster(db, santaId);
-  const secret = roster.find((r) => r.id === participantId)?.secret;
-  if (!secret) return null;
-  const sit = await situation(db, santaId, roster);
-  const visiting = sit.away.has(secret.pseudo);
-  return { game, secret, sit, visiting, chat: visiting ? other(chatOf(secret.role)) : chatOf(secret.role) };
-}
 
 export async function buildMagicView(
   santaId: string,
@@ -385,115 +280,90 @@ export async function buildMagicView(
   const roster = await loadRoster(db, santaId);
   const me = roster.find((r) => r.id === participantId);
   if (!me) return null;
-  const { data: mine } = await db
-    .from("magic_accusations")
-    .select("target, role")
-    .eq("santa_id", santaId)
-    .eq("accuser", participantId)
-    .order("id");
-  const nameOf = (r: RosterEntry) => `${r.firstName} ${r.lastName}`.trim();
-  const names = new Map(roster.map((r) => [r.id, nameOf(r)]));
   const playing = game.status === "playing";
   const round = playing ? game.round + 1 : null;
-
-  const view: MagicView = {
+  const [{ data: gazettes }, { data: votes }] = await Promise.all([
+    db.from("magic_rounds").select("data").eq("santa_id", santaId).order("round", { ascending: false }),
+    round
+      ? db.from("magic_votes").select("voter, target").eq("santa_id", santaId).eq("round", round)
+      : Promise.resolve({ data: [] as Vote[] }),
+  ]);
+  const names = displayNames(roster);
+  const current = validVotes(roster, votes ?? []);
+  return {
     title,
-    status: game.status,
+    status: game.status as MagicView["status"],
     startsAt: game.starts_at,
     roundDays: game.round_days,
-    startGauge: game.start_gauge,
-    gauge: game.gauge,
+    startMagic: game.start_magic,
+    magic: game.magic,
     round,
-    deadline: round
-      ? new Date(new Date(game.starts_at).getTime() + round * game.round_days * DAY).toISOString()
-      : null,
-    winner: game.winner,
-    me: me.secret,
-    joinOption:
-      game.status === "joining" && !me.secret
-        ? joinOption(roster.flatMap((r) => (r.secret ? [r.secret] : [])))
-        : null,
-    chat: null,
-    accusations: {
-      open: Boolean(me.secret) && (playing || game.status === "over"),
-      left: Math.max(0, ACCUSATIONS - (mine?.length ?? 0)),
-      mine: (mine ?? []).map((a) => ({ name: names.get(a.target) ?? "", role: a.role })),
-      people: roster.filter((r) => r.id !== participantId).map((r) => ({ id: r.id, name: nameOf(r) })),
+    deadline: round ? new Date(roundEnd(game, round)).toISOString() : null,
+    winner: game.winner as Role | null,
+    threshold: threshold(roster.length),
+    me: {
+      role: me.role,
+      out: me.out,
+      cert: me.cert ? (names.get(me.cert) ?? null) : null,
+      accomplices:
+        me.role === "gr"
+          ? roster
+              .filter((r) => r.role === "gr" && r.id !== me.id)
+              .map((r) => ({ name: names.get(r.id)!, out: r.out }))
+          : [],
     },
+    players: roster.map((r) => ({
+      id: r.id,
+      name: names.get(r.id)!,
+      me: r.id === me.id,
+      out: r.out ? r.role : null,
+      outRound: r.outRound,
+    })),
+    vote: {
+      mine: current.find((v) => v.voter === me.id)?.target ?? null,
+      voters: current.length,
+      open: playing && canVote(me),
+    },
+    gazettes: (gazettes ?? []).map((g) => g.data as unknown as Gazette),
     reveal:
       game.status === "revealed" && Array.isArray(game.reveal)
         ? (game.reveal as unknown as RevealRow[])
         : null,
   };
-  if (!me.secret || game.status === "joining") return view;
+}
 
-  const sit = await situation(db, santaId, roster);
-  const myPseudo = me.secret.pseudo;
-  const visiting = sit.away.has(myPseudo);
-  const chat = visiting ? other(chatOf(me.secret.role)) : chatOf(me.secret.role);
-  let fromId = 0;
-  if (visiting) {
-    const { data: visit } = await db
-      .from("magic_visits")
-      .select("from_message_id")
-      .eq("santa_id", santaId)
-      .eq("pseudo", myPseudo)
-      .is("to_message_id", null)
-      .maybeSingle();
-    fromId = visit?.from_message_id ?? Number.MAX_SAFE_INTEGER;
-  }
-  const { data: rows } = await db
-    .from("magic_messages")
-    .select("*")
-    .eq("santa_id", santaId)
-    .eq("chat", chat)
-    .gt("id", fromId)
-    .order("id", { ascending: false })
-    .limit(300);
-  const members: MagicMember[] = [
-    ...sit.home[chat].map((pseudo) => ({
-      pseudo,
-      me: pseudo === myPseudo,
-      played: sit.played.has(pseudo),
-      away: sit.away.has(pseudo),
-      visitor: false,
-    })),
-    ...sit.visitors[chat].map((pseudo) => ({
-      pseudo,
-      me: pseudo === myPseudo,
-      played: true,
-      away: false,
-      visitor: true,
-    })),
-  ];
-  let vote: NonNullable<MagicView["chat"]>["vote"] = null;
-  if (round) {
-    const { data: votes } = await db
+export type VoteResult = "ok" | "closed" | "invalid";
+
+/** Désignation de la semaine en cours, modifiable ; `null` la retire. */
+export async function castVote(
+  santaId: string,
+  participantId: string,
+  targetId: string | null,
+): Promise<VoteResult> {
+  const db = getServiceDb();
+  const game = await loadGame(db, santaId);
+  if (!game || game.status !== "playing") return "closed";
+  const roster = await loadRoster(db, santaId);
+  const me = roster.find((r) => r.id === participantId);
+  if (!me || !canVote(me)) return "closed";
+  const round = game.round + 1;
+  if (targetId === null) {
+    const { error } = await db
       .from("magic_votes")
-      .select("voter, target")
+      .delete()
       .eq("santa_id", santaId)
       .eq("round", round)
-      .eq("chat", chat);
-    const valid = (votes ?? []).filter(
-      (v) => sit.present[chat].includes(v.voter) && sit.eligible[chat].includes(v.target),
-    );
-    const counts: Record<string, number> = {};
-    for (const v of valid) counts[v.target] = (counts[v.target] ?? 0) + 1;
-    vote = {
-      eligible: sit.eligible[chat],
-      counts,
-      mine: valid.find((v) => v.voter === myPseudo)?.target ?? null,
-    };
+      .eq("voter", participantId);
+    if (error) throw new Error(error.message);
+    return "ok";
   }
-  view.chat = {
-    id: chat,
-    visiting,
-    members,
-    messages: (rows ?? []).reverse().flatMap((r) => toMessage(r, myPseudo) ?? []),
-    canPost: playing || game.status === "over",
-    vote,
-  };
-  return view;
+  const target = roster.find((r) => r.id === targetId);
+  if (!target || target.id === me.id || !canBeTargeted(target)) return "invalid";
+  const { error } = await db
+    .from("magic_votes")
+    .upsert({ santa_id: santaId, round, voter: participantId, target: targetId });
+  if (error) throw new Error(error.message);
+  return "ok";
 }
 
 // ---------------------------------------------------------------------------
@@ -501,77 +371,124 @@ export async function buildMagicView(
 // ---------------------------------------------------------------------------
 
 export async function magicSummary(santaId: string): Promise<MagicSummary | null> {
-  const game = await loadGame(getServiceDb(), santaId);
+  const db = getServiceDb();
+  const game = await loadGame(db, santaId);
   if (!game) return null;
+  const { count } = await db
+    .from("magic_players")
+    .select("participant_id", { count: "exact", head: true })
+    .eq("santa_id", santaId);
   return {
-    status: game.status,
+    status: game.status as MagicSummary["status"],
     startsAt: game.starts_at,
     roundDays: game.round_days,
-    startGauge: game.start_gauge,
-    gauge: game.gauge,
+    startMagic: game.start_magic,
+    magic: game.magic,
     round: game.round,
-    winner: game.winner,
+    winner: game.winner as Role | null,
+    players: count ?? 0,
   };
 }
 
 export async function createMagic(
   santaId: string,
-  options: { startsAt: string; roundDays: number; startGauge: number },
+  options: { startsAt: string; roundDays: number; level: Level },
+  now = Date.now(),
 ): Promise<"ok" | "exists" | "players"> {
   const db = getServiceDb();
-  const { data: people } = await db.from("santa_participants").select("id").eq("santa_id", santaId);
-  if ((people ?? []).length !== PLAYERS) return "players";
+  const { data: people } = await db
+    .from("santa_participants")
+    .select("id, first_name, last_name")
+    .eq("santa_id", santaId)
+    .order("position");
+  const list = people ?? [];
+  if (list.length < MIN_PLAYERS || list.length > MAX_PLAYERS) return "players";
+  const roles = assignRoles(
+    list.map((p) => p.id),
+    randomInt,
+  );
+  const magic = startMagic(list.length, options.level);
   const { error } = await db.from("magic_games").insert({
     santa_id: santaId,
+    status: new Date(options.startsAt).getTime() <= now ? "playing" : "waiting",
     starts_at: options.startsAt,
     round_days: options.roundDays,
-    start_gauge: options.startGauge,
-    gauge: options.startGauge,
+    start_magic: magic,
+    magic,
   });
   if (error) return "exists";
-  const { error: playersError } = await db
-    .from("magic_players")
-    .insert((people ?? []).map((p) => ({ participant_id: p.id, santa_id: santaId })));
-  if (playersError) {
+  try {
+    const { error: playersError } = await db.from("magic_players").insert(
+      list.map((p) => ({
+        participant_id: p.id,
+        santa_id: santaId,
+        secret: encryptSecret(scope(santaId, p.id), { role: roles.get(p.id)! }),
+      })),
+    );
+    if (playersError) throw new Error(playersError.message);
+    const everyone = list.map((p) => ({
+      id: p.id,
+      firstName: p.first_name,
+      lastName: p.last_name,
+      role: roles.get(p.id)!,
+      out: false,
+    }));
+    const opening: Gazette = {
+      round: 0,
+      before: magic,
+      after: magic,
+      accusation: 0,
+      sabotage: 0,
+      unmasked: null,
+      missed: null,
+      votes: [],
+      clue: makeClue(1, everyone, randomInt),
+      certs: false,
+      winner: null,
+      end: null,
+    };
+    const { error: roundError } = await db
+      .from("magic_rounds")
+      .insert({ santa_id: santaId, round: 0, data: opening as unknown as Json });
+    if (roundError) throw new Error(roundError.message);
+  } catch (error) {
     await db.from("magic_games").delete().eq("santa_id", santaId);
-    throw new Error(playersError.message);
+    throw error;
   }
+  schedule(() => sendPendingMails(santaId));
   return "ok";
 }
 
-/** Fin de partie : rôles, pseudonymes, cartes et classement, écrits en clair pour tous. */
+/** Fin de partie : rôles et flair de chacun, écrits en clair pour tous. */
 export async function revealMagic(santaId: string): Promise<boolean> {
   const db = getServiceDb();
   for (let attempt = 0; attempt < 5; attempt++) {
     const game = await loadGame(db, santaId);
     if (!game || game.status !== "over") return game?.status === "revealed";
     const roster = await loadRoster(db, santaId);
-    const { data: accusations } = await db
-      .from("magic_accusations")
-      .select("accuser, target, role")
+    const { data: votes } = await db
+      .from("magic_votes")
+      .select("round, voter, target")
       .eq("santa_id", santaId);
-    const players = roster.flatMap((r) => (r.secret ? [{ id: r.id, role: r.secret.role }] : []));
-    const points = scores(
-      players,
-      (accusations ?? []) as { accuser: string; target: string; role: AccusedRole }[],
-    );
+    const hiddenAt = (round: number) =>
+      roster.filter((r) => r.role === "gr" && (r.outRound === null || r.outRound >= round)).map((r) => r.id);
+    const rounds = Array.from({ length: game.round }, (_, i) => i + 1).map((round) => ({
+      votes: (votes ?? []).filter((v) => v.round === round),
+      hiddenGrinchs: hiddenAt(round),
+    }));
+    const points = flair(rounds);
     const rows: RevealRow[] = roster
-      .flatMap((r) =>
-        r.secret
-          ? [
-              {
-                name: `${r.firstName} ${r.lastName}`.trim(),
-                role: r.secret.role,
-                pseudo: r.secret.pseudo,
-                card: r.secret.card,
-                ...points.get(r.id)!,
-              },
-            ]
-          : [],
-      )
-      .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name, "fr"));
-    if (await commit(db, game, { game: { status: "revealed", reveal: rows as unknown as Json } }))
+      .map((r) => ({
+        name: `${r.firstName} ${r.lastName}`.trim(),
+        role: r.role,
+        outRound: r.outRound,
+        flair: points.get(r.id) ?? 0,
+      }))
+      .sort((a, b) => b.flair - a.flair || a.name.localeCompare(b.name, "fr"));
+    if (await commit(db, game, { game: { status: "revealed", reveal: rows as unknown as Json } })) {
+      schedule(() => sendPendingMails(santaId));
       return true;
+    }
   }
   return false;
 }

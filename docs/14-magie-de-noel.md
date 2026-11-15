@@ -1,93 +1,100 @@
 # 14. La Magie de Noël
 
-Jeu à rôles cachés adossé à un Secret Santa lancé (`docs/13-secret-santa.md`). Il se joue à 12, sur 5 manches. Il ne touche jamais aux cadeaux pendant la partie. Les conséquences du résultat sur le Jour J restent à définir.
+Jeu à rôles cachés, en parallèle d'un Secret Santa lancé. Version simple : une seule action possible, facultative, et un jeu qui va au bout même si personne ne joue.
+
+## Principes
+
+- **Il marche sans tout le monde.** Rien n'attend personne. Les semaines se résolvent seules, à l'heure dite.
+- **Une action par semaine, au plus** : désigner un suspect. Un clic, modifiable, facultatif.
+- **Les manigances sont possibles, pas nécessaires.** Lire la gazette et cliquer suffit pour jouer pleinement.
+- **Fun immédiat** : la carte de rôle se retourne dès la première visite, et le premier indice est déjà là.
 
 ## Règles
 
-**But.** Une jauge, la Magie de Noël, part de 4 (réglable de 3 à 5). Les Grinchs gagnent si elle tombe à 0. Si elle tient 5 manches, les Pères Noël gagnent. En parallèle, chacun joue pour un classement individuel.
+1. **Rôles.** À l'ouverture du jeu, environ un joueur sur quatre est tiré au sort Grinch (`floor((n + 2) / 4)`, au moins 1). Les autres sont Pères Noël. Les Grinchs voient qui sont les autres Grinchs. De 5 à 30 joueurs.
+2. **Cinq semaines.** La durée d'une « semaine » est réglable de 1 à 14 jours (7 par défaut).
+3. **Désignation.** Chaque semaine, chacun peut désigner une personne encore en jeu, sauf soi-même. Un Grinch démasqué ne désigne plus. Un Père Noël démasqué continue.
+4. **Fin de semaine, dans l'ordre :**
+   - la personne la plus désignée est démasquée, si elle a au moins `max(2, nombre de Grinchs)` voix et qu'il n'y a pas d'égalité ;
+   - Grinch démasqué : Magie +2, sans dépasser le niveau de départ, et il ne nuit plus ;
+   - Père Noël démasqué : Magie −1 ;
+   - chaque Grinch encore caché retire 1 de Magie.
+5. **Fin de partie.**
+   - Magie à 0 : les Grinchs gagnent.
+   - Tous les Grinchs démasqués : les Pères Noël gagnent, sans attendre.
+   - Magie au-dessus de 0 après la semaine 5 : les Pères Noël gagnent.
+6. **Révélation.** L'organisation révèle les rôles quand la partie est finie. Le tableau montre chaque rôle, la semaine où chaque masque est tombé, et le **flair** de chacun : le nombre de fois où il a désigné un Grinch encore caché. Le meilleur flair est signalé.
 
-**Camps.** 5 Pères Noël, 5 Grinchs, 2 infiltrés. Le Grinch infiltré joue pour les Grinchs mais se trouve dans le tchat des Pères Noël. Le Père Noël infiltré, l'inverse. Chaque tchat compte donc 6 pseudonymes, dont un infiltré, et tout le monde le sait.
+## Comment on déduit
 
-**Choix du camp.** Jusqu'au début de la partie, chacun choisit en secret depuis son lien personnel, dans l'ordre d'arrivée. Un camp complet envoie dans l'autre. Le onzième choisit quel infiltré il sera, le douzième prend l'autre rôle. Au début de la partie, les retardataires sont placés au hasard, dans un ordre tiré au sort. Le nombre de places restantes n'est jamais affiché.
+- **Les indices de la gazette**, sur un Grinch encore caché, de plus en plus précis :
+  - semaine 1 : nombre de lettres du prénom ;
+  - semaine 2 : première lettre entre A et L, ou entre M et Z ;
+  - semaine 3 : deux innocents ;
+  - semaines 4 et 5 : un trio qui cache un Grinch.
+- **Qui a désigné qui** : publié dans la gazette après chaque semaine. On peut repérer ceux qui votent ensemble ou qui protègent quelqu'un.
+- **Le secret personnel.** À la fin de la semaine 2, chaque Père Noël reçoit en privé le nom d'un autre Père Noël, de préférence encore en jeu. Les Grinchs ne reçoivent rien, mais peuvent prétendre le contraire.
+- **Les masques tombés** : un Père Noël démasqué est innocenté pour de bon.
 
-**Ce que chacun sait.** Son rôle, son pseudonyme (tiré au sort) et son pouvoir. Rien d'autre : ni qui est qui, ni les pouvoirs des autres, ni la liste des pouvoirs de son camp. On peut annoncer son pouvoir ou se taire. Seul l'infiltré a le droit de mentir.
+Les joueurs peuvent en parler entre eux comme ils veulent. Tout le monde peut mentir.
 
-**Une manche.** Le tchat débat, puis vote pour un pseudonyme. À la fin du vote, le pouvoir du plus voté est joué d'office, dans chaque tchat. Chaque pseudonyme ne peut être choisi qu'une fois. Égalité ou aucun vote : tirage au sort. Les votes sont modifiables jusqu'à la fin, et leur décompte est visible dans le tchat. Une gazette par tchat donne aussitôt le bilan.
+## Équilibre
 
-**Pouvoirs des Grinchs.**
+Magie de départ par taille de groupe, dans `engine.ts` (`BALANCED`). Elle est calculée par simulation pour qu'à participation de 60 %, chaque camp gagne environ une fois sur deux. Le modèle de la simulation :
+- chaque joueur désigne avec une probabilité donnée ;
+- un Père Noël vise un Grinch dans 30 % des cas en semaine 1, puis de plus en plus souvent jusqu'à 65 % en semaine 5 ;
+- les Grinchs accusent ensemble un innocent.
 
-| Carte | Nature | Effet |
-|---|---|---|
-| CyberGrinch | numérique | −1, visite d'une manche chez les Pères Noël |
-| Brouilleur | numérique | −1, la nature de l'attaque est cachée aux Pères Noël |
-| Siphon | magique | −2 |
-| Corrupteur | magique | −3, les Pères Noël apprennent le nombre de lettres du prénom de l'attaquant |
-| Givré | glace | −1, le pouvoir des Pères Noël de la manche suivante est annulé. Manche 5 : −2. Imblocable |
-| Espion (Père Noël infiltré) | numérique | −1, visite d'une manche chez les Pères Noël, son vrai camp |
+Elle ne dépasse jamais `Grinchs × 5`, pour que les Grinchs puissent toujours gagner par le seul sabotage. Si personne ne joue, les Grinchs gagnent : c'est voulu.
 
-**Pouvoirs des Pères Noël.**
+| Joueurs | Grinchs | Seuil | Magie de départ |
+| ------- | ------- | ----- | --------------- |
+| 5       | 1       | 2     | 4               |
+| 8       | 2       | 2     | 8               |
+| 12      | 3       | 3     | 12              |
+| 16      | 4       | 4     | 18              |
+| 20      | 5       | 5     | 23              |
 
-| Carte | Effet |
-|---|---|
-| Facteur | +1, visite d'une manche chez les Grinchs |
-| Lanterne | +1, nombre de lettres du prénom d'un Grinch tiré au sort (infiltré compris) |
-| Pare-feu | bloque l'attaque de la manche si elle est numérique |
-| Bouclier | bloque l'attaque de la manche si elle est magique |
-| Fée du sapin | rend la plus grosse perte subie en une manche jusqu'ici (au moins 1) |
-| Espion (Grinch infiltré) | +1, visite d'une manche chez les Grinchs, son vrai camp |
+L'organisation peut choisir « Avantage Pères Noël » (×1,2) ou « Avantage Grinchs » (×0,8).
 
-L'attaque et la défense d'une manche sont comptées ensemble. Une attaque bloquée n'a aucun effet (ni perte, ni visite, ni indice). Un pouvoir gelé est consommé sans effet.
+## Mails
 
-**Visites.** Le visiteur quitte son tchat et entre dans l'autre sous son pseudonyme, annoncé ainsi : « X est présent dans le tchat en raison de son pouvoir d'espionnage. Il peut être un infiltré de votre camp, ou un membre du camp adverse. » Il ne voit que les messages écrits depuis son arrivée, il écrit, et il vote au vote suivant de ce tchat. Il rentre à la fin de ce vote. Les deux espionnages d'un tchat (la vraie carte et celle de l'infiltré) ont exactement le même effet visible.
+Rien de secret ne part par mail : jamais de rôle ni de secret personnel, seulement ce que la gazette dit à tous et le lien personnel vers le jeu.
 
-**Gazettes.** Pères Noël : pouvoir joué (pseudonyme), attaque subie (nature et décompte, jamais le nom du pouvoir), défense, jauge, indices. Grinchs : pouvoir joué, résultat de leur attaque, défense adverse, jauge.
+- **Ouverture** : « votre rôle vous attend », avec le premier indice.
+- **Gazette** à la fin de chaque semaine, ou fin de partie.
+- **Révélation**.
 
-**Identifications.** Deux par joueur sur toute la partie, définitives, secrètes. On vise une personne (son vrai nom) et un rôle : Père Noël, Grinch ou infiltré. Juste : +1, +2, +4. Faux : −1, −2, −1. Être identifié : −1. Un infiltré désigné comme « Grinch » ou « Père Noël » compte comme faux. Le rappel « n restantes » est visible en permanence sur la page du jeu.
+Les mails partent après la réponse de la page ou de l'action qui fait avancer le jeu. Le cron quotidien (04:17 UTC) rattrape ce qui n'est pas parti, même si personne n'ouvre le jeu. Chaque envoi est réservé en base avant de partir (`magic_rounds.mailed_at`, `magic_games.reveal_mailed_at`) : jamais de doublon. Si plusieurs semaines se résolvent d'un coup, seule la dernière gazette part.
 
-**Fin.** Jauge à 0, ou fin de la manche 5. L'organisation révèle ensuite rôles, pseudonymes, pouvoirs et classement, visibles par tous.
-
-## Scénarios passés en revue et décisions
-
-| Scénario | Décision |
-|---|---|
-| Deux joueurs choisissent en même temps | Chaque écriture porte la version de l'état. La seconde est refusée, relue et rejouée : l'ordre d'arrivée est l'ordre des écritures réussies |
-| Un joueur n'ouvre jamais son lien | Placé d'office au début de la partie |
-| Personne ne vote | Tirage au sort parmi les pouvoirs restants : la partie avance toujours |
-| Égalité | Tirage au sort entre les ex æquo (pas de second tour : les décomptes sont visibles, le tchat peut départager lui-même) |
-| Personne n'ouvre le jeu pendant plusieurs jours | Les échéances passées sont résolues à la première visite, dans l'ordre, et par la tâche quotidienne |
-| Un vote arrive après l'échéance | Refusé : l'échéance est résolue avant toute action |
-| Le tchat vote son infiltré | Son pouvoir est joué : même décompte que la vraie carte d'espionnage, mais l'infiltré rejoint son vrai camp une manche |
-| L'infiltré annonce un faux pouvoir et se fait voter | Son départ en visite montre qu'il avait l'espionnage. Il a intérêt à annoncer l'espionnage |
-| Espionnage bloqué par le Pare-feu, ou Facteur gelé | Pas de visite |
-| Les deux visites la même manche | Chaque tchat perd un membre et accueille un visiteur |
-| Visiteur absent de son tchat | Il n'y vote pas cette manche. À son retour, il retrouve tout l'historique |
-| Espionnage joué à la manche 5 | La visite dure jusqu'à la révélation, sans vote |
-| Givré à la manche 5 | −2, rien à geler |
-| Jauge à 0 avant la manche 5 | Partie terminée, tchats et identifications ouverts jusqu'à la révélation |
-| Identifier au hasard | Perdant en moyenne pour tout joueur et tout rôle (vérifié par un test) |
-| Indices trop précis | Lanterne et Corrupteur donnent un nombre de lettres, pas une initiale |
-| Indices de présence | Ni « en ligne », ni heure des messages |
-| « Tout annuler » le Secret Santa | Le jeu est effacé avec lui |
-| Discussions hors du jeu | Règle d'honneur, rappelée dans les règles |
-
-Équilibre : avec une jauge de départ à 4 et des votes au hasard, les Grinchs gagnent 52 % des 518 400 ordres de vote possibles (test `engine.test.ts`). De vrais joueurs s'en écarteront : l'organisation peut régler la jauge de départ.
+Le lien personnel est gardé chiffré (`santa_participants.token_enc`, clé serveur) pour être remis dans ces mails. `token_hash` reste seul à servir pour reconnaître un lien. Un Secret Santa lancé avant cette colonne reçoit des mails sans lien, avec la consigne d'ouvrir le lien du premier mail.
 
 ## Technique
 
-- `src/lib/magic/engine.ts` : règles pures (choix du camp, vote, manche, classement), testées.
-- `src/server/magic/game.ts` : déroulé à la demande (`advanceMagic`), vue d'un joueur, révélation.
-- `src/server/actions/magic.ts` : actions du joueur (par son lien personnel) et de l'organisation.
-- Migration `20261116100000_magie_de_noel.sql` : tables `magic_*`, fonction `magic_commit` (écriture d'un bloc, refusée si la version a changé).
-- Secret : rôle, pseudonyme et pouvoir de chaque joueur sont chiffrés (AES-256-GCM, `SANTA_SECRET_KEY`). Tchats, votes et visites ne portent que des pseudonymes. Aucune page de l'organisation ne montre un rôle.
-- Routes : `/lutins/moi/[token]/jeu` (joueur). L'organisation ouvre, suit et révèle depuis `/lutins/[slug]`.
-- Pas de mail pour les gazettes dans cette version : tout se lit sur le site.
+- `src/lib/magic/engine.ts` : règles pures (rôles, désignations, résolution, indices, secrets, flair), testées dans `engine.test.ts` avec une simulation d'équilibre.
+- `src/server/magic/game.ts` : avance à la lecture, écritures par `magic_commit` (version optimiste), envois.
+- `src/server/magic/mail.ts` : gabarits des mails.
+- Tables :
+  - `magic_games` ;
+  - `magic_players`, avec `secret` chiffré `{ role, cert? }`, et `out_round` / `out_role` publics ;
+  - `magic_votes` ;
+  - `magic_rounds`, la gazette de chaque semaine, où la semaine 0 est l'ouverture.
+- La base ne contient aucun rôle en clair avant la révélation, sauf celui des masques tombés.
+- « Tout annuler » sur le Secret Santa efface aussi le jeu (`santa_cancel`).
 
-## Textes
+## Design
 
-Tous dans `src/lib/magic/texts.ts` (rôles, pouvoirs, gazettes, messages du tchat, règles). Règles d'écriture : phrases courtes, pas de tiret long, pas de point d'exclamation, pas de formule d'accroche.
+Les pages du jeu ont leur propre univers et n'utilisent pas le style de base d'Envies. Elles sont dans `src/components/magic/`, avec les classes `mg-` de `magic.css` :
+- nuit d'hiver bleu profond, ciel étoilé, neige légère ;
+- lumière dorée, papier crème pour la gazette.
 
-## À venir
-
-- Illustrations des cartes et mise en forme des gazettes : prompts dans `docs/15-magie-prompts-design.md`.
-- Conséquences du résultat sur le Jour J.
-- Gazettes par mail.
+- **Compteur** (`MagicGlobe`) : une boule à neige.
+  - La lumière ambrée descend avec la Magie et le givre gagne le verre.
+  - Quatre états, écrits en toutes lettres : sereine (60 % et plus), fragile, critique (moins de 30 %, l'étoile vacille), éteinte (verre givré, sapin éteint).
+  - Le chiffre et une rangée d'étoiles doublent l'information.
+  - `role="meter"`.
+- **Carte de rôle** (`RoleCard`) : face cachée à la première visite, retournée d'un geste. L'appareil s'en souvient.
+  - Père Noël : bonnet sur fond rouge.
+  - Grinch : boule fêlée sur fond vert.
+- **Gazette** (`GazetteCard`) : bandeau de journal, bilan, indice encadré, « qui a désigné qui » dépliable.
+- **Mouvement.** La neige, les paillettes et la vague s'arrêtent avec `prefers-reduced-motion` (règle globale).

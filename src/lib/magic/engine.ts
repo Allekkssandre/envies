@@ -1,277 +1,221 @@
-// La Magie de Noël (docs/14-magie-de-noel.md) : règles du jeu, pures. Le hasard est injecté.
+// La Magie de Noël, version simple (docs/14-magie-de-noel.md) : règles pures, sans base ni réseau.
+//
+// Environ un Grinch pour quatre joueurs, tirés au sort. Chaque semaine, chacun peut désigner un
+// suspect. Le plus désigné (seuil atteint, sans égalité) est démasqué : un Grinch fait remonter
+// la Magie, un Père Noël la fait baisser. Puis chaque Grinch encore caché retire 1 de Magie.
+// Les Grinchs gagnent si la Magie tombe à 0 ; les Pères Noël s'ils tiennent cinq semaines ou
+// démasquent tous les Grinchs.
 
-export type RandomInt = (max: number) => number;
+export type Role = "pn" | "gr";
+export type Rng = (max: number) => number;
 
-/** Rôle réel. `inf_gr` : Grinch placé chez les Pères Noël. `inf_pn` : Père Noël placé chez les Grinchs. */
-export type Role = "pn" | "gr" | "inf_gr" | "inf_pn";
-export type Chat = "pn" | "gr";
-export type PnCard = "facteur" | "lanterne" | "parefeu" | "bouclier" | "fee";
-export type GrCard = "cyber" | "brouilleur" | "siphon" | "corrupteur" | "givre";
-/** `espion` : le pouvoir d'un infiltré, joué par le tchat où il est placé. */
-export type Card = PnCard | GrCard | "espion";
-export type PlayerSecret = { role: Role; pseudo: string; card: Card };
-export type Nature = "num" | "mag" | "glace";
-
-export const PLAYERS = 12;
-export const CAMP_SIZE = 5;
 export const ROUNDS = 5;
-export const ACCUSATIONS = 2;
-export const PN_CARDS: PnCard[] = ["facteur", "lanterne", "parefeu", "bouclier", "fee"];
-export const GR_CARDS: GrCard[] = ["cyber", "brouilleur", "siphon", "corrupteur", "givre"];
+export const MIN_PLAYERS = 5;
+export const MAX_PLAYERS = 30;
+/** Démasquer un Grinch rend de la Magie, sans dépasser le niveau de départ. */
+export const CATCH_GAIN = 2;
+/** Démasquer un Père Noël coûte de la Magie. */
+export const WRONG_LOSS = 1;
+/** Perte par Grinch encore caché, à la fin de chaque semaine. */
+export const SABOTAGE = 1;
+/** Les secrets personnels sont distribués à la fin de cette semaine. */
+export const CERT_ROUND = 2;
 
-export const PSEUDOS = [
-  "Flocon",
-  "Cannelle",
-  "Sapin",
-  "Chocolat Chaud",
-  "Pain d'Épices",
-  "Grelot",
-  "Guirlande",
-  "Marron Glacé",
-  "Boule de Neige",
-  "Étoile",
-  "Mandarine",
-  "Houx",
-  "Papillote",
-  "Clémentine",
-  "Moufle",
-  "Traîneau",
+export function grinchCount(players: number): number {
+  return Math.max(1, Math.floor((players + 2) / 4));
+}
+
+/** Nombre minimal de désignations pour démasquer quelqu'un. */
+export function threshold(players: number): number {
+  return Math.max(2, grinchCount(players));
+}
+
+// Magie de départ pour 5 à 30 joueurs : environ une chance sur deux pour chaque camp quand
+// 60 % des joueurs désignent chaque semaine (simulation, docs/14-magie-de-noel.md § Équilibre).
+const BALANCED = [
+  4, 9, 9, 8, 7, 14, 14, 12, 11, 19, 18, 18, 17, 24, 24, 23, 23, 29, 29, 28, 28, 34, 34, 34, 33, 39,
 ];
 
-/** Tchat où le joueur est placé. */
-export const chatOf = (role: Role): Chat => (role === "pn" || role === "inf_gr" ? "pn" : "gr");
-/** Camp pour lequel il joue. */
-export const campOf = (role: Role): Chat => (role === "pn" || role === "inf_pn" ? "pn" : "gr");
-export const isInfiltre = (role: Role) => role === "inf_gr" || role === "inf_pn";
+export type Level = "pn" | "balanced" | "gr";
 
-// ---------------------------------------------------------------------------
-// Choix du camp, dans l'ordre d'arrivée
-// ---------------------------------------------------------------------------
-
-/** Ce que le prochain arrivant peut choisir. `auto` : plus de choix, son rôle lui est donné. */
-export type JoinOption = "camp" | "infiltre" | "auto";
-
-function counts(joined: readonly PlayerSecret[]) {
-  const n = (role: Role) => joined.filter((p) => p.role === role).length;
-  return { pn: n("pn"), gr: n("gr"), infGr: n("inf_gr"), infPn: n("inf_pn") };
+/** Magie au départ. `pn` avantage les Pères Noël, `gr` les Grinchs. */
+export function startMagic(players: number, level: Level = "balanced"): number {
+  const n = Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, players));
+  const base = BALANCED[n - MIN_PLAYERS]!;
+  const factor = level === "pn" ? 1.2 : level === "gr" ? 0.8 : 1;
+  return Math.min(grinchCount(n) * ROUNDS, Math.max(2, Math.round(base * factor)));
 }
 
-export function joinOption(joined: readonly PlayerSecret[]): JoinOption {
-  const c = counts(joined);
-  if (c.pn < CAMP_SIZE && c.gr < CAMP_SIZE) return "camp";
-  if (c.pn < CAMP_SIZE || c.gr < CAMP_SIZE) return "auto";
-  return c.infGr + c.infPn === 0 ? "infiltre" : "auto";
+export function shuffle<T>(items: readonly T[], rng: Rng): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = rng(i + 1);
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
 }
 
-export class MagicError extends Error {}
-
-/**
- * Rôle, pseudonyme et carte du prochain arrivant. Les dix premiers remplissent les camps
- * (un camp complet envoie dans l'autre), les deux derniers sont les infiltrés.
- * `choice` sans valeur ou impossible : tirage au sort parmi ce qui reste.
- */
-export function assignJoin(
-  joined: readonly PlayerSecret[],
-  choice: Role | null,
-  randomInt: RandomInt,
-): PlayerSecret {
-  if (joined.length >= PLAYERS) throw new MagicError("Le jeu est complet.");
-  const c = counts(joined);
-  const open: Role[] = [];
-  if (c.pn < CAMP_SIZE) open.push("pn");
-  if (c.gr < CAMP_SIZE) open.push("gr");
-  if (!open.length) {
-    if (!c.infGr) open.push("inf_gr");
-    if (!c.infPn) open.push("inf_pn");
-  }
-  if (!open.length) throw new MagicError("Le jeu est complet.");
-  const role = choice && open.includes(choice) ? choice : open[randomInt(open.length)]!;
-
-  let card: Card = "espion";
-  if (role === "pn" || role === "gr") {
-    const all: Card[] = role === "pn" ? PN_CARDS : GR_CARDS;
-    const taken = new Set(joined.filter((p) => p.role === role).map((p) => p.card));
-    const free = all.filter((x) => !taken.has(x));
-    card = free[randomInt(free.length)]!;
-  }
-  const used = new Set(joined.map((p) => p.pseudo));
-  const names = PSEUDOS.filter((p) => !used.has(p));
-  return { role, card, pseudo: names[randomInt(names.length)]! };
+/** Rôles tirés au sort. */
+export function assignRoles(ids: readonly string[], rng: Rng): Map<string, Role> {
+  const grinchs = grinchCount(ids.length);
+  return new Map(shuffle(ids, rng).map((id, i) => [id, i < grinchs ? "gr" : "pn"] as const));
 }
 
-/** Vérifie une distribution complète : 5 + 5 + 2, cartes et pseudonymes tous différents. */
-export function checkRoster(players: readonly PlayerSecret[]): void {
-  const c = counts(players);
-  if (players.length !== PLAYERS || c.pn !== 5 || c.gr !== 5 || c.infGr !== 1 || c.infPn !== 1) {
-    throw new MagicError("Distribution des rôles invalide.");
-  }
-  if (new Set(players.map((p) => p.pseudo)).size !== PLAYERS) throw new MagicError("Pseudonyme en double.");
-  for (const [role, cards] of [
-    ["pn", PN_CARDS],
-    ["gr", GR_CARDS],
-  ] as const) {
-    const held = players.filter((p) => p.role === role).map((p) => p.card);
-    if (new Set(held).size !== 5 || held.some((x) => !(cards as Card[]).includes(x))) {
-      throw new MagicError("Cartes invalides.");
-    }
-  }
-  if (players.some((p) => isInfiltre(p.role) && p.card !== "espion"))
-    throw new MagicError("Cartes invalides.");
+export type Player = { id: string; role: Role; out: boolean };
+export type Vote = { voter: string; target: string };
+
+/** Peut désigner : tout le monde, sauf un Grinch déjà démasqué. */
+export const canVote = (p: Player) => !(p.out && p.role === "gr");
+/** Peut être désigné : quiconque n'est pas encore démasqué. */
+export const canBeTargeted = (p: Player) => !p.out;
+
+/** Désignations valables : un votant actif, une cible encore en jeu, jamais soi-même. */
+export function validVotes(players: readonly Player[], votes: readonly Vote[]): Vote[] {
+  const byId = new Map(players.map((p) => [p.id, p]));
+  return votes.filter((v) => {
+    const voter = byId.get(v.voter);
+    const target = byId.get(v.target);
+    return voter && target && v.voter !== v.target && canVote(voter) && canBeTargeted(target);
+  });
 }
 
-// ---------------------------------------------------------------------------
-// Vote
-// ---------------------------------------------------------------------------
-
-export type Tally = { winner: string; counts: Record<string, number>; tie: boolean; noVote: boolean };
-
-/**
- * Pouvoir joué dans un tchat : le pseudonyme le plus voté parmi ceux qui n'ont pas encore joué.
- * Égalité, ou aucun vote : tirage au sort. Les votes hors liste ne comptent pas.
- */
-export function tally(
-  votes: readonly { voter: string; target: string }[],
-  voters: readonly string[],
-  eligible: readonly string[],
-  randomInt: RandomInt,
-): Tally {
-  if (!eligible.length) throw new MagicError("Plus aucun pouvoir à jouer.");
-  const result: Record<string, number> = {};
-  const seen = new Set<string>();
-  for (const v of votes) {
-    if (!voters.includes(v.voter) || !eligible.includes(v.target) || seen.has(v.voter)) continue;
-    seen.add(v.voter);
-    result[v.target] = (result[v.target] ?? 0) + 1;
-  }
-  const best = Math.max(0, ...Object.values(result));
-  const top = best === 0 ? [...eligible] : eligible.filter((p) => result[p] === best);
-  return {
-    winner: top[randomInt(top.length)]!,
-    counts: result,
-    tie: best > 0 && top.length > 1,
-    noVote: best === 0,
-  };
+export function tally(players: readonly Player[], votes: readonly Vote[]) {
+  const counts: Record<string, number> = {};
+  for (const v of validVotes(players, votes)) counts[v.target] = (counts[v.target] ?? 0) + 1;
+  const top = Math.max(0, ...Object.values(counts));
+  const leaders = Object.keys(counts).filter((id) => counts[id] === top);
+  const unmasked = top >= threshold(players.length) && leaders.length === 1 ? leaders[0]! : null;
+  return { counts, top, leaders, unmasked };
 }
-
-// ---------------------------------------------------------------------------
-// Résolution d'une manche
-// ---------------------------------------------------------------------------
-
-const ATTACK: Record<GrCard | "espion", { nature: Nature; loss: number }> = {
-  cyber: { nature: "num", loss: 1 },
-  espion: { nature: "num", loss: 1 },
-  brouilleur: { nature: "num", loss: 1 },
-  siphon: { nature: "mag", loss: 2 },
-  corrupteur: { nature: "mag", loss: 3 },
-  givre: { nature: "glace", loss: 1 },
-};
-
-export type RoundInput = {
-  round: number;
-  gauge: number;
-  /** Le pouvoir des Pères Noël de cette manche est gelé (Givré joué à la manche d'avant). */
-  frozen: boolean;
-  /** Plus grosse perte subie en une manche jusqu'ici. */
-  maxLoss: number;
-  /** Carte du pseudonyme voté dans le tchat des Pères Noël (`espion` : leur infiltré). */
-  pnCard: PnCard | "espion";
-  grCard: GrCard | "espion";
-};
 
 export type RoundResult = {
-  nature: Nature;
-  /** Nature annoncée aux Pères Noël (`null` : cachée par le Brouilleur). */
-  natureShown: Nature | null;
-  blocked: boolean;
-  loss: number;
-  gain: number;
-  gaugeAfter: number;
-  maxLossAfter: number;
-  /** Le pouvoir des Pères Noël de la manche suivante sera gelé. */
-  frozenNext: boolean;
-  /** Le joueur voté chez les Pères Noël part en visite chez les Grinchs. */
-  pnVisit: boolean;
-  grVisit: boolean;
-  lanterne: boolean;
-  corrupteur: boolean;
-  grinchsWin: boolean;
+  unmasked: string | null;
+  unmaskedRole: Role | null;
+  /** Effet du démasquage sur la Magie (+2, −1 ou 0), après plafond. */
+  accusation: number;
+  /** Grinchs encore cachés après le démasquage : chacun retire 1. */
+  sabotage: number;
+  before: number;
+  after: number;
+  winner: Role | null;
+  /** Pourquoi la partie finit. */
+  end: "zero" | "all-caught" | "last-round" | null;
 };
 
-/** Une manche : l'attaque des Grinchs et la défense des Pères Noël, comptées en même temps. */
-export function resolveRound(input: RoundInput): RoundResult {
-  const { round, gauge, frozen, maxLoss, pnCard, grCard } = input;
-  const attack = ATTACK[grCard];
-  const pnActive = !frozen;
-  const blocked =
-    pnActive &&
-    ((pnCard === "parefeu" && attack.nature === "num") || (pnCard === "bouclier" && attack.nature === "mag"));
-  let loss = 0;
-  if (!blocked) {
-    loss = attack.loss;
-    if (grCard === "givre" && round >= ROUNDS) loss += 1;
-  }
-  let gain = 0;
-  if (pnActive) {
-    if (pnCard === "facteur" || pnCard === "espion" || pnCard === "lanterne") gain = 1;
-    else if (pnCard === "fee") gain = Math.max(maxLoss, 1);
-  }
-  const gaugeAfter = Math.max(0, gauge - loss + gain);
+export function resolveRound(input: {
+  round: number;
+  magic: number;
+  startMagic: number;
+  players: readonly Player[];
+  votes: readonly Vote[];
+}): RoundResult & { counts: Record<string, number> } {
+  const { counts, unmasked } = tally(input.players, input.votes);
+  const role = unmasked ? input.players.find((p) => p.id === unmasked)!.role : null;
+  const raw = role === "gr" ? CATCH_GAIN : role === "pn" ? -WRONG_LOSS : 0;
+  const capped = Math.min(input.startMagic, Math.max(0, input.magic + raw));
+  const hidden = input.players.filter((p) => p.role === "gr" && !p.out && p.id !== unmasked).length;
+  const after = Math.max(0, capped - hidden * SABOTAGE);
+  const end = after <= 0 ? "zero" : hidden === 0 ? "all-caught" : input.round >= ROUNDS ? "last-round" : null;
   return {
-    nature: attack.nature,
-    natureShown: grCard === "brouilleur" ? null : attack.nature,
-    blocked,
-    loss,
-    gain,
-    gaugeAfter,
-    maxLossAfter: Math.max(maxLoss, loss),
-    frozenNext: !blocked && grCard === "givre" && round < ROUNDS,
-    pnVisit: pnActive && (pnCard === "facteur" || pnCard === "espion"),
-    grVisit: !blocked && (grCard === "cyber" || grCard === "espion"),
-    lanterne: pnActive && pnCard === "lanterne",
-    corrupteur: !blocked && grCard === "corrupteur",
-    grinchsWin: gauge - loss + gain <= 0,
+    counts,
+    unmasked,
+    unmaskedRole: role,
+    accusation: capped - input.magic,
+    sabotage: hidden * SABOTAGE,
+    before: input.magic,
+    after,
+    winner: end === "zero" ? "gr" : end ? "pn" : null,
+    end,
   };
 }
 
-/** Nombre de lettres d'un prénom (indices de la Lanterne et du Corrupteur). */
-export function letterCount(name: string): number {
-  return [...name].filter((c) => /\p{L}/u.test(c)).length;
+// ---------------------------------------------------------------------------
+// Indices
+// ---------------------------------------------------------------------------
+
+export type Person = { id: string; firstName: string; lastName: string };
+
+/** Prénom, suivi de l'initiale du nom quand deux joueurs ont le même prénom. */
+export function displayNames(people: readonly Person[]): Map<string, string> {
+  const key = (p: Person) => p.firstName.trim().toLocaleLowerCase("fr");
+  const seen = new Map<string, number>();
+  for (const p of people) seen.set(key(p), (seen.get(key(p)) ?? 0) + 1);
+  return new Map(
+    people.map((p) => {
+      const first = p.firstName.trim();
+      const initial = p.lastName.trim().charAt(0).toLocaleUpperCase("fr");
+      return [p.id, (seen.get(key(p)) ?? 0) > 1 && initial ? `${first} ${initial}.` : first] as const;
+    }),
+  );
 }
 
-// ---------------------------------------------------------------------------
-// Identifications et classement
-// ---------------------------------------------------------------------------
+const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleUpperCase("fr");
 
-export type AccusedRole = "pn" | "gr" | "inf";
-export const accusedRoleOf = (role: Role): AccusedRole => (isInfiltre(role) ? "inf" : role);
+/** Lettres du prénom, sans compter espaces, tirets ni apostrophes. */
+export const letterCount = (name: string) => fold(name).replace(/[^A-Z]/g, "").length;
 
-const RIGHT: Record<AccusedRole, number> = { pn: 1, gr: 2, inf: 4 };
-const WRONG: Record<AccusedRole, number> = { pn: -1, gr: -2, inf: -1 };
+export type Clue =
+  | { t: "letters"; n: number }
+  | { t: "range"; from: string; to: string }
+  | { t: "innocent"; names: string[] }
+  | { t: "among"; names: string[] };
 
-export type Score = { points: number; right: number; wrong: number; unmasked: number };
+/**
+ * Indice de la semaine `week` (1 à 5), sur un Grinch encore caché. De plus en plus précis :
+ * nombre de lettres, première lettre, deux innocents, puis un trio qui cache un Grinch.
+ */
+export function makeClue(week: number, people: readonly (Person & Player)[], rng: Rng): Clue | null {
+  const grinchs = people.filter((p) => p.role === "gr" && !p.out);
+  const innocents = people.filter((p) => p.role === "pn" && !p.out);
+  if (!grinchs.length) return null;
+  const names = displayNames(people);
+  const target = grinchs[rng(grinchs.length)]!;
+  if (week === 3 && innocents.length >= 2) {
+    return {
+      t: "innocent",
+      names: shuffle(innocents, rng)
+        .slice(0, 2)
+        .map((p) => names.get(p.id)!),
+    };
+  }
+  if (week >= 4 && innocents.length >= 2) {
+    const trio = shuffle([target, ...shuffle(innocents, rng).slice(0, 2)], rng);
+    return { t: "among", names: trio.map((p) => names.get(p.id)!) };
+  }
+  if (week === 2) {
+    const first =
+      fold(target.firstName)
+        .replace(/[^A-Z]/g, "")
+        .charAt(0) || "A";
+    return first <= "L" ? { t: "range", from: "A", to: "L" } : { t: "range", from: "M", to: "Z" };
+  }
+  return { t: "letters", n: letterCount(target.firstName) };
+}
 
-/** Points de chacun : identifications justes ou fausses, et −1 chaque fois qu'on est démasqué. */
-export function scores(
-  players: readonly { id: string; role: Role }[],
-  accusations: readonly { accuser: string; target: string; role: AccusedRole }[],
-): Map<string, Score> {
-  const out = new Map<string, Score>(
-    players.map((p) => [p.id, { points: 0, right: 0, wrong: 0, unmasked: 0 }]),
-  );
-  const roles = new Map(players.map((p) => [p.id, accusedRoleOf(p.role)]));
-  for (const a of accusations) {
-    const accuser = out.get(a.accuser);
-    const target = out.get(a.target);
-    const truth = roles.get(a.target);
-    if (!accuser || !target || !truth || a.accuser === a.target) continue;
-    if (truth === a.role) {
-      accuser.points += RIGHT[a.role];
-      accuser.right += 1;
-      target.points -= 1;
-      target.unmasked += 1;
-    } else {
-      accuser.points += WRONG[a.role];
-      accuser.wrong += 1;
+/**
+ * Secrets personnels : chaque Père Noël reçoit le nom d'un autre Père Noël, de préférence
+ * encore en jeu. Les Grinchs ne reçoivent rien.
+ */
+export function certificates(players: readonly Player[], rng: Rng): Map<string, string> {
+  const out = new Map<string, string>();
+  const pns = players.filter((p) => p.role === "pn");
+  for (const p of pns) {
+    const others = pns.filter((o) => o.id !== p.id);
+    const fresh = others.filter((o) => !o.out);
+    const pool = fresh.length ? fresh : others;
+    if (pool.length) out.set(p.id, pool[rng(pool.length)]!.id);
+  }
+  return out;
+}
+
+/** Flair : désignations portées sur un Grinch encore caché au moment du vote. */
+export function flair(
+  rounds: readonly { votes: readonly Vote[]; hiddenGrinchs: readonly string[] }[],
+): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const r of rounds) {
+    for (const v of r.votes) {
+      if (r.hiddenGrinchs.includes(v.target)) out.set(v.voter, (out.get(v.voter) ?? 0) + 1);
     }
   }
   return out;

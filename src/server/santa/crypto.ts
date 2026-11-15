@@ -96,3 +96,12 @@ export function decryptSecret(scope: string, stored: string): unknown {
     return null;
   }
 }
+
+/** Lien personnel chiffré, pour le remettre dans les mails du jeu. */
+export const encryptToken = (santaId: string, participantId: string, token: string) =>
+  encryptSecret(`${santaId}:${participantId}:token`, token);
+
+export function decryptToken(santaId: string, participantId: string, stored: string): string | null {
+  const value = decryptSecret(`${santaId}:${participantId}:token`, stored);
+  return typeof value === "string" && looksLikeToken(value) ? value : null;
+}

@@ -25,7 +25,7 @@ import {
 } from "@/lib/magic/engine";
 import type { Gazette, MagicSummary, MagicView, RevealRow } from "@/lib/magic/types";
 import { siteUrl } from "@/lib/siteUrl";
-import { getServiceDb, type Db } from "@/server/db/client";
+import { getFreshServiceDb as getServiceDb, type Db } from "@/server/db/client";
 import { decryptSecret, decryptToken, encryptSecret } from "@/server/santa/crypto";
 import { sendMail } from "@/server/santa/mail";
 import type { Json, Tables } from "@/types/database";

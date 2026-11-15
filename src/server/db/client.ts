@@ -35,3 +35,22 @@ export function getAnonDb(): Db {
   );
   return anonClient;
 }
+
+let freshClient: Db | undefined;
+
+/**
+ * Client service role sans mémoïsation des lectures : pendant un rendu, React réutilise le
+ * résultat d'un `fetch` GET identique. Le jeu relit l'état juste après l'avoir changé
+ * (La Magie de Noël) : il lui faut la valeur à jour. Un `signal` propre à chaque requête
+ * désactive cette réutilisation.
+ */
+export function getFreshServiceDb(): Db {
+  freshClient ??= createClient<Database>(required("SUPABASE_URL"), required("SUPABASE_SERVICE_ROLE_KEY"), {
+    auth: serverAuth,
+    global: {
+      fetch: (input, init) =>
+        fetch(input, { ...init, cache: "no-store", signal: init?.signal ?? new AbortController().signal }),
+    },
+  });
+  return freshClient;
+}

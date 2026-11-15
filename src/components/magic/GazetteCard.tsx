@@ -105,6 +105,17 @@ export function GazetteCard({ gazette, title }: { gazette: Gazette; title: strin
         </aside>
       ) : null}
 
+      {gazette.letters?.length ? (
+        <section className="flex flex-col gap-2.5" aria-label="Le courrier des lecteurs">
+          <h5 className="mg-gz-label m-0 !text-[12px]">Le courrier des lecteurs</h5>
+          {gazette.letters.map((letter, i) => (
+            <p key={i} className="mg-gz-body mg-gz-letter">
+              « {letter} »
+            </p>
+          ))}
+        </section>
+      ) : null}
+
       {gazette.votes.length ? (
         <details className="mg-gz-body">
           <summary className="mg-gz-label inline-flex min-h-11 items-center gap-2 !text-[13px] underline decoration-dotted underline-offset-4">

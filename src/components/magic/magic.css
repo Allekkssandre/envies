@@ -442,3 +442,65 @@
 .mg details > summary::-webkit-details-marker {
   display: none;
 }
+
+/* Choix coché dans une liste (fausse piste) */
+.mg-suspect[data-checked="true"] {
+  border-color: var(--mg-gold);
+  background: linear-gradient(180deg, rgba(232, 193, 112, 0.2), rgba(232, 193, 112, 0.08));
+}
+.mg-suspect[role="radio"][aria-checked="true"] {
+  border-color: var(--mg-gold);
+  background: linear-gradient(180deg, rgba(232, 193, 112, 0.2), rgba(232, 193, 112, 0.08));
+  box-shadow: 0 0 0 1px var(--mg-gold) inset;
+}
+
+/* Carnet : trois boutons accolés */
+.mg-segmented {
+  display: inline-flex;
+  border: 1px solid rgba(207, 227, 245, 0.18);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+.mg-segmented button {
+  min-height: 38px;
+  min-width: 44px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  color: var(--mg-soft);
+}
+.mg-segmented button[aria-pressed="true"] {
+  color: #141d30;
+  background: var(--mg-frost);
+  font-weight: 600;
+}
+.mg-segmented button[aria-pressed="true"][data-mark="suspect"] {
+  background: #f0a08f;
+}
+.mg-segmented button[aria-pressed="true"][data-mark="innocent"] {
+  background: #9fd8b5;
+}
+.mg-note-tag {
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.mg-note-tag[data-mark="suspect"] {
+  background: rgba(240, 160, 143, 0.2);
+  color: #f6c3b7;
+}
+.mg-note-tag[data-mark="innocent"] {
+  background: rgba(159, 216, 181, 0.18);
+  color: #c4ead2;
+}
+
+/* Courrier des lecteurs dans la gazette */
+.mg-gz-letter {
+  margin: 0;
+  padding-left: 14px;
+  border-left: 2px solid rgba(158, 47, 34, 0.5);
+  font-style: italic;
+}

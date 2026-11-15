@@ -508,6 +508,75 @@ export type Database = {
         }
         Relationships: []
       }
+      magic_atouts: {
+        Row: {
+          created_at: string
+          participant_id: string
+          round: number
+          santa_id: string
+          secret: string
+        }
+        Insert: {
+          created_at?: string
+          participant_id: string
+          round: number
+          santa_id: string
+          secret: string
+        }
+        Update: {
+          created_at?: string
+          participant_id?: string
+          round?: number
+          santa_id?: string
+          secret?: string
+        }
+        Relationships: []
+      }
+      magic_letters: {
+        Row: {
+          author: string
+          body: string
+          round: number
+          santa_id: string
+          updated_at: string
+        }
+        Insert: {
+          author: string
+          body: string
+          round: number
+          santa_id: string
+          updated_at?: string
+        }
+        Update: {
+          author?: string
+          body?: string
+          round?: number
+          santa_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      magic_notes: {
+        Row: {
+          mark: "suspect" | "innocent"
+          owner: string
+          santa_id: string
+          target: string
+        }
+        Insert: {
+          mark: "suspect" | "innocent"
+          owner: string
+          santa_id: string
+          target: string
+        }
+        Update: {
+          mark?: "suspect" | "innocent"
+          owner?: string
+          santa_id?: string
+          target?: string
+        }
+        Relationships: []
+      }
       magic_games: {
         Row: {
           created_at: string

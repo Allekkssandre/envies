@@ -6,6 +6,9 @@ import {
   ROUNDS,
   assignRoles,
   certificates,
+  clueIsTrue,
+  fakeClueOptions,
+  loupeResult,
   displayNames,
   flair,
   grinchCount,
@@ -248,5 +251,46 @@ describe("équilibre", () => {
       return pn / 2000;
     };
     expect(rate(0.2)).toBeLessThan(rate(0.6));
+  });
+});
+
+describe("atouts", () => {
+  const people = [
+    { id: "k1", firstName: "Hélène", lastName: "Martin", role: "gr" as const, out: false },
+    { id: "k2", firstName: "Bruno", lastName: "Petit", role: "gr" as const, out: false },
+    { id: "p1", firstName: "Paul", lastName: "Durand", role: "pn" as const, out: false },
+    { id: "p2", firstName: "Zoé", lastName: "Petit", role: "pn" as const, out: false },
+    { id: "p3", firstName: "Marc", lastName: "Simon", role: "pn" as const, out: false },
+    { id: "p4", firstName: "Julie", lastName: "Roux", role: "pn" as const, out: false },
+    { id: "p5", firstName: "Nathalie", lastName: "Blanc", role: "pn" as const, out: false },
+  ];
+
+  it("Loupe : vrai s'il y a un Krampus sans alibi parmi les deux", () => {
+    expect(loupeResult(people, ["k1", "p1"], new Set())).toBe(true);
+    expect(loupeResult(people, ["p1", "p2"], new Set())).toBe(false);
+    expect(loupeResult(people, ["k1", "p1"], new Set(["k1"]))).toBe(false);
+    expect(loupeResult(people, ["k1", "k2"], new Set(["k1"]))).toBe(true);
+  });
+
+  it("Fausse piste : jusqu'à trois indices, tous faux, quelle que soit la semaine", () => {
+    const names = displayNames(people);
+    for (let week = 1; week <= 5; week++) {
+      for (let k = 0; k < 50; k++) {
+        const options = fakeClueOptions(week, people, random);
+        expect(options.length).toBeGreaterThan(0);
+        expect(options.length).toBeLessThanOrEqual(3);
+        for (const clue of options) expect(clueIsTrue(clue, people, names)).toBe(false);
+      }
+    }
+  });
+
+  it("les vrais indices sont reconnus comme vrais", () => {
+    const names = displayNames(people);
+    for (let week = 1; week <= 5; week++) {
+      for (let k = 0; k < 50; k++) {
+        const clue = makeClue(week, people, random);
+        expect(clue && clueIsTrue(clue, people, names)).toBe(true);
+      }
+    }
   });
 });

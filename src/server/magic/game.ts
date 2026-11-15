@@ -1,7 +1,8 @@
 import "server-only";
-import { randomInt } from "node:crypto";
+import { createHash, randomInt } from "node:crypto";
 import { after } from "next/server";
 import {
+  ATOUTS,
   CERT_ROUND,
   MAX_PLAYERS,
   MIN_PLAYERS,
@@ -10,20 +11,26 @@ import {
   canVote,
   certificates,
   displayNames,
+  fakeClueOptions,
   flair,
+  loupeResult,
   makeClue,
   resolveRound,
   startMagic,
   tally,
   threshold,
+  shuffle,
   validVotes,
+  ROUNDS,
+  type AtoutKind,
+  type Clue,
   type Level,
   type Person,
   type Player,
   type Role,
   type Vote,
 } from "@/lib/magic/engine";
-import type { Gazette, MagicSummary, MagicView, RevealRow } from "@/lib/magic/types";
+import type { AtoutView, Gazette, MagicSummary, MagicView, NoteMark, RevealRow } from "@/lib/magic/types";
 import { siteUrl } from "@/lib/siteUrl";
 import { getFreshServiceDb as getServiceDb, type Db } from "@/server/db/client";
 import { decryptSecret, decryptToken, encryptSecret } from "@/server/santa/crypto";
@@ -111,6 +118,48 @@ const roundEnd = (game: Pick<Game, "starts_at" | "round_days">, round: number) =
   new Date(game.starts_at).getTime() + round * game.round_days * DAY;
 
 // ---------------------------------------------------------------------------
+// Atouts
+// ---------------------------------------------------------------------------
+
+const atoutScope = (santaId: string, participantId: string) => `${santaId}:${participantId}:atout`;
+
+type Atout = {
+  participantId: string;
+  round: number;
+  kind: AtoutKind;
+  targets?: [string, string];
+  found?: boolean;
+  clue?: Clue;
+};
+
+async function loadAtouts(db: Db, santaId: string): Promise<Atout[]> {
+  const { data } = await db
+    .from("magic_atouts")
+    .select("participant_id, round, secret")
+    .eq("santa_id", santaId)
+    .order("created_at");
+  return (data ?? []).flatMap((row) => {
+    const value = decryptSecret(atoutScope(santaId, row.participant_id), row.secret);
+    if (typeof value !== "object" || value === null) return [];
+    const v = value as Omit<Atout, "participantId" | "round">;
+    if (v.kind !== "loupe" && v.kind !== "fausse_piste" && v.kind !== "alibi") return [];
+    return [{ ...v, participantId: row.participant_id, round: row.round }];
+  });
+}
+
+/** Tirage reproductible : les faux indices proposés restent les mêmes d'un affichage à l'autre. */
+function seededRng(seed: string) {
+  let s = createHash("sha256").update(seed).digest().readUInt32LE(0);
+  return (max: number) => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return Math.floor((s / 2 ** 32) * max);
+  };
+}
+
+const fakeOptions = (santaId: string, me: string, round: number, roster: Entry[]) =>
+  round < ROUNDS ? fakeClueOptions(round + 1, roster, seededRng(`${santaId}:${me}:${round}`)) : [];
+
+// ---------------------------------------------------------------------------
 // Déroulé automatique
 // ---------------------------------------------------------------------------
 
@@ -133,6 +182,12 @@ async function resolveNext(db: Db, game: Game): Promise<void> {
   });
   const { top, leaders } = tally(roster, votes);
   const names = displayNames(roster);
+  const [atouts, { data: letterRows }] = await Promise.all([
+    loadAtouts(db, game.santa_id),
+    db.from("magic_letters").select("body").eq("santa_id", game.santa_id).eq("round", round),
+  ]);
+  // Fausse piste : le premier Krampus qui l'a préparée cette semaine remplace l'indice.
+  const fake = atouts.find((a) => a.kind === "fausse_piste" && a.round === round && a.clue)?.clue;
   const after = roster.map((p) => (p.id === res.unmasked ? { ...p, out: true, outRound: round } : p));
 
   const players: NonNullable<Commit["players"]> = [];
@@ -152,8 +207,12 @@ async function resolveNext(db: Db, game: Game): Promise<void> {
     unmasked: res.unmasked ? { name: names.get(res.unmasked)!, role: res.unmaskedRole! } : null,
     missed: res.unmasked ? null : top === 0 ? "none" : leaders.length > 1 ? "tie" : "threshold",
     votes: votes.map((v) => ({ voter: names.get(v.voter)!, target: names.get(v.target)! })),
-    clue: res.end ? null : makeClue(round + 1, after, randomInt),
+    clue: res.end ? null : (fake ?? makeClue(round + 1, after, randomInt)),
     certs: Boolean(certs?.size),
+    letters: shuffle(
+      (letterRows ?? []).map((l) => l.body),
+      randomInt,
+    ),
     winner: res.winner,
     end: res.end,
   };
@@ -290,6 +349,40 @@ export async function buildMagicView(
   ]);
   const names = displayNames(roster);
   const current = validVotes(roster, votes ?? []);
+  const [atouts, { data: letter }, { data: notes }] = await Promise.all([
+    loadAtouts(db, santaId),
+    round
+      ? db
+          .from("magic_letters")
+          .select("body")
+          .eq("santa_id", santaId)
+          .eq("round", round)
+          .eq("author", participantId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    db.from("magic_notes").select("target, mark").eq("santa_id", santaId).eq("owner", participantId),
+  ]);
+  const mine = atouts.find((a) => a.participantId === participantId);
+  let atout: AtoutView;
+  if (mine) {
+    atout = {
+      state: "used",
+      kind: mine.kind,
+      round: mine.round,
+      ...(mine.targets && mine.found !== undefined
+        ? { loupe: { names: [names.get(mine.targets[0])!, names.get(mine.targets[1])!], found: mine.found } }
+        : {}),
+      ...(mine.clue ? { clue: mine.clue } : {}),
+    };
+  } else if (!playing || (me.out && me.role === "gr")) {
+    atout = { state: "locked" };
+  } else {
+    atout = {
+      state: "ready",
+      options: me.role === "gr" ? fakeOptions(santaId, me.id, round!, roster) : [],
+      fakeTaken: me.role === "gr" && atouts.some((a) => a.kind === "fausse_piste" && a.round === round),
+    };
+  }
   return {
     title,
     status: game.status as MagicView["status"],
@@ -324,6 +417,9 @@ export async function buildMagicView(
       voters: current.length,
       open: playing && canVote(me),
     },
+    atout,
+    letter: { mine: letter?.body ?? null, open: playing },
+    notes: Object.fromEntries((notes ?? []).map((n) => [n.target, n.mark as NoteMark])),
     gazettes: (gazettes ?? []).map((g) => g.data as unknown as Gazette),
     reveal:
       game.status === "revealed" && Array.isArray(game.reveal)
@@ -364,6 +460,110 @@ export async function castVote(
     .upsert({ santa_id: santaId, round, voter: participantId, target: targetId });
   if (error) throw new Error(error.message);
   return "ok";
+}
+
+export type AtoutInput =
+  { kind: "loupe"; targets: [string, string] } | { kind: "fausse_piste"; option: number } | { kind: "alibi" };
+
+export type AtoutResult = "ok" | "closed" | "used" | "invalid" | "taken";
+
+/** Joue l'atout du joueur, une fois dans la partie. */
+export async function playAtout(
+  santaId: string,
+  participantId: string,
+  input: AtoutInput,
+): Promise<AtoutResult> {
+  const db = getServiceDb();
+  const game = await loadGame(db, santaId);
+  if (!game || game.status !== "playing") return "closed";
+  const round = game.round + 1;
+  const roster = await loadRoster(db, santaId);
+  const me = roster.find((r) => r.id === participantId);
+  if (!me || (me.out && me.role === "gr")) return "closed";
+  if (!ATOUTS[me.role].includes(input.kind)) return "invalid";
+  const atouts = await loadAtouts(db, santaId);
+  if (atouts.some((a) => a.participantId === me.id)) return "used";
+
+  let secret: Omit<Atout, "participantId" | "round">;
+  if (input.kind === "loupe") {
+    const [a, b] = input.targets;
+    const valid = (id: string) => roster.some((r) => r.id === id && r.id !== me.id && !r.out);
+    if (a === b || !valid(a) || !valid(b)) return "invalid";
+    const alibis = new Set(atouts.filter((x) => x.kind === "alibi").map((x) => x.participantId));
+    secret = { kind: "loupe", targets: [a, b], found: loupeResult(roster, [a, b], alibis) };
+  } else if (input.kind === "fausse_piste") {
+    if (atouts.some((x) => x.kind === "fausse_piste" && x.round === round)) return "taken";
+    const clue = fakeOptions(santaId, me.id, round, roster)[input.option];
+    if (!clue) return "invalid";
+    secret = { kind: "fausse_piste", clue };
+  } else {
+    secret = { kind: "alibi" };
+  }
+  const { error } = await db.from("magic_atouts").insert({
+    participant_id: me.id,
+    santa_id: santaId,
+    round,
+    secret: encryptSecret(atoutScope(santaId, me.id), secret),
+  });
+  if (error?.code === "23505") return "used";
+  if (error) throw new Error(error.message);
+  return "ok";
+}
+
+/** Lettre au courrier des lecteurs pour la semaine en cours ; `null` la retire. */
+export async function writeLetter(
+  santaId: string,
+  participantId: string,
+  body: string | null,
+): Promise<boolean> {
+  const db = getServiceDb();
+  const game = await loadGame(db, santaId);
+  if (!game || game.status !== "playing") return false;
+  const { count } = await db
+    .from("magic_players")
+    .select("participant_id", { count: "exact", head: true })
+    .eq("santa_id", santaId)
+    .eq("participant_id", participantId);
+  if (!count) return false;
+  const round = game.round + 1;
+  const { error } = body
+    ? await db.from("magic_letters").upsert({
+        santa_id: santaId,
+        round,
+        author: participantId,
+        body,
+        updated_at: new Date().toISOString(),
+      })
+    : await db
+        .from("magic_letters")
+        .delete()
+        .eq("santa_id", santaId)
+        .eq("round", round)
+        .eq("author", participantId);
+  if (error) throw new Error(error.message);
+  return true;
+}
+
+/** Carnet d'enquête : note privée sur un autre joueur ; `null` l'efface. */
+export async function setNote(
+  santaId: string,
+  owner: string,
+  target: string,
+  mark: NoteMark | null,
+): Promise<boolean> {
+  if (owner === target) return false;
+  const db = getServiceDb();
+  const { data: players } = await db
+    .from("magic_players")
+    .select("participant_id")
+    .eq("santa_id", santaId)
+    .in("participant_id", [owner, target]);
+  if ((players ?? []).length !== 2) return false;
+  const { error } = mark
+    ? await db.from("magic_notes").upsert({ santa_id: santaId, owner, target, mark })
+    : await db.from("magic_notes").delete().eq("owner", owner).eq("target", target);
+  if (error) throw new Error(error.message);
+  return true;
 }
 
 // ---------------------------------------------------------------------------

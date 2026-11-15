@@ -130,12 +130,55 @@ test("La Magie de Noël : rôle, désignations, masque qui tombe, gazette, rév�
   }
   await expect(page.getByText("8 personnes ont désigné cette semaine.")).toBeVisible({ timeout: 25_000 });
 
+  // Facultatif : l'atout (Loupe pour un Père Noël, Alibi pour un Krampus).
+  await page.goto(paths[0]!);
+  const atout = page.getByRole("region", { name: "Votre atout" });
+  await expect(atout).toBeVisible();
+  if (await atout.getByRole("radio", { name: /^L'Alibi/ }).count()) {
+    await atout.getByRole("radio", { name: /^L'Alibi/ }).click();
+    await atout.getByRole("button", { name: "Jouer l'alibi" }).click();
+    await atout.getByRole("button", { name: "Oui, jouer l'alibi" }).click();
+    await expect(atout).toContainText("Votre alibi est en place", { timeout: 15_000 });
+  } else {
+    await atout.getByRole("button", { name: "JoueurB", exact: true }).click();
+    await atout.getByRole("button", { name: "JoueurC", exact: true }).click();
+    await atout.getByRole("button", { name: "Jouer la loupe" }).click();
+    await atout.getByRole("button", { name: "Oui, jouer la loupe" }).click();
+    await expect(atout).toContainText("les lutins ont regardé de près JoueurB et JoueurC", {
+      timeout: 15_000,
+    });
+  }
+
+  // Facultatif : une lettre au courrier des lecteurs.
+  await page.goto(paths[1]!);
+  const courrier = page.getByRole("region", { name: "Le courrier des lecteurs" });
+  await courrier.getByLabel("Votre lettre").fill("Je surveille JoueurC de près.");
+  await courrier.getByRole("button", { name: "Poster ma lettre" }).click();
+  await expect(courrier).toContainText("« Je surveille JoueurC de près. »", { timeout: 15_000 });
+
+  // Facultatif : le carnet d'enquête, gardé d'une visite à l'autre.
+  await page.goto(paths[2]!);
+  await page.getByText("Mon carnet d'enquête").click();
+  const note = page.getByRole("group", { name: "Note sur JoueurA" });
+  await note.getByRole("button", { name: "Suspect" }).click();
+  await expect(note.getByRole("button", { name: "Suspect" })).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("region", { name: "Votre suspect" }).getByText("suspect", { exact: true }),
+  ).toBeVisible();
+  await page.waitForTimeout(1000);
+  await page.reload();
+  await page.getByText("Mon carnet d'enquête").click();
+  await expect(
+    page.getByRole("group", { name: "Note sur JoueurA" }).getByRole("button", { name: "Suspect" }),
+  ).toHaveAttribute("aria-pressed", "true");
+
   // Fin de la semaine 1 : le masque de JoueurH tombe, la gazette part par mail.
   await rewind(santaId, 1);
   await page.goto(paths[0]!);
   await expect(page.getByText(/^(Semaine 2 sur 5|Partie terminée)/)).toBeVisible({ timeout: 15_000 });
   const gazette = page.getByRole("region", { name: "Gazette" });
   await expect(gazette).toContainText("Le masque de JoueurH est tombé");
+  await expect(gazette).toContainText("Je surveille JoueurC de près.");
   await expect(gazette.getByText(/^Le carnet des désignations \(8\)$/)).toBeVisible();
   await expect(page.getByRole("region", { name: "Votre suspect" })).toContainText("Rôles déjà révélés");
   await expect

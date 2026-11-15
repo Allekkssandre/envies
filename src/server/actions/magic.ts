@@ -5,7 +5,16 @@ import { z } from "zod";
 import { MAX_PLAYERS, MIN_PLAYERS } from "@/lib/magic/engine";
 import type { MagicView } from "@/lib/magic/types";
 import { getServiceDb } from "@/server/db/client";
-import { advanceMagic, buildMagicView, castVote, createMagic, revealMagic } from "@/server/magic/game";
+import {
+  advanceMagic,
+  buildMagicView,
+  castVote,
+  createMagic,
+  playAtout,
+  revealMagic,
+  setNote,
+  writeLetter,
+} from "@/server/magic/game";
 import { loadLutinContext } from "@/server/santa/db";
 import { hasOrganizerAccess } from "@/server/santa/session";
 import { fail, GENERIC_ERROR, ok, type Result } from "./result";
@@ -122,6 +131,73 @@ export async function revealMagicGame(santaId: string): Promise<Result<null>> {
     return ok(null);
   } catch (error) {
     logError("revealMagicGame", error);
+    return fail("INTERNAL", GENERIC_ERROR);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Facultatif : atout, courrier des lecteurs, carnet d'enquête
+// ---------------------------------------------------------------------------
+
+const atoutInput = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("loupe"), targets: z.tuple([z.uuid(), z.uuid()]) }),
+  z.object({ kind: z.literal("fausse_piste"), option: z.number().int().min(0).max(2) }),
+  z.object({ kind: z.literal("alibi") }),
+]);
+
+export async function playAtoutMagic(
+  token: string,
+  input: z.input<typeof atoutInput>,
+): Promise<Result<null>> {
+  const parsed = atoutInput.safeParse(input);
+  const me = await player(token);
+  if (!me || !parsed.success) return fail("VALIDATION", GENERIC_ERROR);
+  try {
+    await advanceMagic(me.santaId);
+    const result = await playAtout(me.santaId, me.id, parsed.data);
+    if (result === "closed") return fail("CONFLICT", "Les atouts se jouent pendant la partie.");
+    if (result === "used") return fail("CONFLICT", "Vous avez déjà joué votre atout.");
+    if (result === "taken") {
+      return fail("CONFLICT", "Un autre Krampus a déjà préparé une fausse piste cette semaine.");
+    }
+    if (result === "invalid") return fail("VALIDATION", "Ce choix n'est plus possible. Rechargez la page.");
+    return ok(null);
+  } catch (error) {
+    logError("playAtoutMagic", error);
+    return fail("INTERNAL", GENERIC_ERROR);
+  }
+}
+
+const LETTER_CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
+
+export async function writeLetterMagic(token: string, text: string | null): Promise<Result<null>> {
+  const body = typeof text === "string" ? text.trim().replace(/\s+/g, " ") : null;
+  if (body !== null && (body.length > 280 || LETTER_CONTROL.test(body))) {
+    return fail("VALIDATION", "280 caractères au plus.");
+  }
+  const me = await player(token);
+  if (!me) return fail("NOT_FOUND", LINK_EXPIRED);
+  try {
+    await advanceMagic(me.santaId);
+    const done = await writeLetter(me.santaId, me.id, body || null);
+    return done ? ok(null) : fail("CONFLICT", "La boîte aux lettres est fermée.");
+  } catch (error) {
+    logError("writeLetterMagic", error);
+    return fail("INTERNAL", GENERIC_ERROR);
+  }
+}
+
+const noteInput = z.object({ targetId: z.uuid(), mark: z.enum(["suspect", "innocent"]).nullable() });
+
+export async function noteMagic(token: string, input: z.input<typeof noteInput>): Promise<Result<null>> {
+  const parsed = noteInput.safeParse(input);
+  const me = await player(token);
+  if (!me || !parsed.success) return fail("VALIDATION", GENERIC_ERROR);
+  try {
+    const done = await setNote(me.santaId, me.id, parsed.data.targetId, parsed.data.mark);
+    return done ? ok(null) : fail("VALIDATION", GENERIC_ERROR);
+  } catch (error) {
+    logError("noteMagic", error);
     return fail("INTERNAL", GENERIC_ERROR);
   }
 }

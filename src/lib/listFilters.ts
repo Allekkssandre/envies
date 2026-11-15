@@ -178,21 +178,41 @@ export function firstTag(item: ItemInfo, tags: TagInfo[]): TagInfo | null {
   return tags.find((t) => item.tagIds.includes(t.id)) ?? null;
 }
 
-export type ListStats = { count: number; favorites: number; totalCents: number; approximate: boolean };
+export type ListStats = {
+  count: number;
+  favorites: number;
+  totalCents: number;
+  approximate: boolean;
+  /** Articles marqués « Acheté ». */
+  purchased: number;
+  /** Somme des prix des articles achetés (devise de la liste). */
+  spentCents: number;
+  spentApproximate: boolean;
+};
 
 /** Chiffres du héros : le total additionne les prix dans la devise de la liste et ignore les autres. */
 export function listStats(items: ItemInfo[], currency: string): ListStats {
   let totalCents = 0;
   let approximate = false;
+  let spentCents = 0;
+  let spentApproximate = false;
   for (const item of items) {
-    if (item.priceCents == null) approximate = true;
-    else if ((item.currency ?? currency) === currency) totalCents += item.priceCents;
+    const known = item.priceCents != null && (item.currency ?? currency) === currency;
+    const amount = known ? item.priceCents! * Math.max(1, item.quantity) : 0;
+    if (known) totalCents += amount;
     else approximate = true;
+    if (item.purchasedAt) {
+      if (known) spentCents += amount;
+      else spentApproximate = true;
+    }
   }
   return {
     count: items.length,
     favorites: items.filter((i) => i.isFavorite).length,
     totalCents,
     approximate,
+    purchased: items.filter((i) => i.purchasedAt).length,
+    spentCents,
+    spentApproximate,
   };
 }

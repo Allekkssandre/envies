@@ -5,11 +5,13 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import Link from "next/link";
 import {
   Camera,
+  Check,
   CircleAlert,
   FileImage,
   Heart,
   ImageIcon,
   LoaderCircle,
+  Minus,
   Plus,
   RefreshCw,
   Trash2,
@@ -61,6 +63,8 @@ type Draft = {
   categoryId: string | null;
   tagIds: string[];
   isFavorite: boolean;
+  isPurchased: boolean;
+  quantity: number;
 };
 
 type FieldName = "title" | "price" | "url" | "note";
@@ -77,6 +81,8 @@ const toDraft = (item: ItemInfo): Draft => ({
   categoryId: item.categoryId,
   tagIds: item.tagIds,
   isFavorite: item.isFavorite,
+  isPurchased: Boolean(item.purchasedAt),
+  quantity: item.quantity,
 });
 
 const currencySymbol = (currency: string) =>
@@ -98,6 +104,8 @@ function diff(item: ItemInfo, draft: Draft): ItemPatch | null {
   if (draft.note.trim() !== (item.note ?? "")) patch.note = draft.note;
   if (draft.categoryId !== item.categoryId) patch.categoryId = draft.categoryId;
   if (draft.isFavorite !== item.isFavorite) patch.isFavorite = draft.isFavorite;
+  if (draft.isPurchased !== Boolean(item.purchasedAt)) patch.isPurchased = draft.isPurchased;
+  if (draft.quantity !== item.quantity) patch.quantity = draft.quantity;
   const tagsChanged =
     draft.tagIds.length !== item.tagIds.length || draft.tagIds.some((t) => !item.tagIds.includes(t));
   if (tagsChanged) patch.tagIds = draft.tagIds;
@@ -217,6 +225,8 @@ export function ItemEditor({
         ...(patch.categoryId !== undefined ? { categoryId: patch.categoryId } : {}),
         ...(patch.tagIds !== undefined ? { tagIds: patch.tagIds } : {}),
         ...(patch.isFavorite !== undefined ? { isFavorite: patch.isFavorite } : {}),
+        ...(patch.isPurchased !== undefined ? { isPurchased: patch.isPurchased } : {}),
+        ...(patch.quantity !== undefined ? { quantity: patch.quantity } : {}),
       });
     }
   };
@@ -849,6 +859,38 @@ function EditorFields(props: FieldsProps) {
         </div>
       </fieldset>
 
+      <div
+        role="group"
+        aria-label="Quantité"
+        className="flex min-h-16 items-center gap-3 rounded-[18px] border border-ink/14 bg-white/45 py-2 pr-2 pl-4"
+      >
+        <span className="flex flex-1 flex-col">
+          <span className="text-base font-semibold">Quantité</span>
+          <span className="text-[13px] text-ink-soft">Le prix est celui d&apos;une unité.</span>
+        </span>
+        <button
+          type="button"
+          aria-label="Diminuer la quantité"
+          disabled={draft.quantity <= 1}
+          onClick={() => props.onInstant({ quantity: Math.max(1, draft.quantity - 1) })}
+          className="flex size-11 items-center justify-center rounded-full border border-line-strong bg-white/60 text-ink disabled:opacity-40"
+        >
+          <Minus aria-hidden="true" size={18} strokeWidth={2} />
+        </button>
+        <output aria-live="polite" className="min-w-8 text-center font-serif text-[22px] tabular">
+          {draft.quantity}
+        </output>
+        <button
+          type="button"
+          aria-label="Augmenter la quantité"
+          disabled={draft.quantity >= 99}
+          onClick={() => props.onInstant({ quantity: Math.min(99, draft.quantity + 1) })}
+          className="flex size-11 items-center justify-center rounded-full border border-line-strong bg-white/60 text-ink disabled:opacity-40"
+        >
+          <Plus aria-hidden="true" size={18} strokeWidth={2} />
+        </button>
+      </div>
+
       <div className="flex min-h-16 items-center gap-3 rounded-[18px] border border-rust/18 bg-rust/10 py-2 pr-3 pl-4">
         <Heart aria-hidden="true" size={18} className="fill-rust text-rust" />
         <span className="flex-1 text-base font-semibold">Coup de cœur</span>
@@ -858,6 +900,22 @@ function EditorFields(props: FieldsProps) {
           tone="rust"
           checked={draft.isFavorite}
           onCheckedChange={(isFavorite) => props.onInstant({ isFavorite })}
+        />
+      </div>
+
+      <div className="flex min-h-16 items-center gap-3 rounded-[18px] border border-ink/14 bg-ink/5 py-2 pr-3 pl-4">
+        <Check aria-hidden="true" size={18} strokeWidth={2.2} className="text-ink" />
+        <span className="flex flex-1 flex-col">
+          <span className="text-base font-semibold">Acheté</span>
+          <span className="text-[13px] text-ink-soft">
+            L&apos;article reste dans la liste et compte dans le total dépensé.
+          </span>
+        </span>
+        <Toggle
+          label="Acheté"
+          hideLabel
+          checked={draft.isPurchased}
+          onCheckedChange={(isPurchased) => props.onInstant({ isPurchased })}
         />
       </div>
 

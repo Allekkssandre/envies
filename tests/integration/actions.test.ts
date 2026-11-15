@@ -220,6 +220,17 @@ describe.skipIf(!hasDb)("actions d'édition", async () => {
       },
     });
     expect(updated.ok && updated.data.sortedAt).not.toBeNull();
+
+    // Acheté : l'article reste, avec sa date ; la sélection multiple remet « pas acheté ».
+    const bought = await items.updateItem({ itemId: id, patch: { isPurchased: true } });
+    expect(bought.ok && bought.data.purchasedAt).toBeTruthy();
+    const again = await items.updateItem({ itemId: id, patch: { isPurchased: true } });
+    expect(again.ok && again.data.purchasedAt).toBe(bought.ok && bought.data.purchasedAt);
+    const several = await items.updateItem({ itemId: id, patch: { quantity: 3 } });
+    expect(several.ok && several.data.quantity).toBe(3);
+    expect(await items.updateItem({ itemId: id, patch: { quantity: 0 } })).toMatchObject({ ok: false });
+    const cleared = await items.bulkUpdate({ itemIds: [id], isPurchased: false });
+    expect(cleared.ok && cleared.data.items[0]?.purchasedAt).toBeNull();
     const dup = await items.updateItem({ itemId: id, patch: { url: "etsy.com/fr/listing/1/objet" } });
     expect(dup).toMatchObject({ ok: false, error: { code: "DUPLICATE", message: "Déjà dans la liste" } });
   });

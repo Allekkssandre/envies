@@ -24,9 +24,11 @@ Pour chaque colonne : titre normalisé (minuscules, sans accents, sans ponctuati
 | Catégorie | categorie, rayon, rubrique, type, famille, section, category, piece, theme | peu de valeurs distinctes (≤ 30 % du nombre de lignes) |
 | Tags | tags, tag, etiquettes, mots cles, labels, motscles | valeurs contenant des virgules |
 | Coup de cœur | coup de coeur, favori, fav, top, prefere, coeur, ♥, ❤, envie forte, star | valeurs dans {oui, non, x, 1, 0, vrai, faux, ✓, ✔} |
+| Quantité | quantite, qte, qty, quantity, nombre, nb | — (entier, 1 à 99 ; vide ou illisible → 1) |
+| Acheté | achete, achat, achetee, deja achete, bought, purchased | — |
 | Note | note, notes, commentaire, remarque, detail, precision, comment, info, taille, couleur | texte libre |
 | Photo (lien d'image) | photo, image, img, visuel, picture | URL finissant par .jpg/.jpeg/.png/.webp |
-| Ne pas importer | acheté, achete, offert, recu, statut, date, id, # | par défaut si rien ne correspond |
+| Ne pas importer | offert, recu, statut, date, id, # | par défaut si rien ne correspond |
 
 - Une cible ne peut être affectée qu'à une colonne (sauf « Ne pas importer »). En cas de conflit lors de la devinette, garder la colonne avec le meilleur score.
 - Badge « deviné » sur les correspondances trouvées automatiquement. Il disparaît si l'utilisateur change la valeur.
@@ -76,9 +78,9 @@ Les photos et les prix arrivent depuis les liens, en arrière-plan.
 
 `GET /api/lists/[id]/export` → `envies-<slug>-<AAAA-MM-JJ>.xlsx`, une feuille « Liste » :
 
-| Nom | Lien | Prix | Devise | Catégorie | Tags | Coup de cœur | Note | Photo | Ajouté le |
-|---|---|---|---|---|---|---|---|---|---|
-| texte | URL | nombre (format `# ##0,00`) | EUR | texte | séparés par `, ` | oui / vide | texte | URL publique 1200 | date |
+| Nom | Lien | Prix | Devise | Quantité | Catégorie | Tags | Coup de cœur | Acheté | Note | Photo | Ajouté le |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| texte | URL | nombre (format `# ##0,00`) | EUR | entier | texte | séparés par `, ` | oui / vide | oui / vide | texte | URL publique 1200 | date |
 
 - Ordre : catégories dans l'ordre, puis « Non classé », articles par position.
 - Les titres de colonnes sont reconnus par l'import : un export modifié puis réimporté dans une autre liste recrée tout (sauf doublons).

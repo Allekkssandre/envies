@@ -154,6 +154,8 @@ export function ListBrowser({ list, content }: ListBrowserProps) {
                             domain={item.domain}
                             tag={tag ? { name: tag.name, color: tagColorVar[tag.color] } : null}
                             isFavorite={item.isFavorite}
+                            isPurchased={Boolean(item.purchasedAt)}
+                            quantity={item.quantity}
                             photo={
                               item.imagePath
                                 ? {

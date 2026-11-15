@@ -20,8 +20,17 @@ describe("import-45.xlsx (maquette ImportV4)", () => {
     expect(sheet.letters).toEqual(["A", "B", "C", "D", "E", "F", "G", "H"]);
     expect(detectHeader(sheet.rows[0]!)).toBe(true);
     const guess = guessColumns(sheet.rows[0]!, columnsOf(sheet.rows));
-    expect(guess.targets).toEqual(["title", "url", "price", "category", "favorite", "tags", "note", "skip"]);
-    expect(guess.guessed).toEqual([true, true, true, true, true, true, true, false]);
+    expect(guess.targets).toEqual([
+      "title",
+      "url",
+      "price",
+      "category",
+      "favorite",
+      "tags",
+      "note",
+      "purchased",
+    ]);
+    expect(guess.guessed).toEqual([true, true, true, true, true, true, true, true]);
   });
 
   it("43 articles, 2 doublons ; 2 nouvelles catégories quand Déco et Livres existent", async () => {
@@ -48,6 +57,8 @@ describe("import-45.xlsx (maquette ImportV4)", () => {
       category: "Déco",
       tags: ["petit prix"],
       isFavorite: true,
+      isPurchased: false,
+      quantity: 1,
       note: "vert sauge",
       imageUrl: null,
     });
@@ -149,9 +160,11 @@ describe("devinette des colonnes", () => {
       "Lien",
       "Prix",
       "Devise",
+      "Quantité",
       "Catégorie",
       "Tags",
       "Coup de cœur",
+      "Acheté",
       "Note",
       "Photo",
       "Ajouté le",
@@ -161,9 +174,11 @@ describe("devinette des colonnes", () => {
       "url",
       "price",
       "skip",
+      "quantity",
       "category",
       "tags",
       "favorite",
+      "purchased",
       "note",
       "image",
       "skip",

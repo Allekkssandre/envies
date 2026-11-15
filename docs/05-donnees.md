@@ -64,6 +64,8 @@ Storage : bucket public item-images
 | `image_width`, `image_height` | de la version 1200 (pour réserver la place) |
 | `image_source_url`, `image_candidates` | image d'origine et jusqu'à 6 candidates trouvées sur la page |
 | `is_favorite` | coup de cœur |
+| `quantity` | quantité voulue, 1 à 99 (défaut 1) ; `price_cents` est le prix d'une unité |
+| `purchased_at` | date à laquelle l'article a été marqué « Acheté » ; null = pas acheté. L'article reste visible |
 | `position` | ordre manuel global dans la liste (les sections filtrent par catégorie, l'ordre reste celui-ci) |
 | `sorted_at` | null = « À trier » |
 | `suggested_category_id` | catégorie proposée par l'extraction (fil d'Ariane) |

@@ -62,10 +62,10 @@ test("importer import-45.xlsx : colonnes devinées, 43 articles, 2 catégories",
     ["Top", "favorite"],
     ["Mots-clés", "tags"],
     ["Commentaire", "note"],
-    ["Acheté ?", "skip"],
+    ["Acheté ?", "purchased"],
   ];
   for (const [column, value] of expected) await expect(target(page, column)).toHaveValue(value);
-  await expect(page.getByText("deviné", { exact: true })).toHaveCount(7);
+  await expect(page.getByText("deviné", { exact: true })).toHaveCount(8);
   await expect(page.getByText("2 nouvelles : Jardin, Cuisine")).toBeVisible();
   await expect(page.getByText("oui, x, 1, ✓ comptent comme oui")).toBeVisible();
   const preview = page.getByRole("complementary", { name: "Aperçu" });

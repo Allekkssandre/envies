@@ -427,6 +427,8 @@ const patchSchema = z
     note: z.string().max(500),
     categoryId: uuid.nullable(),
     isFavorite: z.boolean(),
+    isPurchased: z.boolean(),
+    quantity: z.number().int().min(1).max(99),
     tagIds: z.array(uuid).max(50),
   })
   .partial();
@@ -468,6 +470,10 @@ export async function updateItem(input: z.input<typeof updateInput>): Promise<Re
       update.note = patch.note.trim() || null;
     }
     if (patch.isFavorite !== undefined) update.is_favorite = patch.isFavorite;
+    if (patch.quantity !== undefined) update.quantity = patch.quantity;
+    // Acheté : la date du premier marquage est gardée ; « plus acheté » l'efface.
+    if (patch.isPurchased !== undefined && patch.isPurchased !== Boolean(current.purchasedAt))
+      update.purchased_at = patch.isPurchased ? new Date().toISOString() : null;
 
     if (patch.url !== undefined) {
       const raw = patch.url?.trim() ?? "";
@@ -762,13 +768,14 @@ const bulkInput = z.object({
   addTagIds: z.array(uuid).optional(),
   removeTagIds: z.array(uuid).optional(),
   isFavorite: z.boolean().optional(),
+  isPurchased: z.boolean().optional(),
 });
 
-/** Sélection multiple : catégorie (range les articles), tags ajoutés / retirés, coup de cœur. */
+/** Sélection multiple : catégorie (range les articles), tags ajoutés / retirés, coup de cœur, acheté. */
 export async function bulkUpdate(input: z.input<typeof bulkInput>): Promise<Result<{ items: ItemInfo[] }>> {
   const parsed = bulkInput.safeParse(input);
   if (!parsed.success) return fail("VALIDATION", GENERIC_ERROR);
-  const { itemIds, categoryId, addTagIds, removeTagIds, isFavorite } = parsed.data;
+  const { itemIds, categoryId, addTagIds, removeTagIds, isFavorite, isPurchased } = parsed.data;
   const guard = await guardItems(itemIds);
   if (!guard.ok) return guard.result;
   const { ctx } = guard;
@@ -786,6 +793,16 @@ export async function bulkUpdate(input: z.input<typeof bulkInput>): Promise<Resu
     }
     if (isFavorite !== undefined)
       await ctx.db.from("items").update({ is_favorite: isFavorite }).in("id", itemIds);
+    if (isPurchased === true) {
+      // Les articles déjà achetés gardent leur date.
+      await ctx.db
+        .from("items")
+        .update({ purchased_at: new Date().toISOString() })
+        .in("id", itemIds)
+        .is("purchased_at", null);
+    } else if (isPurchased === false) {
+      await ctx.db.from("items").update({ purchased_at: null }).in("id", itemIds);
+    }
     if (removeTagIds?.length)
       await ctx.db.from("item_tags").delete().in("item_id", itemIds).in("tag_id", removeTagIds);
     if (addTagIds?.length) {

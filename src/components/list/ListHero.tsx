@@ -37,6 +37,10 @@ export function ListHero({
   const theme = ambianceTheme(list.ambiance);
   const tone = theme.dark ? "dark" : "light";
   const total = stats.totalCents > 0 ? formatTotal(stats.totalCents, list.currency, stats.approximate) : null;
+  // Total dépensé : affiché dès qu'un article est marqué « Acheté ».
+  const hasPurchases = stats.purchased > 0;
+  const spent =
+    stats.spentCents > 0 ? formatTotal(stats.spentCents, list.currency, stats.spentApproximate) : null;
 
   return (
     <header
@@ -192,6 +196,11 @@ export function ListHero({
                   {plural(stats.count, "article", "articles")} ·{" "}
                   {plural(stats.favorites, "coup de cœur", "coups de cœur")}
                   {total ? ` · ${total}` : null}
+                  {spent
+                    ? ` · ${spent} dépensés`
+                    : hasPurchases
+                      ? ` · ${plural(stats.purchased, "acheté", "achetés")}`
+                      : null}
                 </>
               )}
             </p>
@@ -212,7 +221,8 @@ export function ListHero({
             ) : null}
             <dl
               className={cn(
-                "m-0 grid grid-cols-3 gap-2",
+                "m-0 grid gap-x-2 gap-y-3.5",
+                hasPurchases ? "grid-cols-2" : "grid-cols-3",
                 list.description && "border-t pt-3.5",
                 theme.dark ? "border-linen/25" : "border-line-strong",
               )}
@@ -220,6 +230,7 @@ export function ListHero({
               <Stat value={formatNumber(stats.count)} label="articles" dark={theme.dark} />
               <Stat value={formatNumber(stats.favorites)} label="coups de cœur" dark={theme.dark} />
               <Stat value={total ?? "—"} label="au total" dark={theme.dark} />
+              {hasPurchases ? <Stat value={spent ?? "—"} label="dépensés" dark={theme.dark} /> : null}
             </dl>
           </aside>
         </div>

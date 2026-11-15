@@ -14,6 +14,9 @@ export type ImportRow = {
   category: string | null;
   tags: string[];
   isFavorite: boolean;
+  isPurchased: boolean;
+  /** 1 à 99 ; 1 si la cellule est vide ou illisible. */
+  quantity: number;
   note: string | null;
   imageUrl: string | null;
 };
@@ -81,6 +84,8 @@ export function convertRows(
     category: col("category"),
     tags: col("tags"),
     favorite: col("favorite"),
+    purchased: col("purchased"),
+    quantity: col("quantity"),
     note: col("note"),
     image: col("image"),
   };
@@ -140,6 +145,8 @@ export function convertRows(
       category,
       tags,
       isFavorite: at.favorite >= 0 && isTruthy(cell(at.favorite)),
+      isPurchased: at.purchased >= 0 && isTruthy(cell(at.purchased)),
+      quantity: Math.min(99, Math.max(1, Number.parseInt(cell(at.quantity), 10) || 1)),
       note: note ? clip(note, 500) : null,
       imageUrl: at.image >= 0 ? imageUrl(cell(at.image)) : null,
     });

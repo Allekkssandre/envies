@@ -31,6 +31,7 @@ export function SelectionBar() {
   if (!board.selectionMode) return null;
   const selected = board.items.filter((i) => board.selection.has(i.id));
   const allFavorite = selected.length > 0 && selected.every((i) => i.isFavorite);
+  const allPurchased = selected.length > 0 && selected.every((i) => i.purchasedAt);
 
   return (
     <div
@@ -115,6 +116,16 @@ export function SelectionBar() {
       >
         <Heart aria-hidden="true" size={16} strokeWidth={1.7} className={cn(allFavorite && "fill-current")} />
         Coup de cœur
+      </button>
+      <button
+        type="button"
+        aria-pressed={allPurchased}
+        disabled={!count}
+        onClick={() => board.bulk(ids, { isPurchased: !allPurchased })}
+        className={barButton}
+      >
+        <Check aria-hidden="true" size={16} strokeWidth={2.2} />
+        Acheté
       </button>
       <button
         type="button"

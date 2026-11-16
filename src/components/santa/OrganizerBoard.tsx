@@ -126,11 +126,17 @@ function Draft({ view }: { view: OrganizerView }) {
     .split("\n")
     .map((t) => t.trim())
     .filter(Boolean);
+  const longTheme = themeList.find((t) => t.length > L.theme);
   const filled = rows.filter((r) => r.firstName.trim() || r.lastName.trim() || r.email.trim());
   const problems = launchProblems(
     themeList,
     filled.map((r) => r.email),
   );
+  if (longTheme) {
+    problems.push(
+      `Le thème « ${longTheme.slice(0, 30)}… » dépasse ${L.theme} caractères. Un thème par ligne, sans virgule entre eux.`,
+    );
+  }
   if (filled.some((r) => !r.firstName.trim() || !/^\S+@\S+\.\S+$/.test(r.email.trim()))) {
     problems.push("Chaque participant a besoin d'un prénom et d'une adresse mail valable.");
   }

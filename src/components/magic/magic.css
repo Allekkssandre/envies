@@ -109,16 +109,169 @@
   text-shadow: 0 0 28px rgba(232, 193, 112, 0.35);
 }
 
-/* Panneau de verre nocturne */
+/* Panneaux : cartes de Noël à l'ancienne. Velours de sapin ou de bordeaux, damas discret,
+   double filet doré, volutes aux quatre coins, guirlande garnie en haut (Decor.tsx). */
 .mg-panel {
+  --mg-soft: #ddd0b4;
+  --mg-faint: #b3a283;
+  --mg-line: rgba(232, 193, 112, 0.26);
   position: relative;
-  border: 1px solid rgba(207, 227, 245, 0.14);
-  border-radius: 24px;
-  background: linear-gradient(180deg, rgba(28, 44, 74, 0.72), rgba(14, 22, 38, 0.82));
+  isolation: isolate;
+  border: 1px solid rgba(232, 193, 112, 0.55);
+  border-radius: 22px;
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(255, 226, 160, 0.1), transparent 60%),
+    radial-gradient(90% 60% at 50% 110%, rgba(0, 0, 0, 0.45), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23e8c170' stroke-opacity='.07' stroke-width='1'%3E%3Cpath d='M28 6 C34 14 34 20 28 26 C22 20 22 14 28 6 Z'/%3E%3Cpath d='M28 26 C36 30 42 28 46 22 M28 26 C20 30 14 28 10 22'/%3E%3Cpath d='M0 34 C6 40 6 46 0 52 M56 34 C50 40 50 46 56 52'/%3E%3Ccircle cx='28' cy='42' r='2'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(170deg, #1f4532 0%, #123022 55%, #0b2017 100%);
+  background-size:
+    auto,
+    auto,
+    56px 56px,
+    auto;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 24px 60px -30px rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(10px);
+    inset 0 1px 0 rgba(255, 240, 200, 0.12),
+    inset 0 0 40px rgba(0, 0, 0, 0.35),
+    0 2px 0 rgba(0, 0, 0, 0.3),
+    0 28px 60px -30px rgba(0, 0, 0, 0.95);
+}
+.mg-panel[data-tone="velours"] {
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(255, 210, 160, 0.12), transparent 60%),
+    radial-gradient(90% 60% at 50% 110%, rgba(0, 0, 0, 0.45), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23e8c170' stroke-opacity='.07' stroke-width='1'%3E%3Cpath d='M28 6 C34 14 34 20 28 26 C22 20 22 14 28 6 Z'/%3E%3Cpath d='M28 26 C36 30 42 28 46 22 M28 26 C20 30 14 28 10 22'/%3E%3Cpath d='M0 34 C6 40 6 46 0 52 M56 34 C50 40 50 46 56 52'/%3E%3Ccircle cx='28' cy='42' r='2'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(170deg, #5c1a1a 0%, #3d0f10 55%, #240708 100%);
+  background-size:
+    auto,
+    auto,
+    56px 56px,
+    auto;
+}
+.mg-panel[data-tone="nuit"] {
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(232, 193, 112, 0.1), transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23e8c170' stroke-opacity='.07' stroke-width='1'%3E%3Cpath d='M28 6 C34 14 34 20 28 26 C22 20 22 14 28 6 Z'/%3E%3Cpath d='M28 26 C36 30 42 28 46 22 M28 26 C20 30 14 28 10 22'/%3E%3Cpath d='M0 34 C6 40 6 46 0 52 M56 34 C50 40 50 46 56 52'/%3E%3Ccircle cx='28' cy='42' r='2'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(170deg, #1c2c4a 0%, #121e35 60%, #0b1322 100%);
+  background-size:
+    auto,
+    56px 56px,
+    auto;
+}
+/* Double filet doré et volutes d'angle */
+.mg-panel::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  z-index: -1;
+  border: 1px solid rgba(232, 193, 112, 0.45);
+  border-radius: 16px;
+  box-shadow:
+    inset 0 0 0 3px transparent,
+    inset 0 0 0 4px rgba(232, 193, 112, 0.16);
+  pointer-events: none;
+}
+.mg-panel::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  z-index: -1;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%23d4ae63' stroke-width='1.2' stroke-linecap='round' transform=''%3E%3Cpath d='M4 44 V18 C4 10 10 4 18 4 H44' /%3E%3Cpath d='M9 44 V20 C9 14 14 9 20 9 H44' stroke-opacity='.55'/%3E%3Cpath d='M16 26 C16 18 24 16 26 22 C28 28 20 30 19 25' /%3E%3Cpath d='M26 16 C18 16 16 24 22 26' stroke-opacity='.7'/%3E%3Ccircle cx='4' cy='4' r='2.2' fill='%23d4ae63' stroke='none'/%3E%3C/g%3E%3C/svg%3E")
+      top left / 40px 40px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%23d4ae63' stroke-width='1.2' stroke-linecap='round' transform='translate(48 0) scale(-1 1)'%3E%3Cpath d='M4 44 V18 C4 10 10 4 18 4 H44' /%3E%3Cpath d='M9 44 V20 C9 14 14 9 20 9 H44' stroke-opacity='.55'/%3E%3Cpath d='M16 26 C16 18 24 16 26 22 C28 28 20 30 19 25' /%3E%3Cpath d='M26 16 C18 16 16 24 22 26' stroke-opacity='.7'/%3E%3Ccircle cx='4' cy='4' r='2.2' fill='%23d4ae63' stroke='none'/%3E%3C/g%3E%3C/svg%3E")
+      top right / 40px 40px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%23d4ae63' stroke-width='1.2' stroke-linecap='round' transform='translate(0 48) scale(1 -1)'%3E%3Cpath d='M4 44 V18 C4 10 10 4 18 4 H44' /%3E%3Cpath d='M9 44 V20 C9 14 14 9 20 9 H44' stroke-opacity='.55'/%3E%3Cpath d='M16 26 C16 18 24 16 26 22 C28 28 20 30 19 25' /%3E%3Cpath d='M26 16 C18 16 16 24 22 26' stroke-opacity='.7'/%3E%3Ccircle cx='4' cy='4' r='2.2' fill='%23d4ae63' stroke='none'/%3E%3C/g%3E%3C/svg%3E")
+      bottom left / 40px 40px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%23d4ae63' stroke-width='1.2' stroke-linecap='round' transform='translate(48 48) scale(-1 -1)'%3E%3Cpath d='M4 44 V18 C4 10 10 4 18 4 H44' /%3E%3Cpath d='M9 44 V20 C9 14 14 9 20 9 H44' stroke-opacity='.55'/%3E%3Cpath d='M16 26 C16 18 24 16 26 22 C28 28 20 30 19 25' /%3E%3Cpath d='M26 16 C18 16 16 24 22 26' stroke-opacity='.7'/%3E%3Ccircle cx='4' cy='4' r='2.2' fill='%23d4ae63' stroke='none'/%3E%3C/g%3E%3C/svg%3E")
+      bottom right / 40px 40px no-repeat;
+  pointer-events: none;
+}
+.mg-panel[data-garland] {
+  padding-top: 64px;
+}
+.mg-panel[data-pin] {
+  padding-top: 26px;
+}
+
+/* Guirlande : posée sur le bord haut, dépasse un peu */
+.mg-garland {
+  position: absolute;
+  top: -24px;
+  left: -6px;
+  width: calc(100% + 12px);
+  height: 104px;
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.45));
+}
+.mg-bauble {
+  animation: mg-sway 5.5s ease-in-out infinite alternate;
+}
+@keyframes mg-sway {
+  from {
+    transform: rotate(-4deg);
+  }
+  to {
+    transform: rotate(4deg);
+  }
+}
+.mg-light {
+  animation: mg-light 2.6s ease-in-out infinite;
+}
+@keyframes mg-light {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.mg-holly-pin {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  width: 56px;
+  height: 32px;
+  transform: translateX(-50%) rotate(-6deg);
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.5));
+  pointer-events: none;
+}
+.mg-flourish {
+  display: block;
+  width: 190px;
+  height: 20px;
+  margin-top: 2px;
+}
+
+/* Titres de panneau : or gravé, reflet qui passe lentement */
+.mg-panel h2.mg-title {
+  background: linear-gradient(100deg, #d9ad5b 0%, #f7e7c1 38%, #fffaf0 48%, #f7e7c1 58%, #d9ad5b 100%);
+  background-size: 300% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.6)) drop-shadow(0 0 14px rgba(232, 193, 112, 0.25));
+  animation: mg-sheen 9s ease-in-out infinite;
+}
+@keyframes mg-sheen {
+  0%,
+  55% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mg-bauble,
+  .mg-light,
+  .mg-panel h2.mg-title {
+    animation: none;
+  }
 }
 .mg-kicker {
   font-size: 12px;
@@ -199,18 +352,58 @@
     0 0 0 1px var(--mg-gold) inset,
     0 0 28px -8px rgba(232, 193, 112, 0.6);
 }
+/* Initiale du joueur dans une boule de Noël, avec son attache dorée */
 .mg-avatar {
+  position: relative;
   display: grid;
   width: 36px;
   height: 36px;
   flex: none;
   place-items: center;
+  margin-top: 4px;
   border-radius: 999px;
   font-family: var(--font-serif);
-  font-size: 17px;
-  color: var(--mg-gold-hi);
-  background: radial-gradient(circle at 35% 30%, #2a3d63, #121c30);
-  border: 1px solid rgba(232, 193, 112, 0.35);
+  font-size: 16px;
+  color: #fff4dc;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.55) 0 8%, transparent 22%),
+    radial-gradient(circle at 40% 35%, #d2463a, #7d1a14 62%, #3b0907);
+  box-shadow:
+    inset 0 -3px 6px rgba(0, 0, 0, 0.35),
+    0 3px 8px -2px rgba(0, 0, 0, 0.6);
+}
+.mg-avatar::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 10px;
+  height: 6px;
+  transform: translateX(-50%);
+  border-radius: 2px 2px 1px 1px;
+  background: linear-gradient(180deg, #f7e7c1, #b8862f);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+}
+.mg-suspect:nth-child(3n + 2) .mg-avatar,
+li:nth-child(3n + 2) > .mg-suspect .mg-avatar {
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.55) 0 8%, transparent 22%),
+    radial-gradient(circle at 40% 35%, #3f8f61, #1a4a30 62%, #0a2015);
+}
+li:nth-child(3n + 3) > .mg-suspect .mg-avatar {
+  color: #3a2608;
+  text-shadow: none;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.7) 0 8%, transparent 22%),
+    radial-gradient(circle at 40% 35%, #f4d995, #c39237 62%, #6b4610);
+}
+.mg-suspect[aria-pressed="true"] .mg-avatar,
+.mg-suspect[aria-checked="true"] .mg-avatar {
+  box-shadow:
+    inset 0 -3px 6px rgba(0, 0, 0, 0.35),
+    0 0 0 2px var(--mg-gold-hi),
+    0 0 18px 2px rgba(247, 231, 193, 0.55);
 }
 
 /* Carte de rôle : recto verso */

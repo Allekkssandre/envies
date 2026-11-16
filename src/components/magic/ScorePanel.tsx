@@ -1,16 +1,24 @@
 import { POINT_LABEL, POINT_RULES, pointLineText, signed } from "@/lib/magic/texts";
 import { POINTS } from "@/lib/magic/engine";
 import type { MagicView } from "@/lib/magic/types";
+import { Flourish, Garland } from "./Decor";
 
 /** Points personnels du joueur, avec le barème de son rôle. Rien n'y trahit le rôle d'un autre. */
 export function ScorePanel({ view }: { view: MagicView }) {
   const { points, me } = view;
   const lines = [...points.lines].sort((a, b) => b.round - a.round);
   return (
-    <section aria-label="Vos points" className="mg-panel flex flex-col gap-4 px-5 py-6 sm:px-7">
+    <section
+      aria-label="Vos points"
+      data-garland=""
+      data-tone="sapin"
+      className="mg-panel flex flex-col gap-4 px-5 py-6 sm:px-7"
+    >
+      <Garland />
       <div className="flex items-end justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <h2 className="mg-title m-0 text-[28px] leading-tight font-normal sm:text-[32px]">Vos points</h2>
+          <Flourish />
           <p className="m-0 text-[15px] leading-normal text-[var(--mg-soft)]">
             {view.reveal
               ? "Votre place est au classement général, ci-dessus."

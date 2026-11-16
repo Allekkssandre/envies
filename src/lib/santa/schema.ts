@@ -6,7 +6,7 @@ import { SANTA_LIMITS as L } from "./types";
 
 const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
 
-const line = (max: number, empty?: string) =>
+const line = (max: number, empty?: string, long = `${max} caractères au plus.`) =>
   z
     .string()
     .transform((s) => s.trim().replace(/\s+/g, " "))
@@ -19,7 +19,7 @@ const line = (max: number, empty?: string) =>
             .refine((s) => !CONTROL.test(s), empty)
         : z
             .string()
-            .max(max, `${max} caractères au plus.`)
+            .max(max, long)
             .refine((s) => !CONTROL.test(s)),
     );
 
@@ -60,7 +60,9 @@ export const settingsSchema = z.object({
 });
 
 export const draftSchema = settingsSchema.extend({
-  themes: z.array(line(L.theme)).max(L.themes, `${L.themes} thèmes au plus.`),
+  themes: z
+    .array(line(L.theme, undefined, `Un thème tient sur une ligne, ${L.theme} caractères au plus.`))
+    .max(L.themes, `${L.themes} thèmes au plus.`),
   participants: z.array(participantSchema).max(L.participants, `${L.participants} participants au plus.`),
   /** La Magie de Noël prévue au lancement ; `null` : pas de jeu. Absent : inchangé. */
   magic: magicPlanSchema.nullable().optional(),

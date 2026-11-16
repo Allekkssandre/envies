@@ -46,7 +46,7 @@ Pour ceux qui veulent pousser le jeu. Rien de tout cela ne change le score : ni 
   - Père Noël, **la Loupe** : il choisit deux joueurs encore en jeu et apprend aussitôt, en secret, si au moins l'un des deux est un Krampus.
   - Krampus, au choix :
     - **la Fausse piste** : l'indice de la gazette de fin de semaine est remplacé par un faux, choisi parmi trois propositions toujours fausses (`fakeClueOptions`, du même genre que le vrai indice quand c'est possible). Une seule par semaine pour tous les Krampus. Impossible la dernière semaine, qui n'a pas d'indice suivant.
-    - **l'Alibi** : à partir de ce moment, toute Loupe dirigée vers lui répond « rien de suspect ».
+    - **l'Alibi** : pendant la semaine où il est joué et la suivante (`ALIBI_WEEKS`, sans dépasser la dernière semaine), toute Loupe dirigée vers lui répond « rien de suspect ». Durée limitée pour que le moment compte : joué en semaine 1, il ne protège plus ensuite.
   - Un Krampus dont le rôle est révélé ne peut plus jouer son pouvoir. Un Père Noël révélé garde sa Loupe.
   - La gazette d'ouverture et les règles préviennent que les indices peuvent être truqués.
 - **Le carnet d'enquête** : chaque joueur marque les autres « suspect », « innocent » ou rien. Les notes sont privées et gardées en base, donc retrouvées sur tous les appareils. Elles apparaissent aussi sur les boutons de désignation.

@@ -23,6 +23,7 @@ import {
   threshold,
   validVotes,
   ROUNDS,
+  alibiWeeks,
   type AtoutKind,
   type Clue,
   type Level,
@@ -553,7 +554,11 @@ export async function playAtout(
     const [a, b] = input.targets;
     const valid = (id: string) => roster.some((r) => r.id === id && r.id !== me.id && !r.out);
     if (a === b || !valid(a) || !valid(b)) return "invalid";
-    const alibis = new Set(atouts.filter((x) => x.kind === "alibi").map((x) => x.participantId));
+    const alibis = new Set(
+      atouts
+        .filter((x) => x.kind === "alibi" && alibiWeeks(x.round).includes(round))
+        .map((x) => x.participantId),
+    );
     secret = { kind: "loupe", targets: [a, b], found: loupeResult(roster, [a, b], alibis) };
   } else if (input.kind === "fausse_piste") {
     if (atouts.some((x) => x.kind === "fausse_piste" && x.round === round)) return "taken";

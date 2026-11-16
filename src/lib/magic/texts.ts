@@ -16,6 +16,9 @@ import type { Gazette } from "./types";
 // Textes du jeu (docs/14-magie-de-noel.md § Textes). Chaleureux, simples, sans point
 // d'exclamation ni tiret long. On raconte une histoire de Noël, on ne lit pas un règlement.
 
+/** Part de la Magie de départ sous laquelle elle vacille (boule à neige et gazette). */
+export const SERENE_RATIO = 0.6;
+
 export const ROLE_LABEL: Record<Role, string> = { pn: "Père Noël", gr: "Krampus" };
 export const CAMP_LABEL: Record<Role, string> = { pn: "les Pères Noël", gr: "les Krampus" };
 
@@ -25,10 +28,16 @@ export const ROLE_MISSION: Record<Role, string> = {
   gr: "Faites tomber la Magie de Noël à zéro sans que l'on découvre qui vous êtes.",
 };
 
-/** Sous la carte, une fois retournée. */
-export const ROLE_HINT: Record<Role, string> = {
-  pn: `Quelques Krampus (saboteurs anti-Noël) se cachent parmi les joueurs, et chacun d'eux, tant qu'il n'est pas démasqué, éteint ${SABOTAGE} point de la Magie de Noël à la fin de chaque semaine. Si vous pensez savoir qui est un Krampus, désignez cette personne sur la page. Plus vite les Krampus sont démasqués, plus la Magie est sauve.`,
-  gr: `Vous n'avez rien à faire pour éteindre la Magie : tant que personne n'a découvert que vous êtes un Krampus, vous lui retirez ${SABOTAGE} point à la fin de chaque semaine, automatiquement. Vous pouvez aussi désigner un Père Noël, pour qu'on le prenne pour un Krampus à votre place.`,
+/** La lettre du Pôle Nord, en tête de page : la même pour tous, elle ne trahit aucun rôle. */
+export const INTRO_LETTER: string[] = [
+  `Cette année, des Krampus (saboteurs anti-Noël) se sont cachés parmi les Pères Noël, et chacun d'eux, tant qu'il n'est pas démasqué, éteindra ${SABOTAGE} point de la Magie de Noël à la fin de chaque semaine.`,
+  "Désignez une personne que vous suspectez d'être un Krampus sur cette page chaque semaine. Plus vite les Krampus sont démasqués, plus la Magie de Noël a de chances d'être sauvée.",
+];
+
+/** Sous la carte, une fois retournée : comment jouer, en une phrase. */
+export const ROLE_HOWTO: Record<Role, string> = {
+  pn: "Chaque semaine, désignez la personne que vous soupçonnez d'être un Krampus, en vous aidant des indices de la gazette et de votre pouvoir.",
+  gr: "Ne vous faites pas démasquer : vous éteignez la Magie sans rien faire, et vous pouvez désigner des Pères Noël pour détourner les soupçons sur eux.",
 };
 
 export function clueText(clue: Clue): string {
@@ -60,8 +69,8 @@ export function gazetteStory(g: Gazette): Story {
       when: "Ouverture",
       headline: "La Magie de Noël s'allume",
       paragraphs: [
-        "Cette année encore, des Krampus se sont glissés parmi les joueurs. Chaque semaine où ils restent cachés, ils éteignent un peu de Magie. Personne ne sait qui ils sont, sauf eux.",
-        `La Magie de Noël brille à ${g.after}. Aux Pères Noël de la protéger en démasquant les Krampus.`,
+        "Cette année, des Krampus (saboteurs de Noël) se sont glissés parmi les joueurs. Chaque semaine où ils restent cachés, ils éteignent un peu de Magie. Personne ne sait qui ils sont, sauf eux.",
+        `La Magie de Noël brille à ${g.after}. En dessous de ${Math.ceil(g.after * SERENE_RATIO)}, elle commence à vaciller. Aux Pères Noël de la protéger en démasquant les Krampus.`,
         "Un conseil des lutins : ne croyez pas tout ce que vous lisez. Une fois dans la partie, chaque Krampus peut glisser un faux indice dans ces colonnes.",
       ],
     };

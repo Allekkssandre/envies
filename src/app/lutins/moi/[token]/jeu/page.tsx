@@ -5,6 +5,7 @@ import { MagicGame } from "@/components/magic/MagicGame";
 import "@/components/magic/magic.css";
 import { advanceMagic, buildMagicView } from "@/server/magic/game";
 import { loadLutinContext } from "@/server/santa/db";
+import { script } from "@/app/fonts";
 
 export const metadata: Metadata = {
   title: "La Magie de Noël",
@@ -17,7 +18,7 @@ export const viewport: Viewport = { themeColor: "#0b1322" };
 /** Univers propre au jeu : nuit d'hiver, neige, lumière dorée. */
 function MagicShell({ children }: { children: ReactNode }) {
   return (
-    <div className="mg relative isolate flex min-h-dvh flex-col overflow-clip">
+    <div className={`mg ${script.variable} relative isolate flex min-h-dvh flex-col overflow-clip`}>
       <span aria-hidden="true" className="mg-sky" />
       <span aria-hidden="true" className="mg-snow" />
       <header className="relative mx-auto flex h-[68px] w-full max-w-[1120px] items-center justify-between px-4 sm:h-20 sm:px-8">

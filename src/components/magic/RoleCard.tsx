@@ -61,7 +61,7 @@ export function RoleCard({ role, flipped, onFlip }: { role: Role; flipped: boole
               fill="#E8C170"
             />
           </svg>
-          <span className="mg-title text-[26px] leading-tight">Votre rôle</span>
+          <span className="mg-title text-[26px] leading-tight">Face cachée</span>
           <span className="mg-btn">Retourner la carte</span>
         </button>
         <div className="mg-face mg-face-front mg-face-image" aria-hidden={!flipped}>

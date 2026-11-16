@@ -7,8 +7,9 @@ import { toast } from "sonner";
 import { CERT_ROUND, ROUNDS } from "@/lib/magic/engine";
 import {
   CAMP_LABEL,
+  INTRO_LETTER,
   RULES,
-  ROLE_HINT,
+  ROLE_HOWTO,
   ROLE_LABEL,
   endText,
   formatMoment,
@@ -89,12 +90,15 @@ export function MagicGame({ token, initial }: { token: string; initial: MagicVie
         </p>
       </header>
 
+      <IntroLetter />
+
       <div className="grid gap-10 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start lg:gap-14">
         <div className="flex flex-col gap-10 lg:sticky lg:top-8">
           <section aria-label="Compteur de Magie" className="flex justify-center">
             <MagicGlobe value={view.magic} max={view.startMagic} />
           </section>
           <section aria-label="Mon rôle" className="flex flex-col gap-5">
+            <h2 className="mg-role-heading m-0">Votre rôle</h2>
             <RoleCard role={view.me.role} flipped={flipped} onFlip={flip} />
             {flipped ? <RoleDetails view={view} /> : null}
           </section>
@@ -169,6 +173,31 @@ function StatusLine({ view }: { view: MagicView }) {
   );
 }
 
+/** La lettre du Pôle Nord : l'enjeu du jeu, écrit à la main, en tête de page. */
+function IntroLetter() {
+  return (
+    <section aria-label="Le mot des lutins" className="mg-letter">
+      <span className="mg-letter-seal" aria-hidden="true">
+        <svg viewBox="0 0 40 40" width="22" height="22">
+          <path
+            d="M20 4 L23.6 14.2 L34.4 14.6 L25.9 21.2 L28.8 31.6 L20 25.6 L11.2 31.6 L14.1 21.2 L5.6 14.6 L16.4 14.2 Z"
+            fill="#F7E7C1"
+          />
+        </svg>
+      </span>
+      <p className="mg-kicker m-0 text-center">Lettre du Pôle Nord</p>
+      <div className="mg-letter-body">
+        {INTRO_LETTER.map((line) => (
+          <p key={line} className="m-0">
+            {line}
+          </p>
+        ))}
+      </div>
+      <p className="mg-letter-sign m-0">Les lutins</p>
+    </section>
+  );
+}
+
 function Note({ children }: { children: ReactNode }) {
   return (
     <p className="m-0 rounded-2xl border border-[var(--mg-line)] bg-white/[0.04] px-4 py-3 text-[15px] leading-normal">
@@ -190,7 +219,10 @@ function RoleDetails({ view }: { view: MagicView }) {
         </Note>
       ) : null}
       {!me.out || me.role === "pn" ? (
-        <p className="m-0 text-[15px] leading-normal text-[var(--mg-soft)]">{ROLE_HINT[me.role]}</p>
+        <div className="mg-howto">
+          <p className="mg-kicker m-0">Comment jouer en tant que {ROLE_LABEL[me.role]}</p>
+          <p className="m-0 text-[16px] leading-normal">{ROLE_HOWTO[me.role]}</p>
+        </div>
       ) : null}
       {me.role === "gr" ? (
         <Note>

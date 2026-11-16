@@ -1,4 +1,5 @@
 import { useId, type CSSProperties } from "react";
+import { SERENE_RATIO } from "@/lib/magic/texts";
 
 // Le compteur de Magie : une boule à neige à l'ancienne. Dedans, un hameau sous la neige et un
 // sapin dont les ampoules s'allument avec la Magie. Quand elle baisse, les ampoules s'éteignent
@@ -17,7 +18,7 @@ export const GLOBE_LABEL: Record<GlobeState, string> = {
 export function globeState(value: number, max: number): GlobeState {
   if (value <= 0) return "zero";
   const ratio = max > 0 ? value / max : 0;
-  return ratio >= 0.6 ? "serene" : ratio >= 0.3 ? "fragile" : "critical";
+  return ratio >= SERENE_RATIO ? "serene" : ratio >= 0.3 ? "fragile" : "critical";
 }
 
 const CX = 130;

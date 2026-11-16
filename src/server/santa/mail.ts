@@ -133,16 +133,18 @@ export type InviteContent = {
   } | null;
 };
 
-const GAME_INTRO =
-  "Le sort a aussi désigné en secret quelques Krampus parmi les participants, environ un sur quatre. Chaque semaine où ils restent cachés, ils éteignent un peu de la Magie de Noël. Tous les autres sont des Pères Noël : à eux de découvrir qui sont les Krampus.";
+const GAME_CONTEXT =
+  "Cette année, le Secret Santa s'accompagne d'un jeu qui se joue en secret dans les semaines qui viennent. Des Krampus, saboteurs de Noël, se sont glissés parmi vous : environ un participant sur quatre. Chaque semaine où ils restent cachés, ils éteignent un peu de la Magie de Noël.";
+const GAME_STAKES =
+  "Tous les autres sont des Pères Noël. Leur mission est de démasquer les Krampus avant que la Magie ne s'éteigne. Votre rôle vous attend, face cachée, sur votre page personnelle.";
+const GAME_SPAM =
+  "Si la gazette arrive dans les indésirables, marquez-la comme « non spam » pour les suivantes.";
 
-function gameLines(g: NonNullable<InviteContent["game"]>): string[] {
-  return [
-    g.started
-      ? "Votre rôle vous attend, face cachée. Chaque semaine, vous pouvez désigner la personne que vous soupçonnez d'être un Krampus. Un clic suffit, et rien n'est obligatoire."
-      : `Votre rôle vous attend, face cachée. À partir du ${g.when}, vous pourrez chaque semaine désigner la personne que vous soupçonnez d'être un Krampus. Un clic suffit, et rien n'est obligatoire.`,
-    "Une gazette arrive par mail à la fin de chaque semaine. Si ce mail est arrivé dans les indésirables, marquez-le comme « non spam » pour la recevoir.",
-  ];
+function gameAction(g: NonNullable<InviteContent["game"]>): string {
+  const weekly = g.started
+    ? "Chaque semaine, désignez la personne que vous soupçonnez."
+    : `À partir du ${g.when}, désignez chaque semaine la personne que vous soupçonnez.`;
+  return `${weekly} Un clic suffit, et rien n'est obligatoire. Une gazette vous arrive aussi par mail à la fin de chaque semaine, avec un nouvel indice.`;
 }
 
 /** Mail d'invitation : le lien personnel, et rien du tirage lui-même, ni du rôle. */
@@ -164,11 +166,16 @@ export function inviteMail(to: string, toName: string, c: InviteContent): Mail {
     ...(details.length ? [...details, ""] : []),
     ...(g
       ? [
-          "Cette année, un jeu en plus : La Magie de Noël.",
+          "Pendant ce temps, au Pôle Nord : La Magie de Noël est en danger.",
           "",
-          GAME_INTRO,
+          GAME_CONTEXT,
           "",
-          ...gameLines(g).flatMap((l) => [l, ""]),
+          GAME_STAKES,
+          "",
+          gameAction(g),
+          "",
+          GAME_SPAM,
+          "",
           ...(g.clue ? [`Premier indice : ${g.clue}`, ""] : []),
           "Découvrir mon rôle :",
           g.url,
@@ -179,16 +186,12 @@ export function inviteMail(to: string, toName: string, c: InviteContent): Mail {
   ].join("\n");
   const gameHtml = g
     ? `<div style="margin:32px 0 0;padding:28px 24px;border-radius:22px;background:#0E1626;background-image:linear-gradient(180deg,#14213A,#0B1322);color:#EEF1F7">
-<p style="font-family:Arial,sans-serif;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#C9A55C;margin:0 0 10px">Cette année, un jeu en plus</p>
-<h2 style="font-weight:400;font-size:28px;line-height:1.12;margin:0 0 18px;color:#F7E7C1">La Magie de Noël</h2>
-<p style="font-size:16px;line-height:1.55;margin:0 0 14px;color:#EEF1F7">${escape(GAME_INTRO)}</p>
-${gameLines(g)
-  .map((l, i) =>
-    i === 0
-      ? `<p style="font-size:16px;line-height:1.55;margin:0 0 14px;color:#EEF1F7">${escape(l)}</p>`
-      : `<p style="font-family:Arial,sans-serif;font-size:13px;line-height:1.5;margin:0 0 14px;color:#A9B4C8">${escape(l)}</p>`,
-  )
-  .join("")}
+<p style="font-family:Arial,sans-serif;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#C9A55C;margin:0 0 10px">Pendant ce temps, au Pôle Nord</p>
+<h2 style="font-weight:400;font-size:28px;line-height:1.12;margin:0 0 18px;color:#F7E7C1">La Magie de Noël est en danger</h2>
+<p style="font-size:16px;line-height:1.55;margin:0 0 14px;color:#EEF1F7">${escape(GAME_CONTEXT)}</p>
+<p style="font-size:16px;line-height:1.55;margin:0 0 14px;color:#EEF1F7">${escape(GAME_STAKES)}</p>
+<p style="font-size:16px;line-height:1.55;margin:0 0 14px;color:#EEF1F7">${escape(gameAction(g))}</p>
+<p style="font-family:Arial,sans-serif;font-size:13px;line-height:1.5;margin:0 0 14px;color:#A9B4C8">${escape(GAME_SPAM)}</p>
 ${g.clue ? `<p style="margin:0 0 18px;padding:14px 18px;border:1px solid #6B5A2E;border-radius:14px;background:#1A2740;color:#F3D9A0;font-size:16px;line-height:1.5"><span style="display:block;font-family:Arial,sans-serif;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#C9A55C;margin-bottom:4px">Premier indice</span>${escape(g.clue)}</p>` : ""}
 <p style="margin:8px 0 0"><a href="${escape(g.url)}" style="display:inline-block;background:#E8C170;color:#141D30;text-decoration:none;font-family:Arial,sans-serif;font-weight:700;font-size:16px;padding:14px 28px;border-radius:999px">Découvrir mon rôle</a></p>
 </div>`

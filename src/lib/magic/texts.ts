@@ -26,7 +26,7 @@ export const ROLE_MISSION: Record<Role, string> = {
 
 /** Sous la carte, une fois retournée. */
 export const ROLE_HINT: Record<Role, string> = {
-  pn: `Quelques Krampus se cachent parmi les joueurs, et chacun d'eux éteint ${SABOTAGE} point de Magie à la fin de chaque semaine. Si vous pensez savoir qui est un Krampus, désignez cette personne ci-dessous. Plus vite les Krampus sont démasqués, plus la Magie est sauve.`,
+  pn: `Quelques Krampus (saboteurs anti-Noël) se cachent parmi les joueurs, et chacun d'eux, tant qu'il n'est pas démasqué, éteint ${SABOTAGE} point de la Magie de Noël à la fin de chaque semaine. Si vous pensez savoir qui est un Krampus, désignez cette personne sur la page. Plus vite les Krampus sont démasqués, plus la Magie est sauve.`,
   gr: `Vous n'avez rien à faire pour éteindre la Magie : tant que personne n'a découvert que vous êtes un Krampus, vous lui retirez ${SABOTAGE} point à la fin de chaque semaine, automatiquement. Vous pouvez aussi désigner un Père Noël, pour qu'on le prenne pour un Krampus à votre place.`,
 };
 
@@ -115,17 +115,19 @@ export function endText(g: Pick<Gazette, "winner" | "end">): string | null {
 }
 
 export const RULES: string[] = [
-  "Au début de la partie, le sort désigne en secret quelques Krampus, environ un joueur sur quatre. Tous les autres sont des Pères Noël. Les Krampus savent qui sont les autres Krampus. Les Pères Noël, eux, ne savent rien.",
-  `La Magie de Noël est un compteur commun à tous. Chaque Krampus que personne n'a encore démasqué lui retire ${SABOTAGE} point à la fin de chaque semaine.`,
-  `La partie dure ${ROUNDS} semaines. Chaque semaine, vous pouvez désigner la personne que vous soupçonnez d'être un Krampus. Rien n'est obligatoire, et vous pouvez changer d'avis jusqu'à la fin de la semaine.`,
-  `À la fin de la semaine, la personne la plus désignée est démasquée : son vrai rôle est révélé à tous. Il faut qu'elle ait réuni assez de voix, et qu'il n'y ait pas d'égalité. Si c'est un Krampus, il cesse de retirer de la Magie et la Magie regagne ${CATCH_GAIN} points. Si c'est un Père Noël, la Magie perd ${WRONG_LOSS} point.`,
-  "À la fin de chaque semaine, la Gazette du Pôle Nord raconte ce qui s'est passé, donne un indice sur l'identité d'un Krampus et montre qui a désigné qui.",
-  `À la fin de la semaine ${CERT_ROUND}, chaque Père Noël reçoit en secret le nom d'un joueur qui n'est pas un Krampus. Les Krampus ne reçoivent rien, mais ils peuvent prétendre le contraire.`,
+  "Au début de la partie, le hasard désigne quelques Krampus, environ un joueur sur quatre. Tous les autres sont des Pères Noël. L'objectif des Krampus est simple : saboter la Magie de Noël.",
+  "Les Krampus savent qui sont les autres Krampus. Les Pères Noël, eux, ne savent rien.",
+  `La Magie de Noël est un compteur commun. Chaque Krampus que personne n'a encore démasqué retire ${SABOTAGE} point de Magie à la fin de chaque semaine.`,
+  `La partie dure ${ROUNDS} semaines. Chaque semaine, vous pouvez désigner une personne que vous soupçonnez d'être un Krampus.`,
+  "À la fin de la semaine, la personne la plus désignée est démasquée : son vrai rôle est révélé à tous.",
+  `Si c'est un Krampus, il cesse de retirer de la Magie et la Magie regagne ${CATCH_GAIN} points. Si c'est un Père Noël, la Magie perd ${WRONG_LOSS} point.`,
+  "À la fin de chaque semaine, la Gazette du Pôle Nord raconte ce qui s'est passé, donne un indice sur l'identité d'un Krampus et montre qui a désigné qui : ce sont des indices précieux.",
+  `À la fin de la semaine ${CERT_ROUND}, chaque Père Noël reçoit en secret le nom d'un joueur qui n'est pas un Krampus. Les Krampus, eux, peuvent prétendre avoir reçu un nom aussi…`,
   "Si la Magie tombe à zéro, les Krampus ont gagné. Si elle tient jusqu'à la fin de la dernière semaine, ou si tous les Krampus sont démasqués avant, les Pères Noël ont sauvé Noël.",
-  "Chaque joueur a aussi un atout, à jouer une seule fois s'il le souhaite. Les Pères Noël ont la Loupe : ils choisissent deux joueurs et apprennent en secret si au moins l'un des deux est un Krampus. Les Krampus choisissent entre la Fausse piste, qui remplace l'indice d'une gazette par un faux, et l'Alibi, qui fait qu'une Loupe ne trouve plus rien de suspect chez eux. Les indices ne sont donc pas toujours vrais.",
-  "Chaque semaine, vous pouvez écrire une courte lettre sans votre nom. Elle paraîtra dans le courrier des lecteurs de la gazette suivante.",
+  "Chaque joueur a aussi un pouvoir, à jouer une seule fois s'il le souhaite. Les Pères Noël ont la Loupe : ils choisissent deux joueurs et apprennent en secret si au moins l'un des deux est un Krampus.",
+  "Les Krampus choisissent entre la Fausse piste, qui remplace l'indice d'une gazette par un faux, et l'Alibi, qui fait qu'une Loupe ne trouve plus rien de suspect chez eux. Les indices ne sont donc pas toujours vrais.",
   `Chacun marque aussi des points personnels, pour le classement général publié à la révélation des rôles. Père Noël : ${POINTS.flair} points chaque semaine où vous désignez un Krampus encore caché, ${POINTS.catch} de plus s'il est démasqué, ${-POINTS.wrong} de moins si la personne que vous désignez est démasquée et se révèle Père Noël. Krampus : ${POINTS.camouflage} points chaque semaine traversée sans être démasqué, ${POINTS.scheme} si vous faites démasquer un Père Noël en le désignant, ${-POINTS.caught} de moins la semaine où vous êtes démasqué. Ces points ne changent rien à la Magie.`,
-  "Parlez-en autour de vous, au dîner ou par message. Chacun a le droit de bluffer.",
+  "À vous de jouer.",
 ];
 
 /** Nom court d'une ligne du barème. */

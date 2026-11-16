@@ -13,7 +13,6 @@ import {
   playAtout,
   revealMagic,
   setNote,
-  writeLetter,
 } from "@/server/magic/game";
 import { loadLutinContext } from "@/server/santa/db";
 import { hasOrganizerAccess } from "@/server/santa/session";
@@ -136,7 +135,7 @@ export async function revealMagicGame(santaId: string): Promise<Result<null>> {
 }
 
 // ---------------------------------------------------------------------------
-// Facultatif : atout, courrier des lecteurs, carnet d'enquête
+// Facultatif : pouvoir, carnet d'enquête
 // ---------------------------------------------------------------------------
 
 const atoutInput = z.discriminatedUnion("kind", [
@@ -164,25 +163,6 @@ export async function playAtoutMagic(
     return ok(null);
   } catch (error) {
     logError("playAtoutMagic", error);
-    return fail("INTERNAL", GENERIC_ERROR);
-  }
-}
-
-const LETTER_CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
-
-export async function writeLetterMagic(token: string, text: string | null): Promise<Result<null>> {
-  const body = typeof text === "string" ? text.trim().replace(/\s+/g, " ") : null;
-  if (body !== null && (body.length > 280 || LETTER_CONTROL.test(body))) {
-    return fail("VALIDATION", "280 caractères au plus.");
-  }
-  const me = await player(token);
-  if (!me) return fail("NOT_FOUND", LINK_EXPIRED);
-  try {
-    await advanceMagic(me.santaId);
-    const done = await writeLetter(me.santaId, me.id, body || null);
-    return done ? ok(null) : fail("CONFLICT", "La boîte aux lettres est fermée.");
-  } catch (error) {
-    logError("writeLetterMagic", error);
     return fail("INTERNAL", GENERIC_ERROR);
   }
 }

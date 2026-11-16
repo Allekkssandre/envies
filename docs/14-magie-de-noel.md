@@ -42,19 +42,18 @@ Les joueurs peuvent en parler entre eux comme ils veulent. Tout le monde peut me
 
 Pour ceux qui veulent pousser le jeu. Rien de tout cela ne change le score : ni la Magie, ni le seuil, ni le sabotage.
 
-- **L'atout**, un par joueur, à jouer une seule fois dans la partie, pendant une semaine en cours.
+- **Le pouvoir** (« atout » dans le code), un par joueur, à jouer une seule fois dans la partie, pendant une semaine en cours.
   - Père Noël, **la Loupe** : il choisit deux joueurs encore en jeu et apprend aussitôt, en secret, si au moins l'un des deux est un Krampus.
   - Krampus, au choix :
     - **la Fausse piste** : l'indice de la gazette de fin de semaine est remplacé par un faux, choisi parmi trois propositions toujours fausses (`fakeClueOptions`, du même genre que le vrai indice quand c'est possible). Une seule par semaine pour tous les Krampus. Impossible la dernière semaine, qui n'a pas d'indice suivant.
     - **l'Alibi** : à partir de ce moment, toute Loupe dirigée vers lui répond « rien de suspect ».
-  - Un Krampus dont le rôle est révélé ne peut plus jouer son atout. Un Père Noël révélé garde sa Loupe.
+  - Un Krampus dont le rôle est révélé ne peut plus jouer son pouvoir. Un Père Noël révélé garde sa Loupe.
   - La gazette d'ouverture et les règles préviennent que les indices peuvent être truqués.
-- **Le courrier des lecteurs** : chaque semaine, une lettre de 280 caractères au plus par joueur, modifiable jusqu'à la fin de la semaine. Elle est publiée sans nom, dans un ordre tiré au sort, dans la gazette suivante (page et mail).
 - **Le carnet d'enquête** : chaque joueur marque les autres « suspect », « innocent » ou rien. Les notes sont privées et gardées en base, donc retrouvées sur tous les appareils. Elles apparaissent aussi sur les boutons de désignation.
 
 Tables :
 - `magic_atouts`, avec le contenu chiffré, car la nature de l'atout trahirait le rôle ;
-- `magic_letters`, où l'auteur n'est jamais montré ;
+- `magic_letters` : reste de l'ancien courrier des lecteurs, retiré du jeu (2026-11-16), plus lu ni écrit ;
 - `magic_notes`.
 
 ## Points personnels et classement

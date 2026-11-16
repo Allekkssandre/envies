@@ -139,7 +139,7 @@ test("La Magie de Noël : rôle, désignations, masque qui tombe, gazette, rév�
 
   // Facultatif : l'atout (Loupe pour un Père Noël, Alibi pour un Krampus).
   await page.goto(paths[0]!);
-  const atout = page.getByRole("region", { name: "Votre atout" });
+  const atout = page.getByRole("region", { name: "Votre pouvoir" });
   await expect(atout).toBeVisible();
   if (await atout.getByRole("radio", { name: /^L'Alibi/ }).count()) {
     await atout.getByRole("radio", { name: /^L'Alibi/ }).click();
@@ -155,13 +155,6 @@ test("La Magie de Noël : rôle, désignations, masque qui tombe, gazette, rév�
       timeout: 15_000,
     });
   }
-
-  // Facultatif : une lettre au courrier des lecteurs.
-  await page.goto(paths[1]!);
-  const courrier = page.getByRole("region", { name: "Le courrier des lecteurs" });
-  await courrier.getByLabel("Votre lettre").fill("Je surveille JoueurC de près.");
-  await courrier.getByRole("button", { name: "Poster ma lettre" }).click();
-  await expect(courrier).toContainText("« Je surveille JoueurC de près. »", { timeout: 15_000 });
 
   // Facultatif : le carnet d'enquête, gardé d'une visite à l'autre.
   await page.goto(paths[2]!);
@@ -185,7 +178,6 @@ test("La Magie de Noël : rôle, désignations, masque qui tombe, gazette, rév�
   await expect(page.getByText(/^(Semaine 2 sur 5|Partie terminée)/)).toBeVisible({ timeout: 15_000 });
   const gazette = page.getByRole("region", { name: "Gazette" });
   await expect(gazette).toContainText("Le masque de JoueurH est tombé");
-  await expect(gazette).toContainText("Je surveille JoueurC de près.");
   await expect(gazette.getByText(/^Le carnet des désignations \(8\)$/)).toBeVisible();
   await expect(page.getByRole("region", { name: "Votre suspect" })).toContainText("Rôles déjà révélés");
   // Points personnels : JoueurA a désigné JoueurH, démasqué ; ses points sont connus de lui.

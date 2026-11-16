@@ -16,7 +16,7 @@ import {
 } from "@/lib/magic/texts";
 import type { MagicView } from "@/lib/magic/types";
 import { getMagicView, voteMagic } from "@/server/actions/magic";
-import { AtoutPanel, LetterPanel, NotebookPanel } from "./Extras";
+import { AtoutPanel, NotebookPanel } from "./Extras";
 import { Flourish, Garland, HollyPin } from "./Decor";
 import { GazetteCard } from "./GazetteCard";
 import { MagicGlobe } from "./MagicGlobe";
@@ -120,12 +120,6 @@ export function MagicGame({ token, initial }: { token: string; initial: MagicVie
               ) : null}
             </section>
           ) : null}
-          <LetterPanel
-            key={`${view.round}-${view.letter.mine ?? ""}`}
-            view={view}
-            token={token}
-            refresh={refresh}
-          />
           <NotebookPanel view={view} token={token} onChange={(notes) => setView((v) => ({ ...v, notes }))} />
           <details data-pin="" data-tone="nuit" className="mg-panel px-5 py-4 sm:px-7">
             <summary className="flex min-h-11 items-center justify-between gap-3 text-[17px] font-semibold">
@@ -160,7 +154,7 @@ function StatusLine({ view }: { view: MagicView }) {
     return (
       <>
         Semaine {view.round} sur {ROUNDS}. Vous avez jusqu&apos;au {formatMoment(view.deadline)} pour désigner
-        votre suspect.
+        votre suspect. Qui sont les saboteurs de Noël ?
       </>
     );
   }
@@ -275,9 +269,8 @@ function SuspectPanel({
           </p>
         ) : playing ? (
           <p className="m-0 text-[15px] leading-normal text-[var(--mg-soft)]">
-            Choisissez la personne que vous soupçonnez d&apos;être un Krampus. Rien d&apos;obligatoire, et
-            vous pouvez changer d&apos;avis jusqu&apos;à la fin de la semaine. Si au moins {view.threshold}{" "}
-            joueurs désignent la même personne, et plus que toute autre, son vrai rôle sera révélé à tous.
+            Choisissez la personne que vous soupçonnez d&apos;être un Krampus. Le rôle de la personne désignée
+            à la majorité sera révélé à tous en fin de semaine.
           </p>
         ) : (
           <p className="m-0 text-[15px] leading-normal text-[var(--mg-soft)]">

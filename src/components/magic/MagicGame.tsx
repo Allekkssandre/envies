@@ -17,6 +17,7 @@ import {
 import type { MagicView } from "@/lib/magic/types";
 import { getMagicView, voteMagic } from "@/server/actions/magic";
 import { AtoutPanel, LetterPanel, NotebookPanel } from "./Extras";
+import { Flourish, Garland, HollyPin } from "./Decor";
 import { GazetteCard } from "./GazetteCard";
 import { MagicGlobe } from "./MagicGlobe";
 import { RoleCard, useFlipped } from "./RoleCard";
@@ -126,8 +127,9 @@ export function MagicGame({ token, initial }: { token: string; initial: MagicVie
             refresh={refresh}
           />
           <NotebookPanel view={view} token={token} onChange={(notes) => setView((v) => ({ ...v, notes }))} />
-          <details className="mg-panel px-5 py-4 sm:px-7">
+          <details data-pin="" data-tone="nuit" className="mg-panel px-5 py-4 sm:px-7">
             <summary className="flex min-h-11 items-center justify-between gap-3 text-[17px] font-semibold">
+              <HollyPin />
               Comment ça se joue
               <span aria-hidden="true" className="text-[var(--mg-gold)]">
                 +
@@ -250,11 +252,18 @@ function SuspectPanel({
   const mine = view.players.find((p) => p.id === view.vote.mine);
   const playing = view.status === "playing";
   return (
-    <section aria-label="Votre suspect" className="mg-panel flex flex-col gap-5 px-5 py-6 sm:px-7">
+    <section
+      aria-label="Votre suspect"
+      data-garland=""
+      data-tone="sapin"
+      className="mg-panel flex flex-col gap-5 px-5 py-6 sm:px-7"
+    >
+      <Garland />
       <div className="flex flex-col gap-1.5">
         <h2 className="mg-title m-0 text-[28px] leading-tight font-normal sm:text-[32px]">
           {playing ? `Votre suspect de la semaine ${view.round}` : "Votre suspect"}
         </h2>
+        <Flourish />
         {view.status === "waiting" ? (
           <p className="m-0 text-[15px] leading-normal text-[var(--mg-soft)]">
             Vous pourrez désigner la personne que vous soupçonnez d&apos;être un Krampus à partir du{" "}
@@ -376,10 +385,19 @@ function Reveal({ view }: { view: MagicView }) {
   // Ex aequo : même rang (lignes déjà triées par score décroissant).
   const ranks = rows.map((r) => 1 + rows.findIndex((x) => score(x) === score(r)));
   return (
-    <section aria-label="Classement général" className="mg-panel flex flex-col gap-4 px-5 py-6 sm:px-7">
-      <h2 className="mg-title m-0 text-[28px] leading-tight font-normal sm:text-[32px]">
-        Les masques tombent
-      </h2>
+    <section
+      aria-label="Classement général"
+      data-garland=""
+      data-tone="velours"
+      className="mg-panel flex flex-col gap-4 px-5 py-6 sm:px-7"
+    >
+      <Garland accent="gold" />
+      <div className="flex flex-col gap-1">
+        <h2 className="mg-title m-0 text-[28px] leading-tight font-normal sm:text-[32px]">
+          Les masques tombent
+        </h2>
+        <Flourish />
+      </div>
       <p className="m-0 text-[15px] text-[var(--mg-soft)]">
         {withPoints
           ? "Voici le vrai rôle de chacun, et le classement général des points personnels : flair et démasquages pour les Pères Noël, camouflage et manigances pour les Krampus."

@@ -8,6 +8,7 @@ import { ATOUT_NAME, ATOUT_TEXT, atoutResultText, clueText } from "@/lib/magic/t
 import type { MagicView, NoteMark } from "@/lib/magic/types";
 import type { Result } from "@/server/actions/result";
 import { noteMagic, playAtoutMagic, writeLetterMagic } from "@/server/actions/magic";
+import { Flourish, Garland, HollyPin } from "./Decor";
 
 // Le facultatif : l'atout, le courrier des lecteurs, le carnet d'enquête.
 // Rien de tout cela ne touche au score.
@@ -30,13 +31,32 @@ function useAct(refresh: () => Promise<void>) {
   return [pending, act] as const;
 }
 
-function Panel({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
+function Panel({
+  title,
+  icon,
+  tone = "sapin",
+  children,
+}: {
+  title: string;
+  icon: ReactNode;
+  tone?: "sapin" | "velours";
+  children: ReactNode;
+}) {
   return (
-    <section aria-label={title} className="mg-panel flex flex-col gap-4 px-5 py-6 sm:px-7">
-      <h2 className="mg-title m-0 flex items-center gap-3 text-[26px] leading-tight font-normal sm:text-[30px]">
-        <span className="text-[var(--mg-gold)]">{icon}</span>
-        {title}
-      </h2>
+    <section
+      aria-label={title}
+      data-garland=""
+      data-tone={tone}
+      className="mg-panel flex flex-col gap-4 px-5 py-6 sm:px-7"
+    >
+      <Garland accent={tone === "velours" ? "gold" : "red"} />
+      <div className="flex flex-col gap-1">
+        <h2 className="mg-title m-0 flex items-center gap-3 text-[26px] leading-tight font-normal sm:text-[30px]">
+          <span className="text-[var(--mg-gold)]">{icon}</span>
+          {title}
+        </h2>
+        <Flourish />
+      </div>
       {children}
     </section>
   );
@@ -66,7 +86,7 @@ export function AtoutPanel({
 
   if (atout.state === "used") {
     return (
-      <Panel title="Votre atout" icon={<Sparkles aria-hidden="true" size={22} />}>
+      <Panel title="Votre atout" tone="velours" icon={<Sparkles aria-hidden="true" size={22} />}>
         <p className="mg-kicker m-0">{ATOUT_NAME[atout.kind]} · déjà joué</p>
         <p className="m-0 rounded-2xl border border-[var(--mg-line)] bg-white/[0.04] px-4 py-3 text-[16px] leading-normal">
           {atoutResultText(atout)}
@@ -76,7 +96,7 @@ export function AtoutPanel({
   }
   if (atout.state === "locked") {
     return (
-      <Panel title="Votre atout" icon={<Sparkles aria-hidden="true" size={22} />}>
+      <Panel title="Votre atout" tone="velours" icon={<Sparkles aria-hidden="true" size={22} />}>
         <p className={soft}>
           {view.status === "waiting"
             ? "Vous pourrez jouer votre atout une fois la partie commencée. Il ne sert qu'une fois."
@@ -114,7 +134,7 @@ export function AtoutPanel({
   };
 
   return (
-    <Panel title="Votre atout" icon={<Sparkles aria-hidden="true" size={22} />}>
+    <Panel title="Votre atout" tone="velours" icon={<Sparkles aria-hidden="true" size={22} />}>
       <p className={soft}>
         Facultatif, et une seule fois dans toute la partie. Personne ne saura que vous l&apos;avez joué.
       </p>
@@ -256,7 +276,7 @@ export function LetterPanel({
   const mine = view.letter.mine;
 
   return (
-    <Panel title="Le courrier des lecteurs" icon={<Feather aria-hidden="true" size={22} />}>
+    <Panel title="Le courrier des lecteurs" tone="velours" icon={<Feather aria-hidden="true" size={22} />}>
       <p className={soft}>
         Une courte lettre, sans votre nom, publiée dans la gazette de fin de semaine. Un soupçon, un conseil,
         une rumeur : à vous de voir. Une lettre par semaine.
@@ -372,8 +392,9 @@ export function NotebookPanel({
     }
   };
   return (
-    <details className="mg-panel px-5 py-4 sm:px-7">
+    <details data-pin="" className="mg-panel px-5 py-4 sm:px-7">
       <summary className="flex min-h-11 items-center justify-between gap-3 text-[17px] font-semibold">
+        <HollyPin />
         <span className="flex items-center gap-3">
           <Search aria-hidden="true" size={20} className="text-[var(--mg-gold)]" />
           Mon carnet d&apos;enquête

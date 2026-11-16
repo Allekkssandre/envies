@@ -4,7 +4,7 @@ import { SantaShell } from "@/components/santa/SantaShell";
 import { SplitTitle } from "@/components/ui/SplitTitle";
 
 export const metadata: Metadata = {
-  title: "Secret Santa",
+  title: { absolute: "Secret Santa" },
   description: "Un tirage au sort pour offrir un cadeau, avec un thème pour chacun.",
 };
 

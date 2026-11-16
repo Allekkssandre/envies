@@ -10,7 +10,7 @@ import { getSantaBySlug, loadOrganizerView } from "@/server/santa/db";
 import { hasOrganizerAccess } from "@/server/santa/session";
 
 export const metadata: Metadata = {
-  title: "Organisation du Secret Santa",
+  title: { absolute: "Organisation du Secret Santa" },
   robots: { index: false, follow: false },
 };
 

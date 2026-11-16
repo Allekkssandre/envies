@@ -36,7 +36,7 @@ export function mailConfigured(): boolean {
 // Un transport par instance : la connexion SMTP est réutilisée entre deux mails d'un même envoi.
 let transport: Transporter | null = null;
 
-async function sendGmail(account: { user: string; pass: string }, mail: Mail): Promise<MailResult> {
+function gmailTransport(account: { user: string; pass: string }): Transporter {
   transport ??= nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 465,
@@ -48,20 +48,32 @@ async function sendGmail(account: { user: string; pass: string }, mail: Mail): P
     greetingTimeout: TIMEOUT_MS,
     socketTimeout: TIMEOUT_MS,
   });
-  try {
-    await transport.sendMail({
-      from: { name: senderName(), address: account.user },
-      replyTo: process.env.SANTA_MAIL_REPLY_TO || account.user,
-      to: { name: mail.toName, address: mail.to },
-      subject: mail.subject,
-      text: mail.text,
-      html: mail.html,
-    });
-    return { ok: true };
-  } catch (error) {
-    transport = null;
-    return { ok: false, error: error instanceof Error ? error.message.slice(0, 200) : "smtp" };
+  return transport;
+}
+
+async function sendGmail(account: { user: string; pass: string }, mail: Mail): Promise<MailResult> {
+  const message = {
+    from: { name: senderName(), address: account.user },
+    replyTo: process.env.SANTA_MAIL_REPLY_TO || account.user,
+    to: { name: mail.toName, address: mail.to },
+    subject: mail.subject,
+    text: mail.text,
+    html: mail.html,
+  };
+  // Deux essais : une connexion gardée d'un envoi précédent a pu être fermée par Gmail
+  // pendant que la fonction dormait. On repart alors d'une connexion neuve.
+  let last: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await gmailTransport(account).sendMail(message);
+      return { ok: true };
+    } catch (error) {
+      last = error;
+      transport?.close();
+      transport = null;
+    }
   }
+  return { ok: false, error: last instanceof Error ? last.message.slice(0, 200) : "smtp" };
 }
 
 export async function sendMail(mail: Mail): Promise<MailResult> {

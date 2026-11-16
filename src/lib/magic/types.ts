@@ -1,4 +1,4 @@
-import type { AtoutKind, Clue, Role, RoundResult } from "./engine";
+import type { AtoutKind, Clue, PointKind, Role, RoundResult } from "./engine";
 
 // Ce que le navigateur reçoit du jeu. Le rôle des autres n'y figure qu'une fois démasqués,
 // ou à la révélation finale.
@@ -34,7 +34,19 @@ export type MagicPlayer = {
   outRound: number | null;
 };
 
-export type RevealRow = { name: string; role: Role; outRound: number | null; flair: number };
+export type RevealRow = {
+  name: string;
+  role: Role;
+  outRound: number | null;
+  flair: number;
+  /** Points personnels ; absents des parties révélées avant leur création. */
+  points?: number;
+  /** Nombre de fois où chaque ligne du barème a joué. */
+  detail?: Partial<Record<PointKind, number>>;
+};
+
+/** Une ligne de points, vue par le joueur concerné. */
+export type PointLineView = { kind: PointKind; round: number; points: number; target: string | null };
 
 export type NoteMark = "suspect" | "innocent";
 
@@ -87,6 +99,11 @@ export type MagicView = {
   /** Carnet d'enquête : notes du joueur, par identifiant. */
   notes: Record<string, NoteMark>;
   gazettes: Gazette[];
+  /**
+   * Points personnels connus du joueur. Pour un Père Noël, le flair sur un joueur dont le rôle
+   * n'est pas encore révélé reste caché jusqu'à la révélation : il trahirait ce rôle.
+   */
+  points: { total: number; lines: PointLineView[]; pending: boolean };
   reveal: RevealRow[] | null;
 };
 
@@ -100,4 +117,19 @@ export type MagicSummary = {
   round: number;
   winner: Role | null;
   players: number;
+};
+
+/** Ce que la page du tirage montre du jeu, pour y entrer d'un clic. Rien sur les rôles. */
+export type MagicTeaser = {
+  status: MagicStatus;
+  /** Semaine en cours, ou `null` hors partie. */
+  round: number | null;
+  magic: number;
+  startMagic: number;
+  startsAt: string;
+  deadline: string | null;
+  /** Le joueur a désigné un suspect cette semaine. */
+  voted: boolean;
+  /** Le joueur peut encore désigner (un Krampus démasqué ne le peut plus). */
+  canVote: boolean;
 };

@@ -1,6 +1,6 @@
 # 14. La Magie de Noël
 
-Jeu à rôles cachés, en parallèle d'un Secret Santa lancé. Version simple : une seule action possible, facultative, et un jeu qui va au bout même si personne ne joue.
+Jeu à rôles cachés, en parallèle d'un Secret Santa. Version simple : une seule action possible, facultative, et un jeu qui va au bout même si personne ne joue.
 
 ## Principes
 
@@ -57,6 +57,36 @@ Tables :
 - `magic_letters`, où l'auteur n'est jamais montré ;
 - `magic_notes`.
 
+## Points personnels et classement
+
+À côté de la Magie, commune à tous, chacun marque des points pour lui. Ils ne changent rien à la Magie ni à la victoire d'un camp. `playerPoints` dans `engine.ts`, semaine par semaine, sur les semaines résolues :
+
+| Rôle       | Ce qui compte                                                              | Points |
+| ---------- | -------------------------------------------------------------------------- | ------ |
+| Père Noël  | Bon flair : désigner un Krampus encore caché                               | +2     |
+| Père Noël  | Krampus démasqué : ce Krampus est démasqué cette semaine-là                | +1     |
+| Père Noël  | Erreur sur la personne : la personne désignée est démasquée, Père Noël     | −1     |
+| Krampus    | Camouflage : une semaine traversée sans être démasqué                      | +2     |
+| Krampus    | Manigance réussie : désigner un Père Noël qui est démasqué                 | +2     |
+| Krampus    | Démasqué : la semaine où il est démasqué                                   | −2     |
+
+- **Pendant la partie**, chacun voit ses propres points, ligne par ligne, sur la page du jeu (« Vos points »). Un Père Noël ne voit pas encore le flair porté sur un joueur dont le rôle est caché : il lui dirait qui est Krampus. Ces points apparaissent à la révélation, et la page le dit.
+- **À la révélation**, le classement général remplace l'ancien tableau du flair : rang, rôle, détail (« 2 bons flairs, 1 Krampus démasqué »), total. Le mail de révélation donne le podium. Ex aequo : même rang.
+- `magic_games.reveal` garde `points` et `detail` pour chaque joueur, à côté de `flair`.
+
+## Ouverture avec le tirage
+
+L'organisation peut cocher « Jouer aussi à La Magie de Noël » pendant la préparation, avec le début de la partie, la durée d'une manche et l'équilibre. Les réglages sont gardés dans `santas.magic_plan`. Au lancement du tirage :
+- le jeu s'ouvre aussitôt après le tirage (`createMagic` avec `silent`), sans mail d'ouverture à part ;
+- chaque participant reçoit **un seul mail** : son lien de tirage, puis un encadré de nuit qui présente le jeu, le premier indice et le bouton « Découvrir mon rôle » (« Secret Santa et Magie de Noël : … ») ;
+- si le jeu ne peut pas s'ouvrir, le tirage part quand même, et l'organisation l'ouvre ensuite depuis le suivi (mail à part).
+
+On ne peut pas lancer si le jeu est coché sans date, avec une date passée, ou hors de 5 à 30 participants (`magicPlanProblems`). « Renvoyer le lien » présente aussi le jeu tant qu'il est en cours. Le jeu peut toujours s'ouvrir après le lancement, comme avant.
+
+## Accès depuis la page du tirage
+
+En tête de la page du tirage de chaque participant, un bandeau de nuit dit où en est le jeu et y mène d'un clic : « Votre rôle vous attend », « À vous de désigner un suspect » (avec la date limite), « Votre suspect est désigné », « Les masques sont tombés ». Il montre aussi la jauge de Magie. Côté organisation, le suivi du jeu passe juste après le contrôle du tirage.
+
 ## Équilibre
 
 Magie de départ par taille de groupe, dans `engine.ts` (`BALANCED`). Elle est calculée par simulation pour qu'à participation de 60 %, chaque camp gagne environ une fois sur deux. Le modèle de la simulation :
@@ -82,7 +112,9 @@ Rien de secret ne part par mail : jamais de rôle ni de secret personnel, seulem
 
 - **Ouverture** : « votre rôle vous attend », avec le premier indice.
 - **Gazette** à la fin de chaque semaine, ou fin de partie.
-- **Révélation**.
+- **Révélation**, avec le podium du classement.
+
+Quand le jeu est coché avant le tirage, l'ouverture ne part pas : le mail du tirage la remplace.
 
 Les mails partent après la réponse de la page ou de l'action qui fait avancer le jeu. Le cron quotidien (04:17 UTC) rattrape ce qui n'est pas parti, même si personne n'ouvre le jeu. Chaque envoi est réservé en base avant de partir (`magic_rounds.mailed_at`, `magic_games.reveal_mailed_at`) : jamais de doublon. Si plusieurs semaines se résolvent d'un coup, seule la dernière gazette part.
 

@@ -504,3 +504,61 @@
   border-left: 2px solid rgba(158, 47, 34, 0.5);
   font-style: italic;
 }
+
+/* Points personnels */
+.mg-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 88px;
+  padding: 10px 14px 8px;
+  border: 1px solid rgba(232, 193, 112, 0.45);
+  border-radius: 18px;
+  background:
+    radial-gradient(90% 80% at 50% 0%, rgba(247, 231, 193, 0.18), transparent 70%),
+    linear-gradient(180deg, rgba(58, 42, 18, 0.55), rgba(20, 16, 10, 0.6));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 10px 30px -14px rgba(232, 193, 112, 0.6);
+}
+.mg-score-value {
+  font-family: var(--font-serif);
+  font-size: 40px;
+  line-height: 1;
+  color: var(--mg-gold-hi);
+  font-variant-numeric: tabular-nums;
+}
+.mg-score-unit {
+  margin-top: 2px;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--mg-gold);
+}
+.mg-rank {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mg-soft);
+  border: 1px solid var(--mg-line);
+}
+.mg-rank[data-top="1"] {
+  color: #141d30;
+  border-color: transparent;
+  background: linear-gradient(180deg, var(--mg-gold-hi), var(--mg-gold));
+}
+.mg-rank[data-top="2"] {
+  color: #141d30;
+  border-color: transparent;
+  background: linear-gradient(180deg, #eef1f7, #a9b4c8);
+}
+.mg-rank[data-top="3"] {
+  color: #fbe9d6;
+  border-color: transparent;
+  background: linear-gradient(180deg, #c98a52, #8a5328);
+}

@@ -14,6 +14,8 @@ import {
   grinchCount,
   letterCount,
   makeClue,
+  playerPoints,
+  pointTotal,
   resolveRound,
   startMagic,
   tally,
@@ -292,5 +294,71 @@ describe("atouts", () => {
         expect(clue && clueIsTrue(clue, people, names)).toBe(true);
       }
     }
+  });
+});
+
+describe("points personnels", () => {
+  // a et b sont Krampus ; b est démasqué en semaine 2, c (Père Noël) en semaine 1.
+  const players = [
+    { id: "a", role: "gr" as const, outRound: null },
+    { id: "b", role: "gr" as const, outRound: 2 },
+    { id: "c", role: "pn" as const, outRound: 1 },
+    { id: "d", role: "pn" as const, outRound: null },
+    { id: "e", role: "pn" as const, outRound: null },
+  ];
+  const rounds = [
+    {
+      round: 1,
+      votes: [
+        { voter: "a", target: "c" },
+        { voter: "d", target: "c" },
+        { voter: "e", target: "b" },
+      ],
+    },
+    {
+      round: 2,
+      votes: [
+        { voter: "d", target: "b" },
+        { voter: "e", target: "b" },
+        { voter: "c", target: "a" },
+      ],
+    },
+    // Un Krampus démasqué ne compte plus, ni comme votant ni comme cible.
+    {
+      round: 3,
+      votes: [
+        { voter: "b", target: "d" },
+        { voter: "d", target: "b" },
+      ],
+    },
+  ];
+  const points = playerPoints(players, rounds);
+  const total = (id: string) => pointTotal(points.get(id)!);
+
+  it("récompense le flair et le démasquage des Pères Noël, punit l'erreur", () => {
+    expect(points.get("d")!.map((l) => l.kind)).toEqual(["wrong", "flair", "catch"]);
+    expect(total("d")).toBe(2);
+    expect(total("e")).toBe(2 + 2 + 1);
+    expect(total("c")).toBe(2);
+  });
+
+  it("récompense le camouflage et les manigances des Krampus, punit le démasquage", () => {
+    expect(points.get("a")!.map((l) => l.kind)).toEqual(["scheme", "camouflage", "camouflage", "camouflage"]);
+    expect(total("a")).toBe(8);
+    expect(points.get("b")!.map((l) => l.kind)).toEqual(["camouflage", "caught"]);
+    expect(total("b")).toBe(0);
+  });
+
+  it("ne compte qu'une désignation par joueur et par semaine", () => {
+    const twice = playerPoints(players, [
+      {
+        round: 1,
+        votes: [
+          { voter: "e", target: "b" },
+          { voter: "e", target: "a" },
+        ],
+      },
+    ]);
+    expect(pointTotal(twice.get("e")!)).toBe(2);
   });
 });

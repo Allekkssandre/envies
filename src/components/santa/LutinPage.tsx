@@ -1,14 +1,15 @@
 "use client";
 
-import { ArrowRight, Check, Gift, ListPlus, Sparkles } from "lucide-react";
-import Link from "next/link";
+import { ArrowRight, Check, Gift, ListPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Button, buttonClasses } from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { Field, TextArea } from "@/components/ui/Field";
+import type { MagicTeaser } from "@/lib/magic/types";
 import { SANTA_LIMITS as L, type LutinProfile, type LutinView } from "@/lib/santa/types";
 import { confirmLutin, openMyList, openTargetList, saveLutinProfile } from "@/server/actions/santa";
+import { MagicBanner } from "./MagicBanner";
 import { SantaSection } from "./SantaShell";
 
 const NETWORK = "Pas enregistré. Vérifiez la connexion.";
@@ -26,11 +27,11 @@ function formatDay(iso: string) {
 export function LutinPage({
   token,
   view,
-  hasGame = false,
+  game = null,
 }: {
   token: string;
   view: LutinView;
-  hasGame?: boolean;
+  game?: MagicTeaser | null;
 }) {
   const router = useRouter();
   const { santa, me, target } = view;
@@ -58,6 +59,7 @@ export function LutinPage({
 
   return (
     <div className="relative flex flex-col gap-10">
+      {game ? <MagicBanner token={token} game={game} /> : null}
       <div className="flex flex-col gap-6">
         <p className="m-0 text-xs tracking-[0.18em] text-muted uppercase">{santa.title}</p>
         <p className="m-0 text-lg text-ink-soft">Bonjour {me.firstName}, vous offrez un cadeau à</p>
@@ -104,20 +106,6 @@ export function LutinPage({
           </Button>
         )}
       </div>
-
-      {hasGame ? (
-        <SantaSection
-          title="La Magie de Noël"
-          hint="Pendant que les cadeaux se préparent, quelques Krampus se cachent parmi les participants. Chaque semaine, vous pouvez désigner la personne que vous soupçonnez d'en être un."
-        >
-          <div>
-            <Link href={`/lutins/moi/${token}/jeu`} className={buttonClasses("ink", 52)}>
-              <Sparkles aria-hidden="true" />
-              Entrer dans le jeu
-            </Link>
-          </div>
-        </SantaSection>
-      ) : null}
 
       <SantaSection title={`Ce que ${target.firstName} a indiqué`}>
         <ProfileView profile={target.profile} name={target.firstName} />

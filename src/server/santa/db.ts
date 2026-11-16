@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { parseMagicPlan } from "@/lib/magic/plan";
 import { checkDraw, DrawError, type DrawEntry } from "@/lib/santa/draw";
 import type { DrawCheck, LutinProfile, LutinView, OrganizerView, SantaInfo } from "@/lib/santa/types";
 import { getServiceDb } from "@/server/db/client";
@@ -21,6 +22,7 @@ export function toSantaInfo(row: SantaRow): SantaInfo {
     exchangeDate: row.exchange_date,
     status: row.status,
     launchedAt: row.launched_at,
+    magicPlan: row.status === "draft" ? parseMagicPlan(row.magic_plan) : null,
   };
 }
 

@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { LutinPage } from "@/components/santa/LutinPage";
 import { SantaShell } from "@/components/santa/SantaShell";
 import { getServiceDb } from "@/server/db/client";
+import { advanceMagic, magicTeaser } from "@/server/magic/game";
 import { loadLutinContext, toLutinView } from "@/server/santa/db";
 
 // Le lien personnel est la seule clé : jamais indexé, jamais transmis en référent.
@@ -52,10 +53,8 @@ async function Lutin({ params }: Pick<PageProps<"/lutins/moi/[token]">, "params"
         .is("opened_at", null);
     });
   }
-  const { data: game } = await getServiceDb()
-    .from("magic_games")
-    .select("santa_id")
-    .eq("santa_id", ctx.santa.id)
-    .maybeSingle();
-  return <LutinPage token={token} view={toLutinView(ctx)} hasGame={Boolean(game)} />;
+  // Le jeu avance aussi d'ici : l'état affiché sur la page du tirage est à jour.
+  await advanceMagic(ctx.santa.id);
+  const game = await magicTeaser(ctx.santa.id, ctx.me.id).catch(() => null);
+  return <LutinPage token={token} view={toLutinView(ctx)} game={game} />;
 }

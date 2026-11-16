@@ -332,3 +332,67 @@ export function fakeClueOptions(week: number, people: readonly (Person & Player)
   for (const make of order) tries(make);
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Points personnels et classement (sans effet sur la Magie)
+// ---------------------------------------------------------------------------
+
+/**
+ * Ce qui rapporte ou coûte des points à un joueur, semaine par semaine.
+ * Père Noël : désigner un Krampus encore caché (flair), le faire démasquer (bonus), faire
+ * démasquer un Père Noël (erreur). Krampus : traverser une semaine sans être démasqué
+ * (camouflage), être démasqué, faire démasquer un Père Noël (manigance).
+ */
+export type PointKind = "flair" | "catch" | "wrong" | "camouflage" | "caught" | "scheme";
+
+export const POINTS: Record<PointKind, number> = {
+  flair: 2,
+  catch: 1,
+  wrong: -1,
+  camouflage: 2,
+  caught: -2,
+  scheme: 2,
+};
+
+export type PointLine = { kind: PointKind; round: number; points: number; target?: string };
+
+/**
+ * Points de chacun sur les semaines résolues. `outRound` : semaine où le joueur a été
+ * démasqué, `null` s'il ne l'a pas été.
+ */
+export function playerPoints(
+  players: readonly { id: string; role: Role; outRound: number | null }[],
+  rounds: readonly { round: number; votes: readonly Vote[] }[],
+): Map<string, PointLine[]> {
+  const out = new Map<string, PointLine[]>(players.map((p) => [p.id, []]));
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const add = (id: string, kind: PointKind, round: number, target?: string) =>
+    out.get(id)?.push({ kind, round, points: POINTS[kind], ...(target ? { target } : {}) });
+  // En jeu au début de la semaine `r` : pas encore démasqué avant elle.
+  const inGame = (p: { outRound: number | null }, r: number) => p.outRound === null || p.outRound >= r;
+  for (const { round, votes } of [...rounds].sort((a, b) => a.round - b.round)) {
+    const unmasked = players.find((p) => p.outRound === round) ?? null;
+    const seen = new Set<string>();
+    for (const v of votes) {
+      const voter = byId.get(v.voter);
+      const target = byId.get(v.target);
+      if (!voter || !target || voter.id === target.id || seen.has(voter.id)) continue;
+      if (!inGame(target, round) || (voter.role === "gr" && !inGame(voter, round))) continue;
+      seen.add(voter.id);
+      if (voter.role === "pn") {
+        if (target.role === "gr") add(voter.id, "flair", round, target.id);
+        if (unmasked?.id === target.id)
+          add(voter.id, target.role === "gr" ? "catch" : "wrong", round, target.id);
+      } else if (unmasked?.id === target.id && target.role === "pn") {
+        add(voter.id, "scheme", round, target.id);
+      }
+    }
+    for (const p of players) {
+      if (p.role === "gr" && inGame(p, round))
+        add(p.id, p.outRound === round ? "caught" : "camouflage", round);
+    }
+  }
+  return out;
+}
+
+export const pointTotal = (lines: readonly PointLine[]) => lines.reduce((sum, l) => sum + l.points, 0);

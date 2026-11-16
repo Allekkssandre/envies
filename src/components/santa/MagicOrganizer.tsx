@@ -15,6 +15,53 @@ import { SantaSection } from "./SantaShell";
 
 const NETWORK = "Pas enregistré. Vérifiez la connexion.";
 
+export type MagicSettingsValue = { startsLocal: string; roundDays: string; level: Level };
+
+/** Réglages du jeu : début, durée d'une semaine, équilibre. Partagés par la préparation et le suivi. */
+export function MagicSettingsFields({
+  value,
+  onChange,
+}: {
+  value: MagicSettingsValue;
+  onChange: (patch: Partial<MagicSettingsValue>) => void;
+}) {
+  return (
+    <>
+      <Field
+        label="Début de la partie"
+        type="datetime-local"
+        value={value.startsLocal}
+        onChange={(e) => onChange({ startsLocal: e.target.value })}
+        hint="Les rôles sont tirés à l'ouverture. La première semaine commence à cette date."
+      />
+      <Field
+        label="Durée d'une manche (jours)"
+        type="number"
+        min={1}
+        max={14}
+        value={value.roundDays}
+        onChange={(e) => onChange({ roundDays: e.target.value })}
+        hint={`${ROUNDS} semaines de jeu : ${ROUNDS * Number(value.roundDays || 0)} jours en tout.`}
+      />
+      <label className="flex flex-col gap-1.5 text-[15px] font-semibold">
+        Équilibre
+        <select
+          value={value.level}
+          onChange={(e) => onChange({ level: e.target.value as Level })}
+          className="min-h-11 rounded-xl border border-ink/20 bg-linen px-3 text-[15px] font-normal"
+        >
+          <option value="balanced">Équilibré</option>
+          <option value="pn">Avantage Pères Noël</option>
+          <option value="gr">Avantage Krampus</option>
+        </select>
+        <span className="text-[13px] font-normal text-ink-soft">
+          Règle la Magie de départ. Équilibré : une chance sur deux pour chaque camp.
+        </span>
+      </label>
+    </>
+  );
+}
+
 /** La Magie de Noël côté organisation : ouvrir le jeu, suivre la jauge, révéler. Aucun rôle visible. */
 export function MagicOrganizer({
   santaId,
@@ -66,37 +113,14 @@ export function MagicOrganizer({
               );
             }}
           >
-            <Field
-              label="Début de la partie"
-              type="datetime-local"
-              value={startsAt}
-              onChange={(e) => setStartsAt(e.target.value)}
-              hint="Les rôles sont tirés tout de suite. La première semaine commence à cette date."
+            <MagicSettingsFields
+              value={{ startsLocal: startsAt, roundDays, level }}
+              onChange={(patch) => {
+                if (patch.startsLocal !== undefined) setStartsAt(patch.startsLocal);
+                if (patch.roundDays !== undefined) setRoundDays(patch.roundDays);
+                if (patch.level !== undefined) setLevel(patch.level);
+              }}
             />
-            <Field
-              label="Durée d'une manche (jours)"
-              type="number"
-              min={1}
-              max={14}
-              value={roundDays}
-              onChange={(e) => setRoundDays(e.target.value)}
-              hint={`${ROUNDS} semaines de jeu : ${ROUNDS * Number(roundDays || 0)} jours en tout.`}
-            />
-            <label className="flex flex-col gap-1.5 text-[15px] font-semibold">
-              Équilibre
-              <select
-                value={level}
-                onChange={(e) => setLevel(e.target.value as Level)}
-                className="min-h-11 rounded-xl border border-ink/20 bg-linen px-3 text-[15px] font-normal"
-              >
-                <option value="balanced">Équilibré</option>
-                <option value="pn">Avantage Pères Noël</option>
-                <option value="gr">Avantage Krampus</option>
-              </select>
-              <span className="text-[13px] font-normal text-ink-soft">
-                Règle la Magie de départ. Équilibré : une chance sur deux pour chaque camp.
-              </span>
-            </label>
             <div>
               <Button
                 type="submit"

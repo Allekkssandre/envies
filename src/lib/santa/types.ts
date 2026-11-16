@@ -1,3 +1,4 @@
+import type { MagicPlan } from "@/lib/magic/plan";
 import type { MagicSummary } from "@/lib/magic/types";
 
 // Données du Secret Santa envoyées au navigateur. Aucune ne contient le tirage,
@@ -13,6 +14,8 @@ export type SantaInfo = {
   exchangeDate: string | null;
   status: "draft" | "launched";
   launchedAt: string | null;
+  /** La Magie de Noël prévue pour le lancement (préparation seulement). */
+  magicPlan: MagicPlan | null;
 };
 
 export type SantaTheme = { id: string; label: string };

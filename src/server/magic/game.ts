@@ -15,6 +15,8 @@ import {
   flair,
   loupeResult,
   makeClue,
+  playerPoints,
+  pointTotal,
   resolveRound,
   startMagic,
   tally,
@@ -26,11 +28,20 @@ import {
   type Clue,
   type Level,
   type Person,
+  type PointKind,
   type Player,
   type Role,
   type Vote,
 } from "@/lib/magic/engine";
-import type { AtoutView, Gazette, MagicSummary, MagicView, NoteMark, RevealRow } from "@/lib/magic/types";
+import type {
+  AtoutView,
+  Gazette,
+  MagicSummary,
+  MagicTeaser,
+  MagicView,
+  NoteMark,
+  RevealRow,
+} from "@/lib/magic/types";
 import { siteUrl } from "@/lib/siteUrl";
 import { getFreshServiceDb as getServiceDb, type Db } from "@/server/db/client";
 import { decryptSecret, decryptToken, encryptSecret } from "@/server/santa/crypto";
@@ -112,6 +123,20 @@ async function commit(db: Db, game: Game, c: Commit): Promise<boolean> {
 async function loadGame(db: Db, santaId: string): Promise<Game | null> {
   const { data } = await db.from("magic_games").select("*").eq("santa_id", santaId).maybeSingle();
   return data;
+}
+
+/** Désignations des semaines déjà résolues, semaine par semaine. */
+async function resolvedRounds(db: Db, game: Game): Promise<{ round: number; votes: Vote[] }[]> {
+  if (game.round < 1) return [];
+  const { data } = await db
+    .from("magic_votes")
+    .select("round, voter, target")
+    .eq("santa_id", game.santa_id)
+    .lte("round", game.round);
+  return Array.from({ length: game.round }, (_, i) => i + 1).map((round) => ({
+    round,
+    votes: (data ?? []).filter((v) => v.round === round),
+  }));
 }
 
 const roundEnd = (game: Pick<Game, "starts_at" | "round_days">, round: number) =>
@@ -315,11 +340,16 @@ export async function sendPendingMails(santaId: string): Promise<void> {
     .eq("santa_id", santaId)
     .eq("status", "revealed")
     .is("reveal_mailed_at", null)
-    .select("winner")
+    .select("winner, reveal")
     .maybeSingle();
   if (reveal) {
+    const rows = Array.isArray(reveal.reveal) ? (reveal.reveal as unknown as RevealRow[]) : [];
+    const podium = rows
+      .filter((r) => typeof r.points === "number")
+      .slice(0, 3)
+      .map((r) => ({ name: r.name, points: r.points! }));
     await mailEveryone(db, santaId, (p, url, title) =>
-      revealMail(p.email, p.firstName, { title, url, winner: reveal.winner as Role | null }),
+      revealMail(p.email, p.firstName, { title, url, winner: reveal.winner as Role | null, podium }),
     );
   }
 }
@@ -349,7 +379,7 @@ export async function buildMagicView(
   ]);
   const names = displayNames(roster);
   const current = validVotes(roster, votes ?? []);
-  const [atouts, { data: letter }, { data: notes }] = await Promise.all([
+  const [atouts, { data: letter }, { data: notes }, history] = await Promise.all([
     loadAtouts(db, santaId),
     round
       ? db
@@ -361,7 +391,14 @@ export async function buildMagicView(
           .maybeSingle()
       : Promise.resolve({ data: null }),
     db.from("magic_notes").select("target, mark").eq("santa_id", santaId).eq("owner", participantId),
+    resolvedRounds(db, game),
   ]);
+  // Un Père Noël ne voit pas encore le flair porté sur un joueur au rôle caché : il le trahirait.
+  const revealed = game.status === "revealed";
+  const outIds = new Set(roster.filter((r) => r.out).map((r) => r.id));
+  const myLines = (playerPoints(roster, history).get(me.id) ?? []).filter(
+    (l) => revealed || me.role === "gr" || l.kind !== "flair" || (l.target && outIds.has(l.target)),
+  );
   const mine = atouts.find((a) => a.participantId === participantId);
   let atout: AtoutView;
   if (mine) {
@@ -421,10 +458,55 @@ export async function buildMagicView(
     letter: { mine: letter?.body ?? null, open: playing },
     notes: Object.fromEntries((notes ?? []).map((n) => [n.target, n.mark as NoteMark])),
     gazettes: (gazettes ?? []).map((g) => g.data as unknown as Gazette),
+    points: {
+      total: pointTotal(myLines),
+      lines: myLines.map((l) => ({
+        kind: l.kind,
+        round: l.round,
+        points: l.points,
+        target: l.target ? (names.get(l.target) ?? null) : null,
+      })),
+      pending: me.role === "pn" && !revealed,
+    },
     reveal:
       game.status === "revealed" && Array.isArray(game.reveal)
         ? (game.reveal as unknown as RevealRow[])
         : null,
+  };
+}
+
+/** Résumé du jeu pour la page du tirage d'un joueur ; `null` s'il n'y a pas de jeu. */
+export async function magicTeaser(santaId: string, participantId: string): Promise<MagicTeaser | null> {
+  const db = getServiceDb();
+  const game = await loadGame(db, santaId);
+  if (!game) return null;
+  const round = game.status === "playing" ? game.round + 1 : null;
+  const [{ data: me }, { count }] = await Promise.all([
+    db
+      .from("magic_players")
+      .select("out_role")
+      .eq("santa_id", santaId)
+      .eq("participant_id", participantId)
+      .maybeSingle(),
+    round
+      ? db
+          .from("magic_votes")
+          .select("voter", { count: "exact", head: true })
+          .eq("santa_id", santaId)
+          .eq("round", round)
+          .eq("voter", participantId)
+      : Promise.resolve({ count: 0 }),
+  ]);
+  if (!me) return null;
+  return {
+    status: game.status as MagicTeaser["status"],
+    round,
+    magic: game.magic,
+    startMagic: game.start_magic,
+    startsAt: game.starts_at,
+    deadline: round ? new Date(roundEnd(game, round)).toISOString() : null,
+    voted: Boolean(count),
+    canVote: me.out_role !== "gr",
   };
 }
 
@@ -590,9 +672,14 @@ export async function magicSummary(santaId: string): Promise<MagicSummary | null
   };
 }
 
+/**
+ * Ouvre le jeu : rôles tirés au sort, gazette d'ouverture avec le premier indice. Le mail
+ * d'ouverture part ensuite, sauf avec `silent` : le jeu s'ouvre alors en même temps que le
+ * tirage, et le mail d'invitation du Secret Santa le présente (`magicInvite`).
+ */
 export async function createMagic(
   santaId: string,
-  options: { startsAt: string; roundDays: number; level: Level },
+  options: { startsAt: string; roundDays: number; level: Level; silent?: boolean },
   now = Date.now(),
 ): Promise<"ok" | "exists" | "players"> {
   const db = getServiceDb();
@@ -647,16 +734,35 @@ export async function createMagic(
       winner: null,
       end: null,
     };
-    const { error: roundError } = await db
-      .from("magic_rounds")
-      .insert({ santa_id: santaId, round: 0, data: opening as unknown as Json });
+    const { error: roundError } = await db.from("magic_rounds").insert({
+      santa_id: santaId,
+      round: 0,
+      data: opening as unknown as Json,
+      ...(options.silent ? { mailed_at: new Date(now).toISOString() } : {}),
+    });
     if (roundError) throw new Error(roundError.message);
   } catch (error) {
     await db.from("magic_games").delete().eq("santa_id", santaId);
     throw error;
   }
-  schedule(() => sendPendingMails(santaId));
+  if (!options.silent) schedule(() => sendPendingMails(santaId));
   return "ok";
+}
+
+/** Ce que le mail d'invitation du Secret Santa dit du jeu : début et dernier indice paru. */
+export async function magicInvite(santaId: string): Promise<{ startsAt: string; clue: Clue | null } | null> {
+  const db = getServiceDb();
+  const game = await loadGame(db, santaId);
+  if (!game || game.status === "over" || game.status === "revealed") return null;
+  const { data } = await db
+    .from("magic_rounds")
+    .select("data")
+    .eq("santa_id", santaId)
+    .order("round", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const gazette = data?.data as unknown as Gazette | undefined;
+  return { startsAt: game.starts_at, clue: gazette?.clue ?? null };
 }
 
 /** Fin de partie : rôles et flair de chacun, écrits en clair pour tous. */
@@ -666,25 +772,26 @@ export async function revealMagic(santaId: string): Promise<boolean> {
     const game = await loadGame(db, santaId);
     if (!game || game.status !== "over") return game?.status === "revealed";
     const roster = await loadRoster(db, santaId);
-    const { data: votes } = await db
-      .from("magic_votes")
-      .select("round, voter, target")
-      .eq("santa_id", santaId);
+    const history = await resolvedRounds(db, game);
     const hiddenAt = (round: number) =>
       roster.filter((r) => r.role === "gr" && (r.outRound === null || r.outRound >= round)).map((r) => r.id);
-    const rounds = Array.from({ length: game.round }, (_, i) => i + 1).map((round) => ({
-      votes: (votes ?? []).filter((v) => v.round === round),
-      hiddenKrampus: hiddenAt(round),
-    }));
-    const points = flair(rounds);
+    const flairs = flair(history.map((h) => ({ votes: h.votes, hiddenKrampus: hiddenAt(h.round) })));
+    const points = playerPoints(roster, history);
     const rows: RevealRow[] = roster
-      .map((r) => ({
-        name: `${r.firstName} ${r.lastName}`.trim(),
-        role: r.role,
-        outRound: r.outRound,
-        flair: points.get(r.id) ?? 0,
-      }))
-      .sort((a, b) => b.flair - a.flair || a.name.localeCompare(b.name, "fr"));
+      .map((r) => {
+        const lines = points.get(r.id) ?? [];
+        const detail: Partial<Record<PointKind, number>> = {};
+        for (const l of lines) detail[l.kind] = (detail[l.kind] ?? 0) + 1;
+        return {
+          name: `${r.firstName} ${r.lastName}`.trim(),
+          role: r.role,
+          outRound: r.outRound,
+          flair: flairs.get(r.id) ?? 0,
+          points: pointTotal(lines),
+          detail,
+        };
+      })
+      .sort((a, b) => b.points - a.points || b.flair - a.flair || a.name.localeCompare(b.name, "fr"));
     if (await commit(db, game, { game: { status: "revealed", reveal: rows as unknown as Json } })) {
       schedule(() => sendPendingMails(santaId));
       return true;

@@ -22,10 +22,7 @@ function MagicShell({ children }: { children: ReactNode }) {
       <span aria-hidden="true" className="mg-sky" />
       <span aria-hidden="true" className="mg-snow" />
       <header className="relative mx-auto flex h-[68px] w-full max-w-[1120px] items-center justify-between px-4 sm:h-20 sm:px-8">
-        <Link href="/" className="font-display-72 text-[24px] text-[var(--mg-gold-hi)] italic no-underline">
-          Envies
-        </Link>
-        <span className="mg-kicker">Secret Santa</span>
+        <span className="font-display-72 text-[24px] text-[var(--mg-gold-hi)] italic">Secret Santa</span>
       </header>
       <main className="relative mx-auto w-full max-w-[1120px] flex-1 px-4 pt-2 pb-20 sm:px-8">
         {children}
@@ -56,8 +53,8 @@ async function Game({ params }: Pick<PageProps<"/lutins/moi/[token]/jeu">, "para
         <p className="m-0 text-[16px] leading-normal text-[var(--mg-soft)]">
           Ce lien ne vaut plus, ou l&apos;organisation n&apos;a pas lancé La Magie de Noël.
         </p>
-        <Link href="/" className="mt-2 text-[15px] font-semibold text-[var(--mg-gold-hi)]">
-          Retour à l&apos;accueil
+        <Link href="/lutins" className="mt-2 text-[15px] font-semibold text-[var(--mg-gold-hi)]">
+          Retour au Secret Santa
         </Link>
       </div>
     );

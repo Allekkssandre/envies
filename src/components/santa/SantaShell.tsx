@@ -10,12 +10,9 @@ export function SantaShell({ children, wide = false }: { children: ReactNode; wi
       <span aria-hidden="true" className="absolute inset-0 grain-overlay" />
       <Foliage className="top-24 left-[3%] hidden h-[760px] w-[300px] -scale-x-100 opacity-60 lg:block" />
       <header className="relative flex h-[76px] w-full max-w-[1080px] shrink-0 items-center justify-between px-4 sm:h-24 sm:px-0">
-        <Link href="/" className="font-display-72 text-[26px] text-linen italic no-underline sm:text-[30px]">
-          Envies
-        </Link>
         <Link
           href="/lutins"
-          className="inline-flex min-h-11 items-center text-[13px] tracking-[0.18em] text-honey uppercase no-underline"
+          className="inline-flex min-h-11 items-center font-display-72 text-[26px] text-linen italic no-underline sm:text-[30px]"
         >
           Secret Santa
         </Link>

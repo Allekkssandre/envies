@@ -10,7 +10,7 @@ import { loadLutinContext, toLutinView } from "@/server/santa/db";
 
 // Le lien personnel est la seule clé : jamais indexé, jamais transmis en référent.
 export const metadata: Metadata = {
-  title: "Mon Secret Santa",
+  title: { absolute: "Mon Secret Santa" },
   robots: { index: false, follow: false },
   referrer: "no-referrer",
 };
@@ -38,8 +38,8 @@ async function Lutin({ params }: Pick<PageProps<"/lutins/moi/[token]">, "params"
           Le tirage a peut-être été refait, ou un nouveau lien vous a été envoyé. Regardez le dernier mail
           reçu, ou demandez à l&apos;organisation de vous le renvoyer.
         </p>
-        <Link href="/" className="mt-2 text-[15px] font-semibold text-ink">
-          Retour à l&apos;accueil
+        <Link href="/lutins" className="mt-2 text-[15px] font-semibold text-ink">
+          Retour au Secret Santa
         </Link>
       </div>
     );

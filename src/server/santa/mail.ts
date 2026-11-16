@@ -19,7 +19,7 @@ function testDir(): string | null {
   return dir && !process.env.VERCEL ? dir : null;
 }
 
-const senderName = () => process.env.SANTA_MAIL_FROM_NAME || "Secret Santa · Envies";
+const senderName = () => process.env.SANTA_MAIL_FROM_NAME || "Secret Santa";
 
 /** Boîte Gmail d'envoi (GMAIL_USER + GMAIL_APP_PASSWORD), prioritaire sur Brevo. */
 function gmail(): { user: string; pass: string } | null {

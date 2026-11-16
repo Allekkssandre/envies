@@ -145,7 +145,7 @@ test("La Magie de Noël : rôle, désignations, masque qui tombe, gazette, rév�
     await atout.getByRole("radio", { name: /^L'Alibi/ }).click();
     await atout.getByRole("button", { name: "Jouer l'alibi" }).click();
     await atout.getByRole("button", { name: "Oui, jouer l'alibi" }).click();
-    await expect(atout).toContainText("Votre alibi est en place", { timeout: 15_000 });
+    await expect(atout).toContainText("Votre alibi vous couvre les semaines 1 et 2", { timeout: 15_000 });
   } else {
     await atout.getByRole("button", { name: "JoueurB", exact: true }).click();
     await atout.getByRole("button", { name: "JoueurC", exact: true }).click();

@@ -1,4 +1,5 @@
 import {
+  alibiWeeks,
   CATCH_GAIN,
   CERT_ROUND,
   POINTS,
@@ -125,7 +126,7 @@ export const RULES: string[] = [
   `À la fin de la semaine ${CERT_ROUND}, chaque Père Noël reçoit en secret le nom d'un joueur qui n'est pas un Krampus. Les Krampus, eux, peuvent prétendre avoir reçu un nom aussi…`,
   "Si la Magie tombe à zéro, les Krampus ont gagné. Si elle tient jusqu'à la fin de la dernière semaine, ou si tous les Krampus sont démasqués avant, les Pères Noël ont sauvé Noël.",
   "Chaque joueur a aussi un pouvoir, à jouer une seule fois s'il le souhaite. Les Pères Noël ont la Loupe : ils choisissent deux joueurs et apprennent en secret si au moins l'un des deux est un Krampus.",
-  "Les Krampus choisissent entre la Fausse piste, qui remplace l'indice d'une gazette par un faux, et l'Alibi, qui fait qu'une Loupe ne trouve plus rien de suspect chez eux. Les indices ne sont donc pas toujours vrais.",
+  "Les Krampus choisissent entre la Fausse piste, qui remplace l'indice d'une gazette par un faux, et l'Alibi, qui fait que pendant deux semaines une Loupe ne trouve rien de suspect chez eux. Les indices ne sont donc pas toujours vrais.",
   `Chacun marque aussi des points personnels, pour le classement général publié à la révélation des rôles. Père Noël : ${POINTS.flair} points chaque semaine où vous désignez un Krampus encore caché, ${POINTS.catch} de plus s'il est démasqué, ${-POINTS.wrong} de moins si la personne que vous désignez est démasquée et se révèle Père Noël. Krampus : ${POINTS.camouflage} points chaque semaine traversée sans être démasqué, ${POINTS.scheme} si vous faites démasquer un Père Noël en le désignant, ${-POINTS.caught} de moins la semaine où vous êtes démasqué. Ces points ne changent rien à la Magie.`,
   "À vous de jouer.",
 ];
@@ -204,7 +205,7 @@ export const ATOUT_TEXT: Record<AtoutKind, string> = {
   fausse_piste:
     "Remplacez l'indice de la prochaine gazette par un faux, choisi parmi ceux que les lutins vous proposent. Tout le monde le lira comme un vrai.",
   alibi:
-    "À partir de maintenant et jusqu'à la fin de la partie, si un Père Noël utilise sa Loupe sur vous, les lutins ne trouveront rien de suspect.",
+    "Pendant cette semaine et la suivante, si un Père Noël utilise sa Loupe sur vous, les lutins ne trouveront rien de suspect. À jouer au bon moment.",
 };
 
 /** Ce que le joueur lit une fois son atout joué. */
@@ -223,5 +224,8 @@ export function atoutResultText(a: {
   if (a.kind === "fausse_piste" && a.clue) {
     return `Votre fausse piste paraît dans la gazette de fin de semaine ${a.round} : « ${clueText(a.clue)} »`;
   }
-  return `Votre alibi est en place depuis la semaine ${a.round}. Aucune Loupe ne trouvera rien de suspect chez vous.`;
+  const weeks = alibiWeeks(a.round);
+  return weeks.length > 1
+    ? `Votre alibi vous couvre les semaines ${weeks[0]} et ${weeks[weeks.length - 1]} : pendant ce temps, aucune Loupe ne trouvera rien de suspect chez vous.`
+    : `Votre alibi vous couvre la semaine ${a.round} : pendant ce temps, aucune Loupe ne trouvera rien de suspect chez vous.`;
 }

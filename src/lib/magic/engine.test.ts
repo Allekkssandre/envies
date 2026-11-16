@@ -8,6 +8,7 @@ import {
   certificates,
   clueIsTrue,
   fakeClueOptions,
+  alibiWeeks,
   loupeResult,
   displayNames,
   flair,
@@ -272,6 +273,12 @@ describe("atouts", () => {
     expect(loupeResult(people, ["p1", "p2"], new Set())).toBe(false);
     expect(loupeResult(people, ["k1", "p1"], new Set(["k1"]))).toBe(false);
     expect(loupeResult(people, ["k1", "k2"], new Set(["k1"]))).toBe(true);
+  });
+
+  it("Alibi : la semaine où il est joué et la suivante, jamais au-delà de la dernière", () => {
+    expect(alibiWeeks(1)).toEqual([1, 2]);
+    expect(alibiWeeks(4)).toEqual([4, 5]);
+    expect(alibiWeeks(5)).toEqual([5]);
   });
 
   it("Fausse piste : jusqu'à trois indices, tous faux, quelle que soit la semaine", () => {

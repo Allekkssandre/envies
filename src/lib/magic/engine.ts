@@ -230,9 +230,19 @@ export type AtoutKind = "loupe" | "fausse_piste" | "alibi";
 /** Les atouts qu'un rôle peut jouer. */
 export const ATOUTS: Record<Role, AtoutKind[]> = { pn: ["loupe"], gr: ["fausse_piste", "alibi"] };
 
+/** L'Alibi couvre la semaine où il est joué et la suivante. */
+export const ALIBI_WEEKS = 2;
+
+/** Semaines couvertes par un Alibi joué en semaine `played` (sans dépasser la dernière). */
+export function alibiWeeks(played: number): number[] {
+  const weeks: number[] = [];
+  for (let w = played; w < played + ALIBI_WEEKS && w <= ROUNDS; w++) weeks.push(w);
+  return weeks;
+}
+
 /**
- * Loupe : au moins un des deux joueurs est-il un Krampus ? Un Krampus qui a déjà joué son
- * Alibi passe inaperçu.
+ * Loupe : au moins un des deux joueurs est-il un Krampus ? Un Krampus couvert par son Alibi
+ * cette semaine passe inaperçu.
  */
 export function loupeResult(
   players: readonly Player[],

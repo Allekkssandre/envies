@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { magicPlanSchema } from "@/lib/magic/plan";
 import { SANTA_LIMITS as L } from "./types";
 
 // Validation partagée (formulaire et actions serveur) du Secret Santa.
@@ -61,6 +62,8 @@ export const settingsSchema = z.object({
 export const draftSchema = settingsSchema.extend({
   themes: z.array(line(L.theme)).max(L.themes, `${L.themes} thèmes au plus.`),
   participants: z.array(participantSchema).max(L.participants, `${L.participants} participants au plus.`),
+  /** La Magie de Noël prévue au lancement ; `null` : pas de jeu. Absent : inchangé. */
+  magic: magicPlanSchema.nullable().optional(),
 });
 
 export type DraftInput = z.input<typeof draftSchema>;

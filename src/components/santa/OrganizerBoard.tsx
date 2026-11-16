@@ -21,6 +21,8 @@ import { Button } from "@/components/ui/Button";
 import { Field, TextArea } from "@/components/ui/Field";
 import { LinkBox } from "@/components/ui/LinkBox";
 import { cn } from "@/lib/cn";
+import { MAX_PLAYERS, MIN_PLAYERS, ROUNDS } from "@/lib/magic/engine";
+import { magicPlanProblems, type MagicPlan } from "@/lib/magic/plan";
 import { launchProblems } from "@/lib/santa/schema";
 import { SANTA_LIMITS as L, type OrganizerParticipant, type OrganizerView } from "@/lib/santa/types";
 import { plural } from "@/lib/text";
@@ -32,7 +34,7 @@ import {
   saveSantaDraft,
   saveSantaSettings,
 } from "@/server/actions/santa";
-import { MagicOrganizer } from "./MagicOrganizer";
+import { MagicOrganizer, MagicSettingsFields, type MagicSettingsValue } from "./MagicOrganizer";
 import { SantaSection } from "./SantaShell";
 
 type Row = { key: string; id?: string; firstName: string; lastName: string; email: string };
@@ -41,6 +43,12 @@ type Row = { key: string; id?: string; firstName: string; lastName: string; emai
 let rowCount = 0;
 const newRow = (key = `n${rowCount++}`): Row => ({ key, firstName: "", lastName: "", email: "" });
 const NETWORK = "Pas enregistré. Vérifiez la connexion.";
+
+/** Heure locale saisie (« 2026-12-01T09:00 ») vers ISO ; vide si la saisie n'est pas une date. */
+function localToIso(local: string): string {
+  const date = local ? new Date(local) : null;
+  return date && !Number.isNaN(date.getTime()) ? date.toISOString() : "";
+}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("fr-FR", {
@@ -103,6 +111,12 @@ function Draft({ view }: { view: OrganizerView }) {
         }))
       : [newRow("n-a"), newRow("n-b"), newRow("n-c")],
   );
+  const [magicOn, setMagicOn] = useState(Boolean(santa.magicPlan));
+  const [magicValue, setMagicValue] = useState<MagicSettingsValue>({
+    startsLocal: santa.magicPlan?.startsLocal ?? "",
+    roundDays: String(santa.magicPlan?.roundDays ?? 7),
+    level: santa.magicPlan?.level ?? "balanced",
+  });
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -120,6 +134,15 @@ function Draft({ view }: { view: OrganizerView }) {
   if (filled.some((r) => !r.firstName.trim() || !/^\S+@\S+\.\S+$/.test(r.email.trim()))) {
     problems.push("Chaque participant a besoin d'un prénom et d'une adresse mail valable.");
   }
+  const plan: MagicPlan | null = magicOn
+    ? {
+        startsAt: localToIso(magicValue.startsLocal),
+        startsLocal: magicValue.startsLocal,
+        roundDays: Math.min(14, Math.max(1, Math.round(Number(magicValue.roundDays)) || 7)),
+        level: magicValue.level,
+      }
+    : null;
+  problems.push(...magicPlanProblems(plan, filled.length));
 
   const touch = () => setDirty(true);
   const setRow = (key: string, patch: Partial<Row>) => {
@@ -139,6 +162,7 @@ function Draft({ view }: { view: OrganizerView }) {
           lastName: r.lastName,
           email: r.email,
         })),
+        magic: plan,
       });
       if (!result.ok) {
         setError(result.error.message);
@@ -166,12 +190,17 @@ function Draft({ view }: { view: OrganizerView }) {
           setError(result.error.message);
           return;
         }
-        const { sent, failed } = result.data;
+        const { sent, failed, magic } = result.data;
+        const mails = failed
+          ? `${plural(sent, "mail envoyé", "mails envoyés")}, ${plural(failed, "échec", "échecs")}`
+          : plural(sent, "mail envoyé", "mails envoyés");
         toast(
-          failed
-            ? `Tirage lancé. ${plural(sent, "mail envoyé", "mails envoyés")}, ${plural(failed, "échec", "échecs")}.`
-            : `Tirage lancé. ${plural(sent, "mail envoyé", "mails envoyés")}.`,
-          { duration: 6000 },
+          magic === "opened"
+            ? `Tirage lancé et Magie de Noël ouverte. ${mails}.`
+            : magic === "failed"
+              ? `Tirage lancé. ${mails}. Le jeu n'a pas pu s'ouvrir : ouvrez-le plus bas, chacun recevra un mail à part.`
+              : `Tirage lancé. ${mails}.`,
+          { duration: 8000 },
         );
         router.refresh();
       } catch {
@@ -319,6 +348,42 @@ function Draft({ view }: { view: OrganizerView }) {
         </div>
       </SantaSection>
 
+      <SantaSection
+        title="La Magie de Noël"
+        hint={`Un jeu facultatif de ${ROUNDS} semaines, en parallèle des cadeaux. Activé avant le tirage, il s'ouvre au lancement, et chacun reçoit un seul mail pour les deux.`}
+      >
+        <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-[18px] border border-ink/12 bg-white/35 p-4">
+          <input
+            type="checkbox"
+            checked={magicOn}
+            onChange={(e) => {
+              setMagicOn(e.target.checked);
+              touch();
+            }}
+            className="mt-0.5 size-5 shrink-0 accent-ochre-deep"
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="text-base font-semibold">Jouer aussi à La Magie de Noël</span>
+            <span className="text-sm text-ink-soft">
+              Quelques Krampus tirés au sort se cachent parmi les participants. Chaque semaine, chacun peut
+              désigner la personne qu&apos;il soupçonne d&apos;en être un, et une gazette raconte la suite par
+              mail. De {MIN_PLAYERS} à {MAX_PLAYERS} participants.
+            </span>
+          </span>
+        </label>
+        {magicOn ? (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <MagicSettingsFields
+              value={magicValue}
+              onChange={(patch) => {
+                setMagicValue((v) => ({ ...v, ...patch }));
+                touch();
+              }}
+            />
+          </div>
+        ) : null}
+      </SantaSection>
+
       <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-[22px] border border-ink/10 bg-paper/92 p-4 shadow-modal backdrop-blur-[14px] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-col gap-1 text-sm">
           {error ? (
@@ -333,7 +398,8 @@ function Draft({ view }: { view: OrganizerView }) {
           ) : (
             <p className="m-0 text-ink-soft">
               {plural(filled.length, "participant", "participants")},{" "}
-              {plural(themeList.length, "thème", "thèmes")}. Prêt à lancer.
+              {plural(themeList.length, "thème", "thèmes")}.{" "}
+              {plan ? "Prêt à lancer, avec La Magie de Noël." : "Prêt à lancer."}
             </p>
           )}
         </div>
@@ -365,8 +431,10 @@ function Draft({ view }: { view: OrganizerView }) {
         pending={pending}
         onConfirm={launch}
       >
-        Chacun des {filled.length} participants reçoit un mail avec son lien personnel. Le tirage ne se
-        modifie plus ensuite : il faudra tout annuler et relancer.
+        {plan
+          ? `Chacun des ${filled.length} participants reçoit un seul mail : son tirage, et son rôle dans La Magie de Noël. `
+          : `Chacun des ${filled.length} participants reçoit un mail avec son lien personnel. `}
+        Le tirage ne se modifie plus ensuite : il faudra tout annuler et relancer.
       </ConfirmDialog>
     </>
   );
@@ -410,6 +478,8 @@ function Launched({ view }: { view: OrganizerView }) {
         </div>
       </div>
 
+      <MagicOrganizer santaId={santa.id} magic={view.magic} players={participants.length} />
+
       <SantaSection
         title="Les participants"
         hint={`${confirmed} sur ${participants.length} ont confirmé avoir vu leur tirage.`}
@@ -430,8 +500,6 @@ function Launched({ view }: { view: OrganizerView }) {
           ))}
         </ul>
       </SantaSection>
-
-      <MagicOrganizer santaId={santa.id} magic={view.magic} players={participants.length} />
 
       <LaunchedSettings view={view} />
     </>

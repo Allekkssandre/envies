@@ -14,7 +14,10 @@ import {
   settingsSchema,
   type DraftInput,
 } from "@/lib/santa/schema";
+import { magicPlanProblems, parseMagicPlan } from "@/lib/magic/plan";
+import { clueText, formatMoment } from "@/lib/magic/texts";
 import type { LutinProfile } from "@/lib/santa/types";
+import { createMagic, magicInvite } from "@/server/magic/game";
 import { slugify } from "@/lib/text";
 import { editKeysMatch, generateEditKey } from "@/server/auth/editKey";
 import { hashPassword, verifyPassword } from "@/server/auth/password";
@@ -173,7 +176,7 @@ export async function saveSantaDraft(santaId: string, input: DraftInput): Promis
   const guard = await guardSanta(santaId);
   if (!guard.ok) return guard.result;
   const { db, santa } = guard;
-  const { title, message, budget, exchangeDate, themes, participants } = parsed.data;
+  const { title, message, budget, exchangeDate, themes, participants, magic } = parsed.data;
   try {
     const { error: settingsError } = await db
       .from("santas")
@@ -182,6 +185,8 @@ export async function saveSantaDraft(santaId: string, input: DraftInput): Promis
         message: message || null,
         budget: budget || null,
         exchange_date: exchangeDate || null,
+        // Le jeu prévu ne se règle qu'avant le lancement ; après, il s'ouvre depuis le suivi.
+        ...(magic !== undefined && santa.status === "draft" ? { magic_plan: magic } : {}),
       })
       .eq("id", santa.id);
     if (settingsError) throw new Error(settingsError.message);
@@ -250,11 +255,28 @@ export async function saveSantaDraft(santaId: string, input: DraftInput): Promis
 
 type Recipient = { id: string; first_name: string; last_name: string; email: string };
 
-async function sendInvite(db: Db, santa: SantaRow, person: Recipient, token: string): Promise<boolean> {
+type GameInvite = Awaited<ReturnType<typeof magicInvite>>;
+
+async function sendInvite(
+  db: Db,
+  santa: SantaRow,
+  person: Recipient,
+  token: string,
+  game: GameInvite = null,
+): Promise<boolean> {
+  const url = `${siteUrl()}/lutins/moi/${token}`;
   const mail = inviteMail(person.email, `${person.first_name} ${person.last_name}`.trim(), {
     firstName: person.first_name,
     title: santa.title,
-    url: `${siteUrl()}/lutins/moi/${token}`,
+    url,
+    game: game
+      ? {
+          url: `${url}/jeu`,
+          when: formatMoment(game.startsAt),
+          started: new Date(game.startsAt).getTime() <= Date.now(),
+          clue: game.clue ? clueText(game.clue) : null,
+        }
+      : null,
     message: santa.message,
     budget: santa.budget,
     exchangeDate: santa.exchange_date
@@ -278,9 +300,17 @@ async function sendInvite(db: Db, santa: SantaRow, person: Recipient, token: str
   return result.ok;
 }
 
-export type LaunchReport = { sent: number; failed: number };
+export type LaunchReport = {
+  sent: number;
+  failed: number;
+  /** La Magie de Noël prévue : ouverte avec le tirage, ou en échec (à rouvrir depuis le suivi). */
+  magic: "opened" | "failed" | null;
+};
 
-/** Tire au sort, enregistre tout d'un bloc, puis envoie un mail à chaque participant. */
+/**
+ * Tire au sort, enregistre tout d'un bloc, ouvre La Magie de Noël si elle est prévue, puis
+ * envoie à chaque participant un seul mail : son tirage, et le jeu s'il y en a un.
+ */
 export async function launchSanta(santaId: string): Promise<Result<LaunchReport>> {
   const guard = await guardSanta(santaId);
   if (!guard.ok) return guard.result;
@@ -298,10 +328,14 @@ export async function launchSanta(santaId: string): Promise<Result<LaunchReport>
     ]);
     const participants = people ?? [];
     const themeRows = themes ?? [];
-    const problems = launchProblems(
-      themeRows.map((t) => t.label),
-      participants.map((p) => p.email),
-    );
+    const plan = parseMagicPlan(santa.magic_plan);
+    const problems = [
+      ...launchProblems(
+        themeRows.map((t) => t.label),
+        participants.map((p) => p.email),
+      ),
+      ...magicPlanProblems(plan, participants.length),
+    ];
     if (problems.length) return fail("VALIDATION", problems[0]!);
 
     let draw;
@@ -327,12 +361,32 @@ export async function launchSanta(santaId: string): Promise<Result<LaunchReport>
       return fail("CONFLICT", "Le tirage n'a pas pu être enregistré. Rien n'a été envoyé.");
     }
 
+    // Le jeu s'ouvre sans mail à lui : l'invitation le présente. En cas d'échec, le tirage
+    // part quand même, et l'organisation peut ouvrir le jeu depuis le suivi.
+    let game: GameInvite = null;
+    let magic: LaunchReport["magic"] = null;
+    if (plan) {
+      try {
+        const startsAt = new Date(Math.max(Date.now(), new Date(plan.startsAt).getTime())).toISOString();
+        const opened = await createMagic(santa.id, {
+          startsAt,
+          roundDays: plan.roundDays,
+          level: plan.level,
+          silent: true,
+        });
+        game = opened === "ok" ? await magicInvite(santa.id) : null;
+      } catch (error) {
+        logError("launchSanta magic", error);
+      }
+      magic = game ? "opened" : "failed";
+    }
+
     let sent = 0;
     for (const person of participants) {
-      if (await sendInvite(db, santa, person, tokens.get(person.id)!)) sent++;
+      if (await sendInvite(db, santa, person, tokens.get(person.id)!, game)) sent++;
     }
     revalidateSanta(santa.slug);
-    return ok({ sent, failed: participants.length - sent });
+    return ok({ sent, failed: participants.length - sent, magic });
   } catch (error) {
     logError("launchSanta", error);
     return fail("INTERNAL", GENERIC_ERROR);
@@ -376,7 +430,8 @@ export async function resendInvite(input: z.input<typeof resendInput>): Promise<
     if (error?.code === UNIQUE_VIOLATION)
       return fail("DUPLICATE", "Un autre participant a déjà cette adresse.", "email");
     if (!person) return fail("NOT_FOUND", GENERIC_ERROR);
-    const sentOk = await sendInvite(db, santa, person, token);
+    const game = await magicInvite(santa.id).catch(() => null);
+    const sentOk = await sendInvite(db, santa, person, token, game);
     revalidateSanta(santa.slug);
     return sentOk ? ok(null) : fail("INTERNAL", "Le mail n'est pas parti. Réessayez plus tard.");
   } catch (error) {

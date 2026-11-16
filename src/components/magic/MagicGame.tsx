@@ -5,13 +5,22 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
 import { toast } from "sonner";
 import { CERT_ROUND, ROUNDS } from "@/lib/magic/engine";
-import { CAMP_LABEL, RULES, ROLE_HINT, ROLE_LABEL, endText, formatMoment } from "@/lib/magic/texts";
+import {
+  CAMP_LABEL,
+  RULES,
+  ROLE_HINT,
+  ROLE_LABEL,
+  endText,
+  formatMoment,
+  pointDetailText,
+} from "@/lib/magic/texts";
 import type { MagicView } from "@/lib/magic/types";
 import { getMagicView, voteMagic } from "@/server/actions/magic";
 import { AtoutPanel, LetterPanel, NotebookPanel } from "./Extras";
 import { GazetteCard } from "./GazetteCard";
 import { MagicGlobe } from "./MagicGlobe";
 import { RoleCard, useFlipped } from "./RoleCard";
+import { ScorePanel } from "./ScorePanel";
 
 const NETWORK = "Pas enregistré. Vérifiez la connexion.";
 const POLL_MS = 20_000;
@@ -94,6 +103,7 @@ export function MagicGame({ token, initial }: { token: string; initial: MagicVie
           {view.reveal ? <Reveal view={view} /> : null}
           <SuspectPanel view={view} pending={pending} onVote={vote} />
           <AtoutPanel view={view} token={token} refresh={refresh} />
+          <ScorePanel view={view} />
           {latest ? (
             <section aria-label="Gazette" className="flex flex-col gap-4">
               <GazetteCard gazette={latest} title={view.title} />
@@ -360,45 +370,53 @@ function RoleBadge({ role }: { role: "pn" | "gr" }) {
 
 function Reveal({ view }: { view: MagicView }) {
   const rows = view.reveal ?? [];
-  const best = Math.max(0, ...rows.map((r) => r.flair));
+  // Parties révélées avant les points personnels : on retombe sur le flair.
+  const score = (r: (typeof rows)[number]) => r.points ?? r.flair;
+  const withPoints = rows.some((r) => typeof r.points === "number");
+  // Ex aequo : même rang (lignes déjà triées par score décroissant).
+  const ranks = rows.map((r) => 1 + rows.findIndex((x) => score(x) === score(r)));
   return (
-    <section aria-label="Rôles et flair" className="mg-panel flex flex-col gap-4 px-5 py-6 sm:px-7">
+    <section aria-label="Classement général" className="mg-panel flex flex-col gap-4 px-5 py-6 sm:px-7">
       <h2 className="mg-title m-0 text-[28px] leading-tight font-normal sm:text-[32px]">
         Les masques tombent
       </h2>
       <p className="m-0 text-[15px] text-[var(--mg-soft)]">
-        Voici le vrai rôle de chacun. Le flair compte les fois où chacun a désigné un Krampus qui n&apos;avait
-        pas encore été démasqué.
+        {withPoints
+          ? "Voici le vrai rôle de chacun, et le classement général des points personnels : flair et démasquages pour les Pères Noël, camouflage et manigances pour les Krampus."
+          : "Voici le vrai rôle de chacun. Le flair compte les fois où chacun a désigné un Krampus qui n'avait pas encore été démasqué."}
       </p>
-      <table className="w-full border-collapse text-left text-[15px]">
-        <thead>
-          <tr className="text-[12px] tracking-[0.14em] text-[var(--mg-faint)] uppercase">
-            <th className="py-2 font-normal">Joueur</th>
-            <th className="py-2 font-normal">Rôle</th>
-            <th className="py-2 text-right font-normal">Flair</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.name} className="border-t border-[var(--mg-line)]">
-              <td className="py-2.5 pr-2">
-                <span className="block">{r.name}</span>
-                {best > 0 && r.flair === best ? (
-                  <span className="text-[12px] font-semibold text-[var(--mg-gold)]">Meilleur flair</span>
-                ) : r.outRound ? (
-                  <span className="text-[12px] text-[var(--mg-faint)]">
-                    rôle révélé en semaine {r.outRound}
+      <ol className="m-0 flex list-none flex-col p-0 text-[15px]">
+        {rows.map((r, i) => {
+          const rank = ranks[i]!;
+          const detail = r.detail ? pointDetailText(r.detail) : "";
+          return (
+            <li key={r.name} className="flex items-center gap-3 border-t border-[var(--mg-line)] py-3">
+              <span className="mg-rank shrink-0" data-top={rank <= 3 && score(r) > 0 ? rank : undefined}>
+                {rank}
+              </span>
+              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold">{r.name}</span>
+                  <RoleBadge role={r.role} />
+                </span>
+                {detail || r.outRound ? (
+                  <span className="text-[13px] text-[var(--mg-faint)]">
+                    {[detail, r.outRound ? `rôle révélé en semaine ${r.outRound}` : ""]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </span>
                 ) : null}
-              </td>
-              <td className="py-2.5 pr-2">
-                <RoleBadge role={r.role} />
-              </td>
-              <td className="py-2.5 text-right tabular-nums">{r.flair}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              </span>
+              <span className="shrink-0 text-right tabular-nums">
+                <span className="text-[20px] text-[var(--mg-gold-hi)]">{score(r)}</span>
+                <span className="block text-[11px] tracking-[0.14em] text-[var(--mg-faint)] uppercase">
+                  {withPoints ? "points" : "flair"}
+                </span>
+              </span>
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }

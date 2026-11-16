@@ -368,6 +368,7 @@ export type Database = {
           exchange_date: string | null
           id: string
           launched_at: string | null
+          magic_plan: Json | null
           message: string | null
           slug: string
           status: "draft" | "launched"
@@ -380,6 +381,7 @@ export type Database = {
           exchange_date?: string | null
           id?: string
           launched_at?: string | null
+          magic_plan?: Json | null
           message?: string | null
           slug: string
           status?: "draft" | "launched"
@@ -392,6 +394,7 @@ export type Database = {
           exchange_date?: string | null
           id?: string
           launched_at?: string | null
+          magic_plan?: Json | null
           message?: string | null
           slug?: string
           status?: "draft" | "launched"

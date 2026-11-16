@@ -10,9 +10,9 @@ import type { Mail } from "@/server/santa/mail";
 const escape = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-const NO_LINK = "Ouvrez le lien reçu pour le Secret Santa, puis « Entrer dans le jeu ».";
+const NO_LINK = "Ouvrez le lien reçu pour le Secret Santa : le jeu vous attend en haut de la page.";
 
-type Block = { kind: "p" | "clue" | "small"; text: string };
+type Block = { kind: "p" | "clue" | "small"; text: string; label?: string };
 
 function layout(opts: {
   to: string;
@@ -27,7 +27,7 @@ function layout(opts: {
   const text = [
     `Bonjour ${opts.toName},`,
     "",
-    ...opts.blocks.flatMap((b) => [b.kind === "clue" ? `Indice : ${b.text}` : b.text, ""]),
+    ...opts.blocks.flatMap((b) => [b.kind === "clue" ? `${b.label ?? "Indice"} : ${b.text}` : b.text, ""]),
     opts.url ? `${opts.cta} : ${opts.url}` : NO_LINK,
     "",
     "Ce lien est personnel. Ne le transférez pas.",
@@ -35,7 +35,7 @@ function layout(opts: {
   const body = opts.blocks
     .map((b) =>
       b.kind === "clue"
-        ? `<p style="margin:0 0 18px;padding:14px 18px;border:1px solid #6B5A2E;border-radius:14px;background:#1A2740;color:#F3D9A0;font-size:16px;line-height:1.5"><span style="display:block;font-family:Arial,sans-serif;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#C9A55C;margin-bottom:4px">Indice</span>${escape(b.text)}</p>`
+        ? `<p style="margin:0 0 18px;padding:14px 18px;border:1px solid #6B5A2E;border-radius:14px;background:#1A2740;color:#F3D9A0;font-size:16px;line-height:1.5"><span style="display:block;font-family:Arial,sans-serif;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#C9A55C;margin-bottom:4px">${escape(b.label ?? "Indice")}</span>${escape(b.text)}</p>`
         : b.kind === "small"
           ? `<p style="margin:0 0 14px;font-family:Arial,sans-serif;font-size:13px;line-height:1.5;color:#A9B4C8">${escape(b.text)}</p>`
           : `<p style="margin:0 0 14px;font-size:17px;line-height:1.55;color:#EEF1F7">${escape(b.text)}</p>`,
@@ -128,8 +128,10 @@ export function gazetteMail(
 export function revealMail(
   to: string,
   firstName: string,
-  c: { title: string; url: string | null; winner: Role | null },
+  c: { title: string; url: string | null; winner: Role | null; podium?: { name: string; points: number }[] },
 ): Mail {
+  const podium = c.podium ?? [];
+  const pts = (n: number) => (Math.abs(n) > 1 ? `${n} points` : `${n} point`);
   return layout({
     to,
     toName: firstName,
@@ -139,8 +141,17 @@ export function revealMail(
     blocks: [
       {
         kind: "p",
-        text: `${c.winner ? `La partie est terminée, et la victoire revient aux ${c.winner === "pn" ? "Pères Noël" : "Krampus"}. ` : "La partie est terminée. "}Tous les rôles sont maintenant dévoilés : venez découvrir qui était Krampus, et qui a eu le meilleur flair.`,
+        text: `${c.winner ? `La partie est terminée, et la victoire revient aux ${c.winner === "pn" ? "Pères Noël" : "Krampus"}. ` : "La partie est terminée. "}Tous les rôles sont maintenant dévoilés : venez découvrir qui était Krampus, et le classement général.`,
       },
+      ...(podium.length
+        ? [
+            {
+              kind: "clue" as const,
+              label: "Le podium",
+              text: podium.map((r, i) => `${i + 1}. ${r.name}, ${pts(r.points)}`).join(" · "),
+            },
+          ]
+        : []),
     ],
     url: c.url,
     cta: "Voir les rôles",

@@ -1,11 +1,13 @@
 import {
   CATCH_GAIN,
   CERT_ROUND,
+  POINTS,
   ROUNDS,
   SABOTAGE,
   WRONG_LOSS,
   type AtoutKind,
   type Clue,
+  type PointKind,
   type Role,
 } from "./engine";
 import type { Gazette } from "./types";
@@ -122,8 +124,60 @@ export const RULES: string[] = [
   "Si la Magie tombe à zéro, les Krampus ont gagné. Si elle tient jusqu'à la fin de la dernière semaine, ou si tous les Krampus sont démasqués avant, les Pères Noël ont sauvé Noël.",
   "Chaque joueur a aussi un atout, à jouer une seule fois s'il le souhaite. Les Pères Noël ont la Loupe : ils choisissent deux joueurs et apprennent en secret si au moins l'un des deux est un Krampus. Les Krampus choisissent entre la Fausse piste, qui remplace l'indice d'une gazette par un faux, et l'Alibi, qui fait qu'une Loupe ne trouve plus rien de suspect chez eux. Les indices ne sont donc pas toujours vrais.",
   "Chaque semaine, vous pouvez écrire une courte lettre sans votre nom. Elle paraîtra dans le courrier des lecteurs de la gazette suivante.",
+  `Chacun marque aussi des points personnels, pour le classement général publié à la révélation des rôles. Père Noël : ${POINTS.flair} points chaque semaine où vous désignez un Krampus encore caché, ${POINTS.catch} de plus s'il est démasqué, ${-POINTS.wrong} de moins si la personne que vous désignez est démasquée et se révèle Père Noël. Krampus : ${POINTS.camouflage} points chaque semaine traversée sans être démasqué, ${POINTS.scheme} si vous faites démasquer un Père Noël en le désignant, ${-POINTS.caught} de moins la semaine où vous êtes démasqué. Ces points ne changent rien à la Magie.`,
   "Parlez-en autour de vous, au dîner ou par message. Chacun a le droit de bluffer.",
 ];
+
+/** Nom court d'une ligne du barème. */
+export const POINT_LABEL: Record<PointKind, string> = {
+  flair: "Bon flair",
+  catch: "Krampus démasqué",
+  wrong: "Erreur sur la personne",
+  camouflage: "Camouflage",
+  caught: "Démasqué",
+  scheme: "Manigance réussie",
+};
+
+/** Le barème, ligne par ligne, pour un rôle. */
+export const POINT_RULES: Record<Role, { kind: PointKind; text: string }[]> = {
+  pn: [
+    { kind: "flair", text: "chaque semaine où vous désignez un Krampus encore caché" },
+    { kind: "catch", text: "en plus, si ce Krampus est démasqué cette semaine-là" },
+    { kind: "wrong", text: "si la personne que vous désignez est démasquée et se révèle Père Noël" },
+  ],
+  gr: [
+    { kind: "camouflage", text: "chaque semaine traversée sans être démasqué" },
+    { kind: "scheme", text: "si vous désignez un Père Noël et qu'il est démasqué" },
+    { kind: "caught", text: "la semaine où vous êtes démasqué" },
+  ],
+};
+
+export const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : "0");
+
+/** Une ligne de points racontée : « Semaine 2 · Bon flair sur Léa ». */
+export function pointLineText(l: { kind: PointKind; round: number; target: string | null }): string {
+  const on = l.target
+    ? l.kind === "flair" || l.kind === "catch"
+      ? ` sur ${l.target}`
+      : ` : ${l.target}`
+    : "";
+  return `Semaine ${l.round} · ${POINT_LABEL[l.kind]}${on}`;
+}
+
+/** Résumé du détail d'un joueur au classement : « 3 bons flairs, 1 Krampus démasqué ». */
+export function pointDetailText(detail: Partial<Record<PointKind, number>>): string {
+  const parts: [PointKind, string, string][] = [
+    ["flair", "bon flair", "bons flairs"],
+    ["catch", "Krampus démasqué", "Krampus démasqués"],
+    ["wrong", "erreur", "erreurs"],
+    ["camouflage", "semaine camouflée", "semaines camouflées"],
+    ["scheme", "manigance réussie", "manigances réussies"],
+  ];
+  return parts
+    .filter(([k]) => detail[k])
+    .map(([k, one, many]) => `${detail[k]} ${detail[k]! > 1 ? many : one}`)
+    .join(", ");
+}
 
 export function formatMoment(iso: string): string {
   return new Date(iso).toLocaleString("fr-FR", {

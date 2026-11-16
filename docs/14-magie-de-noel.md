@@ -78,7 +78,7 @@ Tables :
 
 L'organisation peut cocher « Jouer aussi à La Magie de Noël » pendant la préparation, avec le début de la partie, la durée d'une manche et l'équilibre. Les réglages sont gardés dans `santas.magic_plan`. Au lancement du tirage :
 - le jeu s'ouvre aussitôt après le tirage (`createMagic` avec `silent`), sans mail d'ouverture à part ;
-- chaque participant reçoit **un seul mail** : son lien de tirage, puis un encadré de nuit qui présente le jeu, le premier indice et le bouton « Découvrir mon rôle » (« Secret Santa et Magie de Noël : … ») ;
+- chaque participant reçoit **un seul mail** : son lien de tirage, puis un encadré de nuit (« Pendant ce temps, au Pôle Nord : La Magie de Noël est en danger ») qui pose le contexte du jeu, l'enjeu et la consigne hebdomadaire, le premier indice et le bouton « Découvrir mon rôle » (« Secret Santa et Magie de Noël : … ») ;
 - si le jeu ne peut pas s'ouvrir, le tirage part quand même, et l'organisation l'ouvre ensuite depuis le suivi (mail à part).
 
 On ne peut pas lancer si le jeu est coché sans date, avec une date passée, ou hors de 5 à 30 participants (`magicPlanProblems`). « Renvoyer le lien » présente aussi le jeu tant qu'il est en cours. Le jeu peut toujours s'ouvrir après le lancement, comme avant.

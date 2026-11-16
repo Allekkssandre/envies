@@ -155,19 +155,82 @@ const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleU
 export const letterCount = (name: string) => fold(name).replace(/[^A-Z]/g, "").length;
 
 export type Clue =
+  // Anciens indices, gardés pour relire les gazettes déjà publiées.
   | { t: "letters"; n: number }
   | { t: "range"; from: string; to: string }
+  // « Le prénom d'un Krampus contient la lettre R. »
+  | { t: "has"; letter: string }
+  // « Le prénom d'un Krampus compte 5 lettres ou moins » (max), « ou plus » (min).
+  | { t: "length"; op: "max" | "min"; n: number }
   | { t: "innocent"; names: string[] }
   | { t: "among"; names: string[] };
 
+const lettersOf = (name: string) => new Set(fold(name).replace(/[^A-Z]/g, ""));
+const firstLetter = (name: string) =>
+  fold(name)
+    .replace(/[^A-Z]/g, "")
+    .charAt(0) || "A";
+
+/** Le prénom de `p` correspond à un indice portant sur les lettres. */
+function nameMatches(clue: Clue, p: Person): boolean {
+  switch (clue.t) {
+    case "letters":
+      return letterCount(p.firstName) === clue.n;
+    case "range":
+      return firstLetter(p.firstName) >= clue.from && firstLetter(p.firstName) <= clue.to;
+    case "has":
+      return lettersOf(p.firstName).has(clue.letter);
+    case "length":
+      return clue.op === "max" ? letterCount(p.firstName) <= clue.n : letterCount(p.firstName) >= clue.n;
+    default:
+      return false;
+  }
+}
+
+/** Part visée des joueurs en jeu qu'un indice sur les lettres laisse suspects : ni trop, ni trop peu. */
+const CLUE_SHARE = 0.5;
+
+/** Tous les indices sur les lettres possibles parmi ces joueurs. */
+function letterClues(kind: "has" | "length", people: readonly Person[]): Clue[] {
+  if (kind === "has") {
+    const all = new Set<string>();
+    for (const p of people) for (const l of lettersOf(p.firstName)) all.add(l);
+    return [...all].map((letter) => ({ t: "has", letter }));
+  }
+  const lengths = people.map((p) => letterCount(p.firstName));
+  const out: Clue[] = [];
+  for (let n = Math.min(...lengths); n <= Math.max(...lengths); n++) {
+    out.push({ t: "length", op: "max", n }, { t: "length", op: "min", n });
+  }
+  return out;
+}
+
+/**
+ * Le meilleur indice sur les lettres parmi `candidates` : celui qui laisse suspecte une part des
+ * joueurs en jeu la plus proche de la moitié, pour qu'un prénom rare ne trahisse personne.
+ * Tirage au sort parmi les quasi-ex aequo, pour varier.
+ */
+function balanced(candidates: Clue[], inGame: readonly Person[], rng: Rng): Clue | null {
+  if (!candidates.length || !inGame.length) return null;
+  const scored = candidates.map((clue) => {
+    const share = inGame.filter((p) => nameMatches(clue, p)).length / inGame.length;
+    return { clue, gap: Math.abs(share - CLUE_SHARE) };
+  });
+  const best = Math.min(...scored.map((s) => s.gap));
+  const near = scored.filter((s) => s.gap <= best + 0.08);
+  return near[rng(near.length)]!.clue;
+}
+
 /**
  * Indice de la semaine `week` (1 à 5), sur un Krampus encore caché. De plus en plus précis :
- * nombre de lettres, première lettre, deux innocents, puis un trio qui cache un Krampus.
+ * une lettre de son prénom, la longueur de son prénom, deux innocents, puis un trio qui cache
+ * un Krampus. Les deux premiers laissent toujours environ la moitié des joueurs suspects.
  */
 export function makeClue(week: number, people: readonly (Person & Player)[], rng: Rng): Clue | null {
   const grinchs = people.filter((p) => p.role === "gr" && !p.out);
   const innocents = people.filter((p) => p.role === "pn" && !p.out);
   if (!grinchs.length) return null;
+  const inGame = people.filter((p) => !p.out);
   const names = displayNames(people);
   const target = grinchs[rng(grinchs.length)]!;
   if (week === 3 && innocents.length >= 2) {
@@ -182,14 +245,9 @@ export function makeClue(week: number, people: readonly (Person & Player)[], rng
     const trio = shuffle([target, ...shuffle(innocents, rng).slice(0, 2)], rng);
     return { t: "among", names: trio.map((p) => names.get(p.id)!) };
   }
-  if (week === 2) {
-    const first =
-      fold(target.firstName)
-        .replace(/[^A-Z]/g, "")
-        .charAt(0) || "A";
-    return first <= "L" ? { t: "range", from: "A", to: "L" } : { t: "range", from: "M", to: "Z" };
-  }
-  return { t: "letters", n: letterCount(target.firstName) };
+  const kind = week === 2 ? "length" : "has";
+  const truths = letterClues(kind, inGame).filter((c) => nameMatches(c, target));
+  return balanced(truths, inGame, rng) ?? { t: "length", op: "max", n: letterCount(target.firstName) };
 }
 
 /**
@@ -265,15 +323,10 @@ export function clueIsTrue(
   const roleOf = (name: string) => people.find((p) => names.get(p.id) === name)?.role;
   switch (clue.t) {
     case "letters":
-      return hidden.some((p) => letterCount(p.firstName) === clue.n);
     case "range":
-      return hidden.some((p) => {
-        const first =
-          fold(p.firstName)
-            .replace(/[^A-Z]/g, "")
-            .charAt(0) || "A";
-        return first >= clue.from && first <= clue.to;
-      });
+    case "has":
+    case "length":
+      return hidden.some((p) => nameMatches(clue, p));
     case "innocent":
       return clue.names.every((n) => roleOf(n) === "pn");
     case "among":
@@ -307,12 +360,15 @@ export function fakeClueOptions(week: number, people: readonly (Person & Player)
     }
   };
   const pick = <T>(list: readonly T[]) => list[rng(list.length)]!;
-  const letters = () => {
-    const lengths = [...new Set(innocents.map((p) => letterCount(p.firstName)))];
-    return lengths.length ? ({ t: "letters", n: pick(lengths) } as Clue) : null;
-  };
-  const range = (): Clue =>
-    rng(2) ? { t: "range", from: "A", to: "L" } : { t: "range", from: "M", to: "Z" };
+  // Faux indices sur les lettres : vrais pour aucun Krampus caché, et aussi équilibrés que les vrais.
+  const lettersFake = (kind: "has" | "length") => () =>
+    balanced(
+      letterClues(kind, inGame).filter((c) => !clueIsTrue(c, people, names)),
+      inGame,
+      rng,
+    );
+  const has = lettersFake("has");
+  const length = lettersFake("length");
   // Un Krampus et un innocent présentés comme deux innocents.
   const innocent = () =>
     hiddenK.length && innocents.length
@@ -333,12 +389,12 @@ export function fakeClueOptions(week: number, people: readonly (Person & Player)
       : null;
   const order =
     week >= 4
-      ? [among, innocent, letters]
+      ? [among, innocent, has]
       : week === 3
-        ? [innocent, among, letters]
+        ? [innocent, among, has]
         : week === 2
-          ? [range, letters, innocent]
-          : [letters, range, innocent];
+          ? [length, has, innocent]
+          : [has, length, innocent];
   for (const make of order) tries(make);
   return out;
 }

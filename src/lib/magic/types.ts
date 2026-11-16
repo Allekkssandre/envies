@@ -19,8 +19,6 @@ export type Gazette = {
   clue: Clue | null;
   /** Les secrets personnels viennent d'être distribués. */
   certs: boolean;
-  /** Courrier des lecteurs de la semaine, sans nom, dans un ordre tiré au sort. */
-  letters?: string[];
   winner: Role | null;
   end: RoundResult["end"];
 };
@@ -94,8 +92,6 @@ export type MagicView = {
   players: MagicPlayer[];
   vote: { mine: string | null; voters: number; open: boolean };
   atout: AtoutView;
-  /** Lettre de la semaine en cours ; `open` : la boîte aux lettres est ouverte. */
-  letter: { mine: string | null; open: boolean };
   /** Carnet d'enquête : notes du joueur, par identifiant. */
   notes: Record<string, NoteMark>;
   gazettes: Gazette[];

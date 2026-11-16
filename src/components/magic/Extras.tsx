@@ -1,16 +1,16 @@
 "use client";
 
-import { Feather, Search, Sparkles } from "lucide-react";
+import { Search, Sparkles } from "lucide-react";
 import { useState, useTransition, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ATOUTS, type AtoutKind } from "@/lib/magic/engine";
 import { ATOUT_NAME, ATOUT_TEXT, atoutResultText, clueText } from "@/lib/magic/texts";
 import type { MagicView, NoteMark } from "@/lib/magic/types";
 import type { Result } from "@/server/actions/result";
-import { noteMagic, playAtoutMagic, writeLetterMagic } from "@/server/actions/magic";
+import { noteMagic, playAtoutMagic } from "@/server/actions/magic";
 import { Flourish, Garland, HollyPin } from "./Decor";
 
-// Le facultatif : l'atout, le courrier des lecteurs, le carnet d'enquête.
+// Le facultatif : le pouvoir, le carnet d'enquête.
 // Rien de tout cela ne touche au score.
 
 const NETWORK = "Pas enregistré. Vérifiez la connexion.";
@@ -86,7 +86,7 @@ export function AtoutPanel({
 
   if (atout.state === "used") {
     return (
-      <Panel title="Votre atout" tone="velours" icon={<Sparkles aria-hidden="true" size={22} />}>
+      <Panel title="Votre pouvoir" tone="velours" icon={<Sparkles aria-hidden="true" size={22} />}>
         <p className="mg-kicker m-0">{ATOUT_NAME[atout.kind]} · déjà joué</p>
         <p className="m-0 rounded-2xl border border-[var(--mg-line)] bg-white/[0.04] px-4 py-3 text-[16px] leading-normal">
           {atoutResultText(atout)}
@@ -96,13 +96,13 @@ export function AtoutPanel({
   }
   if (atout.state === "locked") {
     return (
-      <Panel title="Votre atout" tone="velours" icon={<Sparkles aria-hidden="true" size={22} />}>
+      <Panel title="Votre pouvoir" tone="velours" icon={<Sparkles aria-hidden="true" size={22} />}>
         <p className={soft}>
           {view.status === "waiting"
-            ? "Vous pourrez jouer votre atout une fois la partie commencée. Il ne sert qu'une fois."
+            ? "Vous pourrez jouer votre pouvoir une fois la partie commencée. Il ne sert qu'une fois."
             : view.status === "playing"
-              ? "Votre rôle a été révélé : votre atout ne peut plus servir."
-              : "La partie est terminée : les atouts sont rangés."}
+              ? "Votre rôle a été révélé : votre pouvoir ne peut plus servir."
+              : "La partie est terminée : les pouvoirs sont rangés."}
         </p>
       </Panel>
     );
@@ -134,13 +134,13 @@ export function AtoutPanel({
   };
 
   return (
-    <Panel title="Votre atout" tone="velours" icon={<Sparkles aria-hidden="true" size={22} />}>
+    <Panel title="Votre pouvoir" tone="velours" icon={<Sparkles aria-hidden="true" size={22} />}>
       <p className={soft}>
         Facultatif, et une seule fois dans toute la partie. Personne ne saura que vous l&apos;avez joué.
       </p>
 
       {kinds.length > 1 ? (
-        <div className="grid gap-2.5 sm:grid-cols-2" role="radiogroup" aria-label="Choix de l'atout">
+        <div className="grid gap-2.5 sm:grid-cols-2" role="radiogroup" aria-label="Choix du pouvoir">
           {kinds.map((k) => (
             <button
               key={k}
@@ -252,107 +252,6 @@ export function AtoutPanel({
           </button>
         )
       ) : null}
-    </Panel>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Courrier des lecteurs
-// ---------------------------------------------------------------------------
-
-export function LetterPanel({
-  view,
-  token,
-  refresh,
-}: {
-  view: MagicView;
-  token: string;
-  refresh: () => Promise<void>;
-}) {
-  const [pending, act] = useAct(refresh);
-  const [editing, setEditing] = useState(false);
-  const [text, setText] = useState(view.letter.mine ?? "");
-  if (!view.letter.open) return null;
-  const mine = view.letter.mine;
-
-  return (
-    <Panel title="Le courrier des lecteurs" tone="velours" icon={<Feather aria-hidden="true" size={22} />}>
-      <p className={soft}>
-        Une courte lettre, sans votre nom, publiée dans la gazette de fin de semaine. Un soupçon, un conseil,
-        une rumeur : à vous de voir. Une lettre par semaine.
-      </p>
-      {mine && !editing ? (
-        <>
-          <blockquote className="m-0 rounded-2xl border border-[var(--mg-line)] bg-white/[0.04] px-4 py-3 text-[16px] leading-normal italic">
-            « {mine} »
-          </blockquote>
-          <p className="m-0 text-[14px] text-[var(--mg-faint)]">
-            Elle paraîtra dans la gazette de fin de semaine {view.round}.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="mg-btn-ghost -ml-3"
-              onClick={() => {
-                setText(mine);
-                setEditing(true);
-              }}
-            >
-              Modifier
-            </button>
-            <button
-              type="button"
-              className="mg-btn-ghost"
-              disabled={pending}
-              onClick={() =>
-                act(
-                  () => writeLetterMagic(token, null),
-                  () => setText(""),
-                )
-              }
-            >
-              Retirer ma lettre
-            </button>
-          </div>
-        </>
-      ) : (
-        <form
-          className="flex flex-col gap-2.5"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!text.trim()) return;
-            act(
-              () => writeLetterMagic(token, text),
-              () => setEditing(false),
-            );
-          }}
-        >
-          <label className="flex flex-col gap-1.5 text-[15px]">
-            Votre lettre
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              maxLength={280}
-              rows={3}
-              placeholder="Je trouve que certains sont bien discrets cette année…"
-              className="min-h-24 rounded-2xl border border-[var(--mg-line)] bg-[#0b1322]/60 px-4 py-3 text-[16px] text-[var(--mg-ink)] placeholder:text-[var(--mg-faint)]"
-            />
-          </label>
-          <div className="flex flex-wrap items-center gap-3">
-            <button type="submit" className="mg-btn" disabled={pending || !text.trim()}>
-              Poster ma lettre
-            </button>
-            {editing ? (
-              <button type="button" className="mg-btn-ghost" onClick={() => setEditing(false)}>
-                Annuler
-              </button>
-            ) : null}
-            <span className="ml-auto text-[13px] text-[var(--mg-faint)] tabular-nums">
-              {text.length} / 280
-            </span>
-          </div>
-        </form>
-      )}
     </Panel>
   );
 }

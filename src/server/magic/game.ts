@@ -21,7 +21,6 @@ import {
   startMagic,
   tally,
   threshold,
-  shuffle,
   validVotes,
   ROUNDS,
   type AtoutKind,
@@ -207,10 +206,7 @@ async function resolveNext(db: Db, game: Game): Promise<void> {
   });
   const { top, leaders } = tally(roster, votes);
   const names = displayNames(roster);
-  const [atouts, { data: letterRows }] = await Promise.all([
-    loadAtouts(db, game.santa_id),
-    db.from("magic_letters").select("body").eq("santa_id", game.santa_id).eq("round", round),
-  ]);
+  const atouts = await loadAtouts(db, game.santa_id);
   // Fausse piste : le premier Krampus qui l'a préparée cette semaine remplace l'indice.
   const fake = atouts.find((a) => a.kind === "fausse_piste" && a.round === round && a.clue)?.clue;
   const after = roster.map((p) => (p.id === res.unmasked ? { ...p, out: true, outRound: round } : p));
@@ -234,10 +230,6 @@ async function resolveNext(db: Db, game: Game): Promise<void> {
     votes: votes.map((v) => ({ voter: names.get(v.voter)!, target: names.get(v.target)! })),
     clue: res.end ? null : (fake ?? makeClue(round + 1, after, randomInt)),
     certs: Boolean(certs?.size),
-    letters: shuffle(
-      (letterRows ?? []).map((l) => l.body),
-      randomInt,
-    ),
     winner: res.winner,
     end: res.end,
   };
@@ -379,17 +371,8 @@ export async function buildMagicView(
   ]);
   const names = displayNames(roster);
   const current = validVotes(roster, votes ?? []);
-  const [atouts, { data: letter }, { data: notes }, history] = await Promise.all([
+  const [atouts, { data: notes }, history] = await Promise.all([
     loadAtouts(db, santaId),
-    round
-      ? db
-          .from("magic_letters")
-          .select("body")
-          .eq("santa_id", santaId)
-          .eq("round", round)
-          .eq("author", participantId)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
     db.from("magic_notes").select("target, mark").eq("santa_id", santaId).eq("owner", participantId),
     resolvedRounds(db, game),
   ]);
@@ -455,7 +438,6 @@ export async function buildMagicView(
       open: playing && canVote(me),
     },
     atout,
-    letter: { mine: letter?.body ?? null, open: playing },
     notes: Object.fromEntries((notes ?? []).map((n) => [n.target, n.mark as NoteMark])),
     gazettes: (gazettes ?? []).map((g) => g.data as unknown as Gazette),
     points: {
@@ -590,40 +572,6 @@ export async function playAtout(
   if (error?.code === "23505") return "used";
   if (error) throw new Error(error.message);
   return "ok";
-}
-
-/** Lettre au courrier des lecteurs pour la semaine en cours ; `null` la retire. */
-export async function writeLetter(
-  santaId: string,
-  participantId: string,
-  body: string | null,
-): Promise<boolean> {
-  const db = getServiceDb();
-  const game = await loadGame(db, santaId);
-  if (!game || game.status !== "playing") return false;
-  const { count } = await db
-    .from("magic_players")
-    .select("participant_id", { count: "exact", head: true })
-    .eq("santa_id", santaId)
-    .eq("participant_id", participantId);
-  if (!count) return false;
-  const round = game.round + 1;
-  const { error } = body
-    ? await db.from("magic_letters").upsert({
-        santa_id: santaId,
-        round,
-        author: participantId,
-        body,
-        updated_at: new Date().toISOString(),
-      })
-    : await db
-        .from("magic_letters")
-        .delete()
-        .eq("santa_id", santaId)
-        .eq("round", round)
-        .eq("author", participantId);
-  if (error) throw new Error(error.message);
-  return true;
 }
 
 /** Carnet d'enquête : note privée sur un autre joueur ; `null` l'efface. */

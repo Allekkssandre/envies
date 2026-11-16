@@ -57,14 +57,6 @@ export function ScorePanel({ view }: { view: MagicView }) {
         </p>
       )}
 
-      {points.pending ? (
-        <p className="m-0 text-[14px] leading-normal text-[var(--mg-faint)]">
-          Le flair porté sur un joueur dont le rôle est encore caché ne s&apos;affiche qu&apos;à la révélation
-          : sinon, vos points vous diraient qui est Krampus. D&apos;autres points peuvent donc s&apos;ajouter
-          à la fin.
-        </p>
-      ) : null}
-
       <details className="flex flex-col gap-2">
         <summary className="mg-btn-ghost -ml-3">Le barème</summary>
         <ul className="m-0 mt-2 flex list-none flex-col gap-1.5 p-0 text-[14px] leading-normal text-[var(--mg-soft)]">
@@ -77,6 +69,13 @@ export function ScorePanel({ view }: { view: MagicView }) {
             </li>
           ))}
         </ul>
+        {points.pending ? (
+          <p className="m-0 mt-3 text-[14px] leading-normal text-[var(--mg-faint)]">
+            Le flair porté sur un joueur dont le rôle est encore caché ne s&apos;affiche qu&apos;à la
+            révélation : sinon, vos points vous diraient qui est Krampus. D&apos;autres points peuvent donc
+            s&apos;ajouter à la fin.
+          </p>
+        ) : null}
       </details>
     </section>
   );

@@ -48,7 +48,7 @@ L'adresse de l'organisation finit par 6 caractères aléatoires : elle ne se dev
 
 ## Mails
 
-`src/server/santa/mail.ts`. API transactionnelle de **Brevo** (plan gratuit, 300 mails par jour), sans nom de domaine : Brevo remplace l'adresse d'expéditeur Gmail par une adresse à lui, le nom affiché reste « Secret Santa · Envies ». Risque de dossier « indésirables » : l'organisation voit qui a ouvert son lien.
+`src/server/santa/mail.ts`. Par défaut, une **boîte Gmail** dédiée, en SMTP avec un mot de passe d'application (`GMAIL_USER`, `GMAIL_APP_PASSWORD`, 500 mails par jour) : un vrai compte Gmail écrivant à des proches arrive bien mieux en boîte de réception. Sinon, API transactionnelle de **Brevo** (plan gratuit, 300 mails par jour), sans nom de domaine : Brevo remplace l'adresse d'expéditeur Gmail par une adresse à lui, le nom affiché reste « Secret Santa · Envies ». Risque de dossier « indésirables » : l'organisation voit qui a ouvert son lien.
 
 Variables : `BREVO_API_KEY`, `SANTA_MAIL_FROM` (adresse validée chez Brevo), facultatives `SANTA_MAIL_FROM_NAME`, `SANTA_MAIL_REPLY_TO`. Local et tests : `SANTA_MAIL_DIR`, chaque mail écrit en JSON (ignoré sur Vercel). Sans configuration, « Lancer le tirage » reste désactivé avec « L'envoi des mails n'est pas configuré. »
 

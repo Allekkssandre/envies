@@ -1,9 +1,11 @@
 import "server-only";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import nodemailer, { type Transporter } from "nodemailer";
 
 // Envoi des mails du Secret Santa (docs/13-secret-santa.md § Mails).
-// Production : API transactionnelle de Brevo (BREVO_API_KEY, SANTA_MAIL_FROM).
+// Production : une boîte Gmail par SMTP (GMAIL_USER, GMAIL_APP_PASSWORD), sinon l'API
+// transactionnelle de Brevo (BREVO_API_KEY, SANTA_MAIL_FROM).
 // Tests : SANTA_MAIL_DIR, chaque mail écrit en JSON dans ce dossier (jamais sur Vercel).
 
 export type Mail = { to: string; toName: string; subject: string; text: string; html: string };
@@ -17,9 +19,49 @@ function testDir(): string | null {
   return dir && !process.env.VERCEL ? dir : null;
 }
 
+const senderName = () => process.env.SANTA_MAIL_FROM_NAME || "Secret Santa · Envies";
+
+/** Boîte Gmail d'envoi (GMAIL_USER + GMAIL_APP_PASSWORD), prioritaire sur Brevo. */
+function gmail(): { user: string; pass: string } | null {
+  const user = process.env.GMAIL_USER;
+  const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, "");
+  return user && pass ? { user, pass } : null;
+}
+
 /** Un moyen d'envoi est configuré. */
 export function mailConfigured(): boolean {
-  return Boolean(testDir() || (process.env.BREVO_API_KEY && process.env.SANTA_MAIL_FROM));
+  return Boolean(testDir() || gmail() || (process.env.BREVO_API_KEY && process.env.SANTA_MAIL_FROM));
+}
+
+// Un transport par instance : la connexion SMTP est réutilisée entre deux mails d'un même envoi.
+let transport: Transporter | null = null;
+
+async function sendGmail(account: { user: string; pass: string }, mail: Mail): Promise<MailResult> {
+  transport ??= nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: account,
+    pool: true,
+    maxConnections: 2,
+    connectionTimeout: TIMEOUT_MS,
+    greetingTimeout: TIMEOUT_MS,
+    socketTimeout: TIMEOUT_MS,
+  });
+  try {
+    await transport.sendMail({
+      from: { name: senderName(), address: account.user },
+      replyTo: process.env.SANTA_MAIL_REPLY_TO || account.user,
+      to: { name: mail.toName, address: mail.to },
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html,
+    });
+    return { ok: true };
+  } catch (error) {
+    transport = null;
+    return { ok: false, error: error instanceof Error ? error.message.slice(0, 200) : "smtp" };
+  }
 }
 
 export async function sendMail(mail: Mail): Promise<MailResult> {
@@ -30,6 +72,8 @@ export async function sendMail(mail: Mail): Promise<MailResult> {
     await writeFile(path.join(dir, name), JSON.stringify(mail, null, 2));
     return { ok: true };
   }
+  const account = gmail();
+  if (account) return sendGmail(account, mail);
   const apiKey = process.env.BREVO_API_KEY;
   const from = process.env.SANTA_MAIL_FROM;
   if (!apiKey || !from) return { ok: false, error: "non configuré" };
@@ -38,7 +82,7 @@ export async function sendMail(mail: Mail): Promise<MailResult> {
       method: "POST",
       headers: { "api-key": apiKey, "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify({
-        sender: { email: from, name: process.env.SANTA_MAIL_FROM_NAME || "Secret Santa · Envies" },
+        sender: { email: from, name: senderName() },
         replyTo: { email: process.env.SANTA_MAIL_REPLY_TO || from },
         to: [{ email: mail.to, name: mail.toName }],
         subject: mail.subject,

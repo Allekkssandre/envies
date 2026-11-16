@@ -87,6 +87,8 @@ Images : pas d'optimisation `next/image` pour les photos d'articles (elles sont 
 | `SUPABASE_SERVICE_ROLE_KEY` | serveur | clé service role (ou clé « secret » `sb_secret_…`). **Jamais** préfixée `NEXT_PUBLIC_` |
 | `EDIT_TOKEN_SECRET` | serveur | 32 octets aléatoires (base64), signe les cookies d'édition |
 | `SANTA_SECRET_KEY` | serveur | 32 octets aléatoires, chiffre les tirages du Secret Santa. Ne jamais le changer pendant un tirage lancé |
+| `GMAIL_USER` | serveur | boîte Gmail d'envoi des mails du Secret Santa et du jeu (prioritaire sur Brevo) |
+| `GMAIL_APP_PASSWORD` | serveur | mot de passe d'application de cette boîte (secret) |
 | `BREVO_API_KEY` | serveur | clé API Brevo, envoi des mails du Secret Santa |
 | `SANTA_MAIL_FROM` | serveur | adresse d'expéditeur validée chez Brevo |
 | `SANTA_MAIL_DIR` | local, tests | mails du Secret Santa écrits en fichiers au lieu d'être envoyés (ignoré sur Vercel) |

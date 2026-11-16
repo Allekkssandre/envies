@@ -147,14 +147,37 @@ describe("indices", () => {
   ];
 
   it("de plus en plus précis, toujours vrais", () => {
-    expect(makeClue(1, people, random)).toEqual({ t: "letters", n: 6 });
-    expect(makeClue(2, people, random)).toEqual({ t: "range", from: "A", to: "L" });
+    const first = makeClue(1, people, random);
+    expect(first?.t).toBe("has");
+    if (first?.t === "has") expect("HELENE").toContain(first.letter);
+    const second = makeClue(2, people, random);
+    expect(second?.t).toBe("length");
     const innocent = makeClue(3, people, random);
     expect(innocent?.t).toBe("innocent");
     if (innocent?.t === "innocent") expect(innocent.names).not.toContain("Hélène");
     const among = makeClue(4, people, random);
     expect(among?.t).toBe("among");
     if (among?.t === "among") expect(among.names).toContain("Hélène");
+  });
+
+  it("une lettre et une longueur qui laissent environ la moitié des joueurs suspects", () => {
+    const crowd = [
+      { id: "k", firstName: "Xavier", lastName: "A", role: "gr" as const, out: false },
+      ...["Anne", "Paul", "Marie", "Louis", "Emma", "Jean", "Clara", "Hugo", "Lea", "Tom"].map(
+        (firstName, i) => ({ id: `p${i}`, firstName, lastName: "B", role: "pn" as const, out: false }),
+      ),
+    ];
+    for (let k = 0; k < 100; k++) {
+      for (const week of [1, 2]) {
+        const clue = makeClue(week, crowd, random)!;
+        const share = crowd.filter((p) =>
+          clueIsTrue(clue, [{ ...p, role: "gr", out: false }], displayNames([p])),
+        ).length;
+        // Jamais la seule personne désignée par un X rare : au moins un tiers des joueurs suspects.
+        expect(share).toBeGreaterThanOrEqual(4);
+        expect(share).toBeLessThanOrEqual(8);
+      }
+    }
   });
 
   it("aucun indice quand tous les Krampus sont démasqués", () => {

@@ -28,8 +28,9 @@ Jeu à rôles cachés, en parallèle d'un Secret Santa. Version simple : une seu
 ## Comment on déduit
 
 - **Les indices de la gazette**, sur un Krampus encore caché, de plus en plus précis :
-  - semaine 1 : nombre de lettres du prénom ;
-  - semaine 2 : première lettre entre A et L, ou entre M et Z ;
+  - semaine 1 : une lettre que contient le prénom (« contient la lettre R ») ;
+  - semaine 2 : la longueur du prénom, en seuil (« 5 lettres ou moins », « 6 lettres ou plus ») ;
+  - ces deux indices sont choisis pour laisser suspects environ la moitié des joueurs en jeu (`CLUE_SHARE`) : une initiale ou une longueur rare ne désigne jamais quelqu'un à elle seule. Les faux indices de la Fausse piste suivent la même règle. Les anciens indices (nombre exact de lettres, première lettre A à L ou M à Z) restent lisibles dans les gazettes déjà publiées ;
   - semaine 3 : deux innocents ;
   - semaines 4 et 5 : un trio qui cache un Krampus.
 - **Qui a désigné qui** : publié dans la gazette après chaque semaine. On peut repérer ceux qui votent ensemble ou qui protègent quelqu'un.

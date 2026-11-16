@@ -46,6 +46,10 @@ export function clueText(clue: Clue): string {
       return `Des traces dans la neige : le prénom d'un Krampus compte ${clue.n} lettres.`;
     case "range":
       return `Une lettre oubliée près de la cheminée : le prénom d'un Krampus commence par une lettre entre ${clue.from} et ${clue.to}.`;
+    case "has":
+      return `Des traces dans la neige : le prénom d'un Krampus contient la lettre ${clue.letter}.`;
+    case "length":
+      return `Une lettre oubliée près de la cheminée : le prénom d'un Krampus compte ${clue.n} lettres ${clue.op === "max" ? "ou moins" : "ou plus"}.`;
     case "innocent":
       return `Les lutins ont vérifié : ni ${clue.names[0]} ni ${clue.names[1]} ne sont des Krampus.`;
     case "among":
